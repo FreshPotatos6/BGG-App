@@ -60,7 +60,6 @@ def get_google_creds():
         "https://www.googleapis.com/auth/drive.file"
     ]
     
-    # First check Render Environment Variable
     env_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if env_creds:
         try:
@@ -69,12 +68,11 @@ def get_google_creds():
         except Exception as e:
             print(f"Error parsing GOOGLE_CREDENTIALS_JSON env var: {e}")
 
-    # Second check local file
     cred_path = os.path.join(os.path.dirname(__file__), "credentials.json")
     if os.path.exists(cred_path):
         return Credentials.from_service_account_file(cred_path, scopes=scope)
 
-    print("No valid credentials found (checked GOOGLE_CREDENTIALS_JSON env var and credentials.json file).")
+    print("No valid credentials found.")
     return None
 
 def generate_json_from_sheet():
@@ -171,12 +169,30 @@ app = Flask(__name__)
 
 generate_json_from_sheet()
 
+@app.route('/api/collection')
+def api_collection():
+    if GAMES_CACHE:
+        return jsonify(GAMES_CACHE)
+    try:
+        json_path = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                return jsonify(json.load(f))
+    except Exception as e:
+        print(f"Error reading JSON cache: {e}")
+    return jsonify([])
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RENGAW'S MEEPLES // Collection Dash</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-51.2 -51.2 614.40 614.40' fill='%23fee440'><path d='M256 54.99c-27 0-46.418 14.287-57.633 32.23-10.03 16.047-14.203 34.66-15.017 50.962-30.608 15.135-64.515 30.394-91.815 45.994-14.32 8.183-26.805 16.414-36.203 25.26C45.934 218.28 39 228.24 39 239.99c0 5 2.44 9.075 5.19 12.065 2.754 2.99 6.054 5.312 9.812 7.48 7.515 4.336 16.99 7.95 27.412 11.076 15.483 4.646 32.823 8.1 47.9 9.577-14.996 25.84-34.953 49.574-52.447 72.315C56.65 378.785 39 403.99 39 431.99c0 4-.044 7.123.31 10.26.355 3.137 1.256 7.053 4.41 10.156 3.155 3.104 7.017 3.938 10.163 4.28 3.146.345 6.315.304 10.38.304h111.542c8.097 0 14.026.492 20.125-3.43 6.1-3.92 8.324-9.275 12.67-17.275l.088-.16.08-.166s9.723-19.77 21.324-39.388c5.8-9.808 12.097-19.576 17.574-26.498 2.74-3.46 5.304-6.204 7.15-7.754.564-.472.82-.56 1.184-.76.363.2.62.288 1.184.76 1.846 1.55 4.41 4.294 7.15 7.754 5.477 6.922 11.774 16.69 17.574 26.498 11.6 19.618 21.324 39.387 21.324 39.387l.08.165.088.16c4.346 8 6.55 13.323 12.61 17.254 6.058 3.93 11.974 3.45 19.957 3.45H448c4 0 7.12.043 10.244-.304 3.123-.347 6.998-1.21 10.12-4.332 3.12-3.122 3.984-6.997 4.33-10.12.348-3.122.306-6.244.306-10.244 0-28-17.65-53.205-37.867-79.488-17.493-22.74-37.45-46.474-52.447-72.315 15.077-1.478 32.417-4.93 47.9-9.576 10.422-3.125 19.897-6.74 27.412-11.075 3.758-2.168 7.058-4.49 9.81-7.48 2.753-2.99 5.192-7.065 5.192-12.065 0-11.75-6.934-21.71-16.332-30.554-9.398-8.846-21.883-17.077-36.203-25.26-27.3-15.6-61.207-30.86-91.815-45.994-.814-16.3-4.988-34.915-15.017-50.96C302.418 69.276 283 54.99 256 54.99z'/></svg>">
   <style>
     :root {
       --bg: #0d0221;
@@ -234,12 +250,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .meeple-logo {
-      font-size: 1.8rem;
+      width: 42px;
+      height: 42px;
       filter: drop-shadow(0 0 8px var(--magenta));
     }
 
     h1 { 
-      font-size: 1.6rem; 
+      font-size: 2.2rem; 
       font-weight: 900; 
       color: var(--yellow); 
       text-transform: uppercase; 
@@ -328,17 +345,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .btn-clear-filters {
       background: var(--panel-bg);
-      color: var(--yellow);
-      border: 2px solid var(--yellow);
+      color: #ffffff;
+      border: 2px solid var(--magenta);
       text-transform: uppercase;
       letter-spacing: 1px;
       font-size: 0.8rem;
     }
     .btn-clear-filters:hover {
-      background: var(--yellow);
-      color: var(--bg);
-      border-color: var(--yellow);
-      box-shadow: 0 0 10px rgba(254, 228, 64, 0.4);
+      background: var(--magenta);
+      color: #ffffff;
+      border-color: var(--magenta);
+      box-shadow: 0 0 10px rgba(247, 37, 133, 0.4);
     }
 
     .btn-luck {
@@ -982,6 +999,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .detail-section strong {
       color: var(--turquoise);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-tags-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+      background: rgba(31, 12, 72, 0.3);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--purple-border);
     }
 
     .description-text {
@@ -1015,28 +1046,34 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: none;
     }
 
+    /* OUTLINED & STACKABLE TAG STYLES */
     .clickable-tag {
       display: inline-block;
-      background: var(--panel-bg);
-      color: var(--turquoise);
-      border: 1px solid var(--purple-border);
+      background: transparent;
+      color: var(--yellow);
+      border: 1px solid var(--yellow);
       padding: 3px 8px;
       border-radius: 12px;
       font-size: 0.75rem;
-      font-weight: 700;
+      font-weight: 800;
       margin: 2px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
     .clickable-tag:hover {
-      background: var(--magenta);
-      color: #fff;
-      border-color: var(--turquoise);
+      background: rgba(254, 228, 64, 0.15);
+      transform: translateY(-1px);
     }
     .clickable-tag.active-tag {
-      background: var(--yellow);
+      background: var(--turquoise);
       color: #0d0221;
-      border-color: var(--yellow);
+      border-color: var(--turquoise);
+      box-shadow: 0 0 8px rgba(0, 245, 212, 0.4);
+    }
+    .clickable-tag.active-tag:hover {
+      background: var(--magenta);
+      color: #fff;
+      border-color: var(--magenta);
     }
 
     .bgg-link-btn {
@@ -1086,12 +1123,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       .header-left .meeple-logo {
-        font-size: 1.2rem;
+        width: 28px;
+        height: 28px;
       }
 
       h1 {
         font-size: 0.95rem;
         letter-spacing: 0.5px;
+      }
+
+      #toggle-filters-btn .filter-icon {
+        display: none;
       }
 
       .header-right-column {
@@ -1225,6 +1267,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         padding: 0;
         border-radius: 50%;
       }
+
+      .meta-tags-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 8px;
+      }
     }
   </style>
 </head>
@@ -1233,7 +1281,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <header id="main-header">
     <div class="header-left">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span class="meeple-logo">♟️</span>
+        <svg class="meeple-logo" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg" fill="#fee440" style="vertical-align: middle;">
+          <path fill="#fee440" d="M256 54.99c-27 0-46.418 14.287-57.633 32.23-10.03 16.047-14.203 34.66-15.017 50.962-30.608 15.135-64.515 30.394-91.815 45.994-14.32 8.183-26.805 16.414-36.203 25.26C45.934 218.28 39 228.24 39 239.99c0 5 2.44 9.075 5.19 12.065 2.754 2.99 6.054 5.312 9.812 7.48 7.515 4.336 16.99 7.95 27.412 11.076 15.483 4.646 32.823 8.1 47.9 9.577-14.996 25.84-34.953 49.574-52.447 72.315C56.65 378.785 39 403.99 39 431.99c0 4-.044 7.123.31 10.26.355 3.137 1.256 7.053 4.41 10.156 3.155 3.104 7.017 3.938 10.163 4.28 3.146.345 6.315.304 10.38.304h111.542c8.097 0 14.026.492 20.125-3.43 6.1-3.92 8.324-9.275 12.67-17.275l.088-.16.08-.166s9.723-19.77 21.324-39.388c5.8-9.808 12.097-19.576 17.574-26.498 2.74-3.46 5.304-6.204 7.15-7.754.564-.472.82-.56 1.184-.76.363.2.62.288 1.184.76 1.846 1.55 4.41 4.294 7.15 7.754 5.477 6.922 11.774 16.69 17.574 26.498 11.6 19.618 21.324 39.387 21.324 39.387l.08.165.088.16c4.346 8 6.55 13.323 12.61 17.254 6.058 3.93 11.974 3.45 19.957 3.45H448c4 0 7.12.043 10.244-.304 3.123-.347 6.998-1.21 10.12-4.332 3.12-3.122 3.984-6.997 4.33-10.12.348-3.122.306-6.244.306-10.244 0-28-17.65-53.205-37.867-79.488-17.493-22.74-37.45-46.474-52.447-72.315 15.077-1.478 32.417-4.93 47.9-9.576 10.422-3.125 19.897-6.74 27.412-11.075 3.758-2.168 7.058-4.49 9.81-7.48 2.753-2.99 5.192-7.065 5.192-12.065 0-11.75-6.934-21.71-16.332-30.554-9.398-8.846-21.883-17.077-36.203-25.26-27.3-15.6-61.207-30.86-91.815-45.994-.814-16.3-4.988-34.915-15.017-50.96C302.418 69.276 283 54.99 256 54.99z"></path>
+        </svg>
         <h1>Rengaw's Meeples</h1>
       </div>
       <div class="global-search-container mobile-search-slot" style="display: none;">
@@ -1245,7 +1295,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="header-right-column">
       <div class="header-actions-top">
         <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 <span class="btn-text-pick">Pick For Me</span><span class="btn-text-pick-short" style="display:none;">Pick</span></button>
-        <button id="toggle-filters-btn" class="btn-primary" title="Filters">⚙️ Filters</button>
+        <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="filter-icon">⚙️ </span>Filters</button>
         <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear">Clear Filters</span><span class="btn-text-clear-short" style="display:none;">Clear</span></button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
@@ -1511,7 +1561,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let rawCollection = [];
     let currentlyFilteredGames = [];
     let isAscending = false;
+    let currentDetailGame = null;
 
+    let selectedPlayerCounts = new Set();
     let selectedStyles = new Set();
     let selectedThemes = new Set();
     let selectedCategories = new Set();
@@ -1539,7 +1591,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const globalSearch = document.getElementById('global-search');
     const globalSearchMobile = document.getElementById('global-search-mobile');
 
-    // Keep inputs in sync
     if (globalSearch && globalSearchMobile) {
       globalSearch.addEventListener('input', (e) => { globalSearchMobile.value = e.target.value; handleSearch(); });
       globalSearchMobile.addEventListener('input', (e) => { globalSearch.value = e.target.value; handleSearch(); });
@@ -1612,6 +1663,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     
     function closeDetailModal() {
       detailModal.classList.remove('open');
+      currentDetailGame = null;
     }
 
     detailModal.addEventListener('click', (e) => {
@@ -1646,6 +1698,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (globalSearch) globalSearch.value = '';
       if (globalSearchMobile) globalSearchMobile.value = '';
 
+      selectedPlayerCounts.clear();
       selectedStyles.clear();
       selectedThemes.clear();
       selectedCategories.clear();
@@ -1662,6 +1715,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       yMin.dispatchEvent(new Event('input'));
       cMin.dispatchEvent(new Event('input'));
       grid.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (currentDetailGame) {
+        openDetailModal(currentDetailGame);
+      }
     }
 
     resetBtn.addEventListener('click', executeResetFilters);
@@ -1685,6 +1742,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (idx === 1) return isMax ? 1995 : 1990;
       if (idx === 2) return isMax ? 2000 : 1996;
       return 1998 + idx;
+    }
+
+    function sliderIndexFromYear(yr) {
+      if (yr <= 0) return 0;
+      if (yr < 1990) return 0;
+      if (yr <= 1995) return 1;
+      if (yr <= 2000) return 2;
+      let idx = yr - 1998;
+      if (idx > 28) idx = 28;
+      if (idx < 0) idx = 0;
+      return idx;
     }
 
     function formatYearLabel(minIdx, maxIdx) {
@@ -2063,7 +2131,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (reqPlayed && g.plays_recorded === 0) return false;
         if (reqUnplayed && g.plays_recorded > 0) return false;
 
-        const matchesPlayers = g.min_players <= maxP && g.max_players >= minP;
+        let matchesPlayers = false;
+        if (selectedPlayerCounts.size > 0) {
+          matchesPlayers = Array.from(selectedPlayerCounts).some(p => g.min_players <= p && g.max_players >= p);
+        } else {
+          matchesPlayers = g.min_players <= maxP && g.max_players >= minP;
+        }
+
         const matchesWeight = g.weight === 0 || (g.weight >= minW && g.weight <= maxW);
         const matchesTime = g.playing_time === 0 || (g.playing_time >= minMinutes && g.playing_time <= maxMinutes);
         
@@ -2090,12 +2164,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         }
 
         const matchesStyle = selectedStyles.size === 0 || selectedStyles.has(g.game_mode);
-        const matchesTheme = selectedThemes.size === 0 || g.parsedThemes.some(t => selectedThemes.has(t));
+        
+        // STRICT STACKABLE "AND" LOGIC FOR MULTI-SELECTS
+        const matchesTheme = selectedThemes.size === 0 || Array.from(selectedThemes).every(t => g.parsedThemes.includes(t));
         const matchesPub = selectedPublishers.size === 0 || selectedPublishers.has(g.publisher);
-        const matchesDes = selectedDesigners.size === 0 || g.parsedDesigners.some(d => selectedDesigners.has(d));
-        const matchesArt = selectedArtists.size === 0 || g.parsedArtists.some(a => selectedArtists.has(a));
-        const matchesCat = selectedCategories.size === 0 || g.parsedCategories.some(c => selectedCategories.has(c));
-        const matchesMech = selectedMechanics.size === 0 || g.parsedMechanics.some(m => selectedMechanics.has(m));
+        const matchesDes = selectedDesigners.size === 0 || Array.from(selectedDesigners).every(d => g.parsedDesigners.includes(d));
+        const matchesArt = selectedArtists.size === 0 || Array.from(selectedArtists).every(a => g.parsedArtists.includes(a));
+        const matchesCat = selectedCategories.size === 0 || Array.from(selectedCategories).every(c => g.parsedCategories.includes(c));
+        const matchesMech = selectedMechanics.size === 0 || Array.from(selectedMechanics).every(m => g.parsedMechanics.includes(m));
 
         return matchesPlayers && matchesWeight && matchesTime && matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
       });
@@ -2261,85 +2337,35 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
-    function openDetailModal(g) {
-      const isPlayed = g.plays_recorded > 0;
-      const playStateTag = isPlayed 
-        ? `<span class="clickable-tag ${filterPlayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('played')">Played</span>`
-        : `<span class="clickable-tag ${filterUnplayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('unplayed')">Unplayed</span>`;
+    function toggleTagFilter(prefix, value) {
+      let targetSet;
+      if (prefix === 'theme') targetSet = selectedThemes;
+      else if (prefix === 'cat') targetSet = selectedCategories;
+      else if (prefix === 'mech') targetSet = selectedMechanics;
+      else if (prefix === 'pub') targetSet = selectedPublishers;
+      else if (prefix === 'des') targetSet = selectedDesigners;
+      else if (prefix === 'art') targetSet = selectedArtists;
 
-      const bggUrl = g.id ? `https://boardgamegeek.com/boardgame/${g.id}` : '#';
-
-      detailModalContent.innerHTML = `
-        <div class="modal-title">${g.cleanTitle}</div>
-
-        <div class="detail-section">
-          <strong>Description:</strong>
-          <div id="modal-desc" class="description-text">${g.description}</div>
-          <button id="read-more-btn" class="read-more-btn" onclick="toggleDescription(this)" style="display: none;">Read More</button>
-        </div>
-
-        <div class="detail-section">
-          <strong>Publisher:</strong> 
-          <span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher}')">${g.publisher}</span>
-        </div>
-
-        <div class="detail-section">
-          <strong>Designers:</strong> 
-          ${g.parsedDesigners.length > 0 
-            ? g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d}')">${d}</span>`).join('') 
-            : g.designer}
-        </div>
-
-        <div class="detail-section">
-          <strong>Artists:</strong> 
-          ${g.parsedArtists.length > 0 
-            ? g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a}')">${a}</span>`).join('') 
-            : g.artist}
-        </div>
-
-        <div class="detail-section">
-          <strong>Themes:</strong><br>
-          ${g.parsedThemes.length > 0 
-            ? g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t}')">${t}</span>`).join('') 
-            : 'None'}
-        </div>
-
-        <div class="detail-section">
-          <strong>Categories:</strong><br>
-          ${g.parsedCategories.length > 0 
-            ? g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c}')">${c}</span>`).join('') 
-            : 'None'}
-        </div>
-
-        <div class="detail-section">
-          <strong>Mechanics:</strong><br>
-          ${g.parsedMechanics.length > 0 
-            ? g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m}')">${m}</span>`).join('') 
-            : 'None'}
-        </div>
-
-        <div class="detail-section">
-          <strong>Status:</strong> ${playStateTag}
-        </div>
-
-        ${g.id ? `<a href="${bggUrl}" target="_blank" class="bgg-link-btn">🌐 View on BGG</a>` : ''}
-      `;
-
-      detailModal.classList.add('open');
-
-      setTimeout(() => {
-        const descElem = document.getElementById('modal-desc');
-        const readMoreBtn = document.getElementById('read-more-btn');
-        if (descElem && readMoreBtn) {
-          if (descElem.scrollHeight > descElem.clientHeight + 2) {
-            readMoreBtn.style.display = 'inline-block';
-          }
+      if (targetSet) {
+        if (targetSet.has(value)) {
+          targetSet.delete(value);
+        } else {
+          targetSet.add(value);
         }
-      }, 50);
+
+        const checkbox = document.querySelector(`input[data-prefix="${prefix}"][value="${CSS.escape(value)}"]`);
+        if (checkbox) {
+          checkbox.checked = targetSet.has(value);
+        }
+
+        renderGames();
+        if (currentDetailGame) {
+          openDetailModal(currentDetailGame);
+        }
+      }
     }
 
     function togglePlayStateFilter(state) {
-      closeDetailModal();
       if (state === 'played') {
         filterPlayed.checked = !filterPlayed.checked;
         if (filterPlayed.checked) filterUnplayed.checked = false;
@@ -2348,87 +2374,252 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (filterUnplayed.checked) filterPlayed.checked = false;
       }
       renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
+      if (currentDetailGame) openDetailModal(currentDetailGame);
     }
 
-    function toggleTagFilter(prefix, val) {
-      closeDetailModal();
-
-      let targetSet, checkboxes;
-      if (prefix === 'theme') { targetSet = selectedThemes; checkboxes = document.querySelectorAll('input[data-prefix="theme"]'); }
-      else if (prefix === 'cat') { targetSet = selectedCategories; checkboxes = document.querySelectorAll('input[data-prefix="cat"]'); }
-      else if (prefix === 'mech') { targetSet = selectedMechanics; checkboxes = document.querySelectorAll('input[data-prefix="mech"]'); }
-      else if (prefix === 'pub') { targetSet = selectedPublishers; checkboxes = document.querySelectorAll('input[data-prefix="pub"]'); }
-      else if (prefix === 'des') { targetSet = selectedDesigners; checkboxes = document.querySelectorAll('input[data-prefix="des"]'); }
-      else if (prefix === 'art') { targetSet = selectedArtists; checkboxes = document.querySelectorAll('input[data-prefix="art"]'); }
-
-      if (targetSet.has(val)) {
-        targetSet.delete(val);
+    function filterByPlayerCount(count) {
+      if (selectedPlayerCounts.has(count)) {
+        selectedPlayerCounts.delete(count);
       } else {
-        targetSet.add(val);
+        selectedPlayerCounts.add(count);
       }
-
-      checkboxes.forEach(cb => {
-        if (cb.value === val) cb.checked = targetSet.has(val);
-      });
-
       renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
+      if (currentDetailGame) openDetailModal(currentDetailGame);
     }
 
-    // Dynamic mobile vs desktop text / search layout adjustments
-    function handleResponsiveLayoutChanges() {
-      const isMobile = window.innerWidth <= 600;
-      const pickFull = document.querySelector('.btn-text-pick');
-      const pickShort = document.querySelector('.btn-text-pick-short');
-      const clearFull = document.querySelector('.btn-text-clear');
-      const clearShort = document.querySelector('.btn-text-clear-short');
-      const mobileSearchSlot = document.querySelector('.mobile-search-slot');
-      const desktopSearchSlot = document.querySelector('.desktop-search-slot');
-
-      if (isMobile) {
-        if (pickFull) pickFull.style.display = 'none';
-        if (pickShort) pickShort.style.display = 'inline';
-        if (clearFull) clearFull.style.display = 'none';
-        if (clearShort) clearShort.style.display = 'inline';
-        if (mobileSearchSlot) mobileSearchSlot.style.display = 'block';
-        if (desktopSearchSlot) desktopSearchSlot.style.display = 'none';
-      } else {
-        if (pickFull) pickFull.style.display = 'inline';
-        if (pickShort) pickShort.style.display = 'none';
-        if (clearFull) clearFull.style.display = 'inline';
-        if (clearShort) clearShort.style.display = 'none';
-        if (mobileSearchSlot) mobileSearchSlot.style.display = 'none';
-        if (desktopSearchSlot) desktopSearchSlot.style.display = 'block';
+    function filterByWeightTier(tier) {
+      if (tier === 'Light') {
+        wMin.value = 1.0; wMax.value = 2.0;
+      } else if (tier === 'Medium') {
+        wMin.value = 2.0; wMax.value = 3.5;
+      } else if (tier === 'Heavy') {
+        wMin.value = 3.5; wMax.value = 5.0;
       }
+      wMin.dispatchEvent(new Event('input'));
+      if (currentDetailGame) openDetailModal(currentDetailGame);
     }
 
-    window.addEventListener('resize', handleResponsiveLayoutChanges);
-    window.addEventListener('DOMContentLoaded', () => {
-      loadCollection();
-      handleResponsiveLayoutChanges();
-    });
+    function filterByPlaytimeTier(tier) {
+      if (tier === 'Short') {
+        tMin.value = 0; tMax.value = 30;
+      } else if (tier === 'Medium') {
+        tMin.value = 30; tMax.value = 90;
+      } else if (tier === 'Long') {
+        tMin.value = 90; tMax.value = 300;
+      }
+      tMin.dispatchEvent(new Event('input'));
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByGameMode(mode) {
+      if (selectedStyles.has(mode)) {
+        selectedStyles.delete(mode);
+      } else {
+        selectedStyles.add(mode);
+      }
+      const container = document.getElementById('style-list');
+      if (container) {
+        container.querySelectorAll('input').forEach(cb => {
+          cb.checked = selectedStyles.has(cb.value);
+        });
+      }
+      renderGames();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByConflictLevel(lvl) {
+      const num = conflictValToNum[String(lvl).toLowerCase()] || 2;
+      cMin.value = num;
+      cMax.value = num;
+      cMin.dispatchEvent(new Event('input'));
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByYear(year) {
+      const idx = sliderIndexFromYear(year);
+      yMin.value = idx;
+      yMax.value = idx;
+      yMin.dispatchEvent(new Event('input'));
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function openDetailModal(g) {
+      currentDetailGame = g;
+      detailModal.classList.add('open');
+
+      const isPlayed = g.plays_recorded > 0;
+      const playStateTag = isPlayed 
+        ? `<span class="clickable-tag ${filterPlayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('played')">Played</span>`
+        : `<span class="clickable-tag ${filterUnplayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('unplayed')">Unplayed</span>`;
+
+      const bggUrl = g.id ? `https://boardgamegeek.com/boardgame/${g.id}` : '#';
+
+      let playerTagsHTML = '';
+      const minP = g.min_players || 1;
+      const maxP = g.max_players || minP;
+
+      for (let p = minP; p <= maxP; p++) {
+        let label = p >= 10 ? '10+' : String(p);
+        const isActive = selectedPlayerCounts.has(p);
+        playerTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="filterByPlayerCount(${p})">${label}</span>`;
+      }
+      if (!playerTagsHTML) playerTagsHTML = '<span>N/A</span>';
+
+      let weightTagText = 'Medium';
+      if (g.weight > 0) {
+        if (g.weight < 2.0) weightTagText = 'Light';
+        else if (g.weight < 3.5) weightTagText = 'Medium';
+        else weightTagText = 'Heavy';
+      }
+      const curWMin = parseFloat(wMin.value);
+      const curWMax = parseFloat(wMax.value);
+      let isWeightActive = false;
+      if (weightTagText === 'Light' && curWMin === 1.0 && curWMax === 2.0) isWeightActive = true;
+      if (weightTagText === 'Medium' && curWMin === 2.0 && curWMax === 3.5) isWeightActive = true;
+      if (weightTagText === 'Heavy' && curWMin === 3.5 && curWMax === 5.0) isWeightActive = true;
+
+      const weightTagHTML = `<span class="clickable-tag ${isWeightActive ? 'active-tag' : ''}" onclick="filterByWeightTier('${weightTagText}')">${weightTagText}</span>`;
+
+      let avgMinutes = g.playing_time;
+      if (!avgMinutes && g.playing_time_raw) {
+        const numbers = g.playing_time_raw.match(/\d+/g);
+        if (numbers && numbers.length > 0) {
+          const nums = numbers.map(Number);
+          avgMinutes = nums.reduce((a, b) => a + b, 0) / nums.length;
+        }
+      }
+
+      let playTimeTagText = 'Medium';
+      if (avgMinutes > 0) {
+        if (avgMinutes <= 30) playTimeTagText = 'Short';
+        else if (avgMinutes <= 90) playTimeTagText = 'Medium';
+        else playTimeTagText = 'Long';
+      }
+
+      const curTMin = parseFloat(tMin.value);
+      const curTMax = parseFloat(tMax.value);
+      let isPlayTimeActive = false;
+      if (playTimeTagText === 'Short' && curTMin === 0 && curTMax === 30) isPlayTimeActive = true;
+      if (playTimeTagText === 'Medium' && curTMin === 30 && curTMax === 90) isPlayTimeActive = true;
+      if (playTimeTagText === 'Long' && curTMin === 90 && curTMax === 300) isPlayTimeActive = true;
+
+      const playTimeTagHTML = `<span class="clickable-tag ${isPlayTimeActive ? 'active-tag' : ''}" onclick="filterByPlaytimeTier('${playTimeTagText}')">${playTimeTagText}</span>`;
+
+      const curCMin = parseInt(cMin.value);
+      const curCMax = parseInt(cMax.value);
+      const confNum = g.conflict_level_num || 2;
+      const isConflictActive = (curCMin === curCMax && curCMin === confNum);
+      const conflictTagHTML = `<span class="clickable-tag ${isConflictActive ? 'active-tag' : ''}" onclick="filterByConflictLevel('${g.conflict_level}')">${g.conflict_level || 'Medium'}</span>`;
+
+      const isModeActive = selectedStyles.has(g.game_mode);
+      const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
+
+      const curYMinIdx = parseInt(yMin.value);
+      const curYMaxIdx = parseInt(yMax.value);
+      const gameYrIdx = sliderIndexFromYear(g.year);
+      const isYearActive = (curYMinIdx === curYMaxIdx && curYMinIdx === gameYrIdx);
+      const yearTagHTML = g.year > 0 
+        ? `<span class="clickable-tag ${isYearActive ? 'active-tag' : ''}" onclick="filterByYear(${g.year})">${g.year}</span>`
+        : '<span>Unknown</span>';
+
+      const publisherTagHTML = (g.publisher && g.publisher !== 'Unknown')
+        ? `<span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>`
+        : '<span>Unknown</span>';
+
+      const designersHTML = g.parsedDesigners.length > 0
+        ? g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
+        : '<span>Unknown</span>';
+
+      const artistsHTML = g.parsedArtists.length > 0
+        ? g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
+        : '<span>Unknown</span>';
+
+      const themesHTML = g.parsedThemes.length > 0
+        ? g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
+        : '<span>None</span>';
+
+      const categoriesHTML = g.parsedCategories.length > 0
+        ? g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
+        : '<span>None</span>';
+
+      const mechanicsHTML = g.parsedMechanics.length > 0
+        ? g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
+        : '<span>None</span>';
+
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${g.cleanTitle}</div>
+        
+        <div class="detail-section" style="margin-bottom: 16px;">
+          <div class="description-text">${g.description}</div>
+          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
+        </div>
+
+        <div class="meta-tags-grid">
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Players:</strong>
+            <div>${playerTagsHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Weight:</strong>
+            <div>${weightTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Play Time:</strong>
+            <div>${playTimeTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Conflict:</strong>
+            <div>${conflictTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Game Mode:</strong>
+            <div>${gameModeTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Year:</strong>
+            <div>${yearTagHTML}</div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Publisher:</strong> <div>${publisherTagHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Designers:</strong> <div>${designersHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Artists:</strong> <div>${artistsHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Themes:</strong> <div>${themesHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Categories:</strong> <div>${categoriesHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Mechanics:</strong> <div>${mechanicsHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Play Status:</strong> <div>${playStateTag}</div>
+        </div>
+
+        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
+          🌐 View on BGG
+        </a>
+      `;
+    }
+
+    loadCollection();
   </script>
 </body>
 </html>
 """
 
-@app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/api/collection')
-def get_collection():
-    if GAMES_CACHE:
-        return jsonify(GAMES_CACHE)
-        
-    json_path = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
-    if os.path.exists(json_path):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return jsonify(data)
-            
-    return jsonify([])
-
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
