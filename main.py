@@ -193,7 +193,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RENGAW'S MEEPLES // Collection Dash</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-51.2 -51.2 614.40 614.40' fill='%23fee440'><path d='M256 54.99c-27 0-46.418 14.287-57.633 32.23-10.03 16.047-14.203 34.66-15.017 50.962-30.608 15.135-64.515 30.394-91.815 45.994-14.32 8.183-26.805 16.414-36.203 25.26C45.934 218.28 39 228.24 39 239.99c0 5 2.44 9.075 5.19 12.065 2.754 2.99 6.054 5.312 9.812 7.48 7.515 4.336 16.99 7.95 27.412 11.076 15.483 4.646 32.823 8.1 47.9 9.577-14.996 25.84-34.953 49.574-52.447 72.315C56.65 378.785 39 403.99 39 431.99c0 4-.044 7.123.31 10.26.355 3.137 1.256 7.053 4.41 10.156 3.155 3.104 7.017 3.938 10.163 4.28 3.146.345 6.315.304 10.38.304h111.542c8.097 0 14.026.492 20.125-3.43 6.1-3.92 8.324-9.275 12.67-17.275l.088-.16.08-.166s9.723-19.77 21.324-39.388c5.8-9.808 12.097-19.576 17.574-26.498 2.74-3.46 5.304-6.204 7.15-7.754.564-.472.82-.56 1.184-.76.363.2.62.288 1.184.76 1.846 1.55 4.41 4.294 7.15 7.754 5.477 6.922 11.774 16.69 17.574 26.498 11.6 19.618 21.324 39.387 21.324 39.387l.08.165.088.16c4.346 8 6.55 13.323 12.61 17.254 6.058 3.93 11.974 3.45 19.957 3.45H448c4 0 7.12.043 10.244-.304 3.123-.347 6.998-1.21 10.12-4.332 3.12-3.122 3.984-6.997 4.33-10.12.348-3.122.306-6.244.306-10.244 0-28-17.65-53.205-37.867-79.488-17.493-22.74-37.45-46.474-52.447-72.315 15.077-1.478 32.417-4.93 47.9-9.576 10.422-3.125 19.897-6.74 27.412-11.075 3.758-2.168 7.058-4.49 9.81-7.48 2.753-2.99 5.192-7.065 5.192-12.065 0-11.75-6.934-21.71-16.332-30.554-9.398-8.846-21.883-17.077-36.203-25.26-27.3-15.6-61.207-30.86-91.815-45.994-.814-16.3-4.988-34.915-15.017-50.96C302.418 69.276 283 54.99 256 54.99z'/></svg>">
-  <style>
+<style>
     :root {
       --bg: #0d0221;
       --card-bg: #150833;
@@ -1046,7 +1046,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: none;
     }
 
-    /* OUTLINED & STACKABLE TAG STYLES */
     .clickable-tag {
       display: inline-block;
       background: transparent;
@@ -1106,6 +1105,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       width: 100%;
     }
 
+    /* Desktop visibility helpers for header button labels */
+    .btn-text-play-desktop { display: inline; }
+    .btn-text-play-mobile { display: none; }
+    .btn-text-clear-desktop { display: inline; }
+    .btn-text-clear-mobile { display: none; }
+
     /* MOBILE OPTIMIZATIONS */
     @media (max-width: 600px) {
       body {
@@ -1156,6 +1161,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         padding: 4px 2px;
         font-size: 0.7rem;
       }
+
+      /* Switch header button labels on mobile */
+      .btn-text-play-desktop { display: none; }
+      .btn-text-play-mobile { display: inline; }
+      .btn-text-clear-desktop { display: none; }
+      .btn-text-clear-mobile { display: inline; }
 
       .global-search-container {
         width: 100%;
@@ -1294,9 +1305,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 <span class="btn-text-pick">Pick For Me</span><span class="btn-text-pick-short" style="display:none;">Pick</span></button>
+        <button id="luck-btn" class="btn-luck" title="Play Game">🎲 <span class="btn-text-play-desktop">Play Game</span><span class="btn-text-play-mobile">Play</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="filter-icon">⚙️ </span>Filters</button>
-        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear">Clear Filters</span><span class="btn-text-clear-short" style="display:none;">Clear</span></button>
+        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
           <option value="title">Title</option>
@@ -1549,10 +1560,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div id="luck-modal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-title" style="text-align: center;">✨ Pick For Me ✨</div>
+    <div class="modal-card" style="position: relative;">
+      <div class="modal-close-x" onclick="closeLuckModal()">✕</div>
+      <div class="modal-title" style="text-align: center;">✨ Play Game ✨</div>
       <div id="modal-content"></div>
-      <button id="modal-close-btn" class="btn-primary modal-close-btn">Awesome!</button>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button id="modal-try-again-btn" class="btn-luck" style="flex: 1; padding: 10px;">🎲 Try Again</button>
+        <button id="modal-change-filters-btn" class="btn-primary" style="flex: 1; padding: 10px;">Change Filters</button>
+        <button id="modal-close-btn" class="btn-clear-filters" style="display: none;">Awesome!</button>
+      </div>
     </div>
   </div>
 
@@ -1586,6 +1602,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const luckModal = document.getElementById('luck-modal');
     const modalContent = document.getElementById('modal-content');
     const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalTryAgainBtn = document.getElementById('modal-try-again-btn');
+    const modalChangeFiltersBtn = document.getElementById('modal-change-filters-btn');
     const detailModal = document.getElementById('detail-modal');
     const detailModalContent = document.getElementById('detail-modal-content');
     const globalSearch = document.getElementById('global-search');
@@ -1648,7 +1666,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       grid.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    luckBtn.addEventListener('click', () => {
+    luckBtn.addEventListener('click', triggerRandomGamePick);
+    if (modalTryAgainBtn) modalTryAgainBtn.addEventListener('click', triggerRandomGamePick);
+    
+    if (modalChangeFiltersBtn) {
+      modalChangeFiltersBtn.addEventListener('click', () => {
+        luckModal.classList.remove('open');
+        if (toolbar.classList.contains('collapsed')) {
+          toggleSidebar();
+        }
+      });
+    }
+
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
+
+    function triggerRandomGamePick() {
       if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
         modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games available with your current filter selection!</p>`;
       } else {
@@ -1657,7 +1689,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         modalContent.innerHTML = createGameCardHTML(randomGame);
       }
       luckModal.classList.add('open');
-    });
+    }
 
     modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
     
@@ -2247,7 +2279,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
-    function createGameCardHTML(g) {
+function createGameCardHTML(g) {
       const title = g.cleanTitle;
       const year = g.year > 0 ? g.year : "N/A";
 
@@ -2306,7 +2338,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return `
         <div class="${cardClass}" data-id="${g.id}">
           ${expansionListHTML}
-          <div class="card-img-wrapper">
+          <div class="card-img-wrapper" onclick="handleCardImageClick(event, '${g.id}')">
             ${expansionIconHTML}
             <img src="${img}" alt="${title}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
           </div>
@@ -2426,6 +2458,38 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
       if (currentDetailGame) openDetailModal(currentDetailGame);
     }
+
+    function closeLuckModal() {
+      luckModal.classList.remove('open');
+    }
+
+    luckModal.addEventListener('click', (e) => {
+      if (e.target === luckModal) {
+        closeLuckModal();
+      }
+    });
+
+    function handleCardImageClick(event, gameId) {
+      event.stopPropagation();
+      const game = games.find(g => g.id === gameId);
+      if (game) {
+        luckModal.classList.remove('open');
+        openDetailModal(game);
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const scrollDelta = e.key === 'ArrowDown' ? 120 : -120;
+        grid.scrollBy({ top: scrollDelta, behavior: 'smooth' });
+      } else if (e.key === 'Escape') {
+        closeDetailModal();
+        luckModal.classList.remove('open');
+      }
+    });
 
     function filterByConflictLevel(lvl) {
       const num = conflictValToNum[String(lvl).toLowerCase()] || 2;
