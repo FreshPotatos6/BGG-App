@@ -1385,6 +1385,32 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
           <div class="filter-group">
             <div class="filter-label-header">
+              <label>BGG Rating</label>
+              <span id="bgg-val" class="value-display">1.0 - 10.0</span>
+            </div>
+            <div class="range-slider-container">
+              <div class="range-slider-track"></div>
+              <div id="bgg-track" class="range-slider-highlight"></div>
+              <input type="range" id="bgg-min" min="1" max="10" step="0.5" value="1">
+              <input type="range" id="bgg-max" min="1" max="10" step="0.5" value="10">
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <div class="filter-label-header">
+              <label>Luke's Rating</label>
+              <span id="luke-val" class="value-display">1 - 10</span>
+            </div>
+            <div class="range-slider-container">
+              <div class="range-slider-track"></div>
+              <div id="luke-track" class="range-slider-highlight"></div>
+              <input type="range" id="luke-min" min="1" max="10" step="1" value="1">
+              <input type="range" id="luke-max" min="1" max="10" step="1" value="10">
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <div class="filter-label-header">
               <label>Year Published</label>
               <span id="year-val" class="value-display">&lt;1990 - 2026</span>
             </div>
@@ -1622,6 +1648,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const pMin = document.getElementById('player-min'), pMax = document.getElementById('player-max'), pVal = document.getElementById('player-val'), pTrack = document.getElementById('player-track');
     const wMin = document.getElementById('weight-min'), wMax = document.getElementById('weight-max'), wVal = document.getElementById('weight-val'), wTrack = document.getElementById('weight-track');
     const tMin = document.getElementById('time-min'), tMax = document.getElementById('time-max'), tVal = document.getElementById('time-val'), tTrack = document.getElementById('time-track');
+    const bMin = document.getElementById('bgg-min'), bMax = document.getElementById('bgg-max'), bVal = document.getElementById('bgg-val'), bTrack = document.getElementById('bgg-track');
+    const lMin = document.getElementById('luke-min'), lMax = document.getElementById('luke-max'), lVal = document.getElementById('luke-val'), lTrack = document.getElementById('luke-track');
     const yMin = document.getElementById('year-min'), yMax = document.getElementById('year-max'), yVal = document.getElementById('year-val'), yTrack = document.getElementById('year-track');
     const cMin = document.getElementById('conflict-min'), cMax = document.getElementById('conflict-max'), cVal = document.getElementById('conflict-val'), cTrack = document.getElementById('conflict-track');
 
@@ -1721,6 +1749,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       pMin.value = 1; pMax.value = 10;
       wMin.value = 1.0; wMax.value = 5.0;
       tMin.value = 0; tMax.value = 300;
+      bMin.value = 1; bMax.value = 10;
+      lMin.value = 1; lMax.value = 10;
       yMin.value = 0; yMax.value = 28;
       cMin.value = 1; cMax.value = 3;
       filterPlayed.checked = false;
@@ -1744,6 +1774,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       pMin.dispatchEvent(new Event('input'));
       wMin.dispatchEvent(new Event('input'));
       tMin.dispatchEvent(new Event('input'));
+      bMin.dispatchEvent(new Event('input'));
+      lMin.dispatchEvent(new Event('input'));
       yMin.dispatchEvent(new Event('input'));
       cMin.dispatchEvent(new Event('input'));
       grid.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1959,6 +1991,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       tMax.min = 0; tMax.max = 300; tMax.step = 15; tMax.value = 300;
       setupDualSlider(tMin, tMax, tVal, tTrack, formatPlaytimeLabel);
 
+      setupDualSlider(bMin, bMax, bVal, bTrack, (min, max) => `${min.toFixed(1)} - ${max.toFixed(1)}`);
+      setupDualSlider(lMin, lMax, lVal, lTrack, (min, max) => `${Math.round(min)} - ${Math.round(max)}`);
+
       yMin.max = 28; yMax.max = 28; yMax.value = 28;
       setupDualSlider(yMin, yMax, yVal, yTrack, formatYearLabel);
 
@@ -2135,9 +2170,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const minP = parseFloat(pMin.value), maxP = parseFloat(pMax.value);
       const minW = parseFloat(wMin.value), maxW = parseFloat(wMax.value);
-      
       const minMinutes = parseFloat(tMin.value);
       const maxMinutes = parseFloat(tMax.value);
+      const minBgg = parseFloat(bMin.value);
+      const maxBgg = parseFloat(bMax.value);
+      const minLuke = parseFloat(lMin.value);
+      const maxLuke = parseFloat(lMax.value);
 
       const minYear = yearFromSliderIndex(yMin.value, false);
       const maxYear = yearFromSliderIndex(yMax.value, true);
@@ -2173,6 +2211,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const matchesWeight = g.weight === 0 || (g.weight >= minW && g.weight <= maxW);
         const matchesTime = g.playing_time === 0 || (g.playing_time >= minMinutes && g.playing_time <= maxMinutes);
         
+        let matchesBgg = true;
+        if (g.bgg_rating !== null) {
+          matchesBgg = g.bgg_rating >= minBgg && g.bgg_rating <= maxBgg;
+        } else {
+          matchesBgg = (minBgg <= 1.0); // unrated items match if filter starts at bottom
+        }
+
+        let matchesLuke = true;
+        if (g.user_rating !== null) {
+          matchesLuke = g.user_rating >= minLuke && g.user_rating <= maxLuke;
+        } else {
+          matchesLuke = (minLuke <= 1.0);
+        }
         let matchesYear = true;
         if (g.year > 0) {
           if (yMin.value == '0' && g.year < 1990) matchesYear = true;
@@ -2205,7 +2256,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const matchesCat = selectedCategories.size === 0 || Array.from(selectedCategories).every(c => g.parsedCategories.includes(c));
         const matchesMech = selectedMechanics.size === 0 || Array.from(selectedMechanics).every(m => g.parsedMechanics.includes(m));
 
-        return matchesPlayers && matchesWeight && matchesTime && matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
+        return matchesPlayers && matchesWeight && matchesTime && matchesBgg && matchesLuke &&matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
       });
 
       const sorted = sortGames(currentlyFilteredGames);
