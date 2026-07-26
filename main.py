@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, render_template_string, jsonify, redirect, url_for
 
 print("--- MAIN.PY IS STARTING UP ---")
 
@@ -14,7 +14,8 @@ except ImportError:
     GSPREAD_AVAILABLE = False
     print("gspread is NOT available.")
 
-JSON_FILENAME = "bgg_collection.json"
+# Global in-memory cache for game collection data
+collection_cache = []
 
 def clean_int(val, default=0):
     if val is None:
@@ -51,25 +52,38 @@ def get_row_value(row, keys, default="Unknown"):
                 return str(r_val).strip()
     return default
 
-def generate_json_from_sheet():
-    print("generate_json_from_sheet() was called.")
+def fetch_data_from_sheet():
+    """Fetches Google Sheets data via gspread and loads it into memory."""
+    global collection_cache
+    print("fetch_data_from_sheet() was called.")
     if not GSPREAD_AVAILABLE:
         print("-> Aborting: Gspread not available.")
         return False
         
+    creds_env = os.getenv("GOOGLE_CREDENTIALS")
     cred_path = os.path.join(os.path.dirname(__file__), "credentials.json")
-    if not os.path.exists(cred_path):
-        print(f"-> Aborting: credentials.json not found at {cred_path}")
-        return False
-        
+    
     try:
-        print("Connecting to Google Sheets...")
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive.file"
         ]
-        creds = Credentials.from_service_account_file(cred_path, scopes=scope)
+        
+        # Priority 1: Check Render Environment Variable
+        if creds_env:
+            print("Loading credentials from environment variable...")
+            creds_info = json.loads(creds_env)
+            creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        # Priority 2: Fall back to local credentials.json file if present
+        elif os.path.exists(cred_path):
+            print(f"Loading credentials from local path: {cred_path}")
+            creds = Credentials.from_service_account_file(cred_path, scopes=scope)
+        else:
+            print("-> Aborting: No credentials found in environment variables or local JSON.")
+            return False
+
+        print("Connecting to Google Sheets...")
         client = gspread.authorize(creds)
         
         spreadsheet = client.open_by_key("1epBOjwD8fSr-1DEy7FKG-t2ggheubK9Fhrul_Ui3Aqo")
@@ -131,19 +145,18 @@ def generate_json_from_sheet():
                 "supports_one_off": supports_one_off
             })
             
-        json_path = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(games_list, f, indent=2)
-        print("JSON file successfully generated and saved.")
+        # Store in-memory
+        collection_cache = games_list
+        print("In-memory JSON collection successfully updated.")
         return True
     except Exception as e:
-        print(f"Error generating JSON from sheet: {e}")
+        print(f"Error updating in-memory collection from sheet: {e}")
         return False
 
 app = Flask(__name__)
 
-# Run generator on startup if credentials exist
-generate_json_from_sheet()
+# Initial load on web server startup
+fetch_data_from_sheet()
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
@@ -1057,6 +1070,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <button class="sidebar-close-btn" onclick="toggleSidebar()">✕ Collapse</button>
       </div>
 
+      <!-- Range Sliders Section -->
       <div class="filter-section" id="section-sliders">
         <div class="filter-section-header" onclick="toggleFilterSection('section-sliders')">
           <span class="filter-section-title">📊 Range & Numeric Filters</span>
@@ -1132,6 +1146,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Style & Play Modes Section -->
       <div class="filter-section" id="section-style">
         <div class="filter-section-header" onclick="toggleFilterSection('section-style')">
           <span class="filter-section-title">🕹️ Style & Play Modes</span>
@@ -1163,6 +1178,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Dropdowns Section -->
       <div class="filter-section" id="section-dropdowns">
         <div class="filter-section-header" onclick="toggleFilterSection('section-dropdowns')">
           <span class="filter-section-title">🏷️ Categories, Mechanics & Themes</span>
@@ -1604,7 +1620,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       if (!games || games.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.2rem; margin-top: 40px;">⚠️ Could not load games from bgg_collection.json.</p>`;
+        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.2rem; margin-top: 40px;">⚠️ Could not load games from memory.</p>`;
         return;
       }
 
@@ -2128,18 +2144,14 @@ def index():
 
 @app.route('/api/collection')
 def get_collection():
-    json_path = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
-    if os.path.exists(json_path):
-        try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return jsonify(data)
-        except Exception as e:
-            print(f"Error reading JSON file: {e}")
-            return jsonify([])
-    print(f"JSON file not found at path: {json_path}")
-    return jsonify([])
+    # Returns the in-memory parsed dataset directly
+    return jsonify(collection_cache)
+
+# Backdoor Route: Forces a live update from Google Sheets into memory
+@app.route('/Jens')
+def force_sync():
+    fetch_data_from_sheet()
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True, port=5000)
