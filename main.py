@@ -1080,6 +1080,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         gap: 6px;
       }
 
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+
       .header-left .meeple-logo {
         font-size: 1.2rem;
       }
@@ -1092,11 +1097,26 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .header-right-column {
         max-width: 100%;
         gap: 4px;
+        align-items: stretch;
       }
 
       .header-actions-top {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr) auto;
         gap: 4px;
-        justify-content: space-between;
+        justify-content: stretch;
+      }
+
+      .header-actions-top button,
+      .header-actions-top select {
+        width: 100%;
+        text-align: center;
+        padding: 4px 2px;
+        font-size: 0.7rem;
+      }
+
+      .global-search-container {
+        width: 100%;
       }
 
       .global-search-input {
@@ -1113,11 +1133,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         display: inline-block;
         padding: 4px 6px;
         font-size: 0.7rem;
-      }
-
-      button, select {
-        padding: 4px 6px;
-        font-size: 0.75rem;
       }
 
       .side-toolbar {
@@ -1196,8 +1211,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       .expansion-close-btn, .sidebar-close-btn {
-        padding: 6px 10px;
-        font-size: 0.78rem;
+        padding: 4px 6px;
+        font-size: 0.7rem;
+      }
+
+      .expansion-close-btn {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        padding: 0;
+        border-radius: 50%;
       }
     }
   </style>
@@ -1206,15 +1232,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   <header id="main-header">
     <div class="header-left">
-      <span class="meeple-logo">♟️</span>
-      <h1>Rengaw's Meeples</h1>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="meeple-logo">♟️</span>
+        <h1>Rengaw's Meeples</h1>
+      </div>
+      <div class="global-search-container mobile-search-slot" style="display: none;">
+        <span class="global-search-icon">🔍</span>
+        <input type="text" id="global-search-mobile" class="global-search-input" placeholder="Search collection...">
+      </div>
     </div>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 Pick</button>
+        <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 <span class="btn-text-pick">Pick For Me</span><span class="btn-text-pick-short" style="display:none;">Pick</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters">⚙️ Filters</button>
-        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters">Clear</button>
+        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear">Clear Filters</span><span class="btn-text-clear-short" style="display:none;">Clear</span></button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
           <option value="title">Title</option>
@@ -1227,7 +1259,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <button id="sort-dir-btn" class="sort-direction-btn" title="Toggle Sort Direction">▼</button>
       </div>
 
-      <div class="global-search-container">
+      <div class="global-search-container desktop-search-slot">
         <span class="global-search-icon">🔍</span>
         <input type="text" id="global-search" class="global-search-input" placeholder="Search collection...">
       </div>
@@ -1505,6 +1537,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const detailModal = document.getElementById('detail-modal');
     const detailModalContent = document.getElementById('detail-modal-content');
     const globalSearch = document.getElementById('global-search');
+    const globalSearchMobile = document.getElementById('global-search-mobile');
+
+    // Keep inputs in sync
+    if (globalSearch && globalSearchMobile) {
+      globalSearch.addEventListener('input', (e) => { globalSearchMobile.value = e.target.value; handleSearch(); });
+      globalSearchMobile.addEventListener('input', (e) => { globalSearch.value = e.target.value; handleSearch(); });
+    }
+
+    function handleSearch() {
+      renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     const pMin = document.getElementById('player-min'), pMax = document.getElementById('player-max'), pVal = document.getElementById('player-val'), pTrack = document.getElementById('player-track');
     const wMin = document.getElementById('weight-min'), wMax = document.getElementById('weight-max'), wVal = document.getElementById('weight-val'), wTrack = document.getElementById('weight-track');
@@ -1549,11 +1593,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const val = sortSelect.value;
       isAscending = (val === 'title' || val === 'year');
       sortDirBtn.textContent = isAscending ? "▲" : "▼";
-      renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    globalSearch.addEventListener('input', () => {
       renderGames();
       grid.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -1604,7 +1643,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       filterUnplayed.checked = false;
       filterCampaign.checked = false;
       filterSolo.checked = false;
-      globalSearch.value = '';
+      if (globalSearch) globalSearch.value = '';
+      if (globalSearchMobile) globalSearchMobile.value = '';
 
       selectedStyles.clear();
       selectedThemes.clear();
@@ -2009,7 +2049,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const reqUnplayed = filterUnplayed.checked;
       const reqCampaign = filterCampaign.checked;
       const reqSolo = filterSolo.checked;
-      const globalQuery = globalSearch.value.trim().toLowerCase();
+      const globalQuery = (globalSearch ? globalSearch.value.trim().toLowerCase() : '');
 
       currentlyFilteredGames = games.filter(g => {
         if (globalQuery) {
@@ -2167,7 +2207,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="expansions-overlay">
             <div class="expansions-header">
               <span>🧩 Expansions (${g.parsedExpansions.length})</span>
-              <button class="expansion-close-btn" title="Close Expansions">✖</button>
+              <button class="expansion-close-btn" title="Close Expansions">✕</button>
             </div>
             ${g.parsedExpansions.map(ex => {
               const exRatingVal = ex.user_rating ? Math.round(ex.user_rating) : null;
@@ -2336,7 +2376,38 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       grid.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    window.onload = loadCollection;
+    // Dynamic mobile vs desktop text / search layout adjustments
+    function handleResponsiveLayoutChanges() {
+      const isMobile = window.innerWidth <= 600;
+      const pickFull = document.querySelector('.btn-text-pick');
+      const pickShort = document.querySelector('.btn-text-pick-short');
+      const clearFull = document.querySelector('.btn-text-clear');
+      const clearShort = document.querySelector('.btn-text-clear-short');
+      const mobileSearchSlot = document.querySelector('.mobile-search-slot');
+      const desktopSearchSlot = document.querySelector('.desktop-search-slot');
+
+      if (isMobile) {
+        if (pickFull) pickFull.style.display = 'none';
+        if (pickShort) pickShort.style.display = 'inline';
+        if (clearFull) clearFull.style.display = 'none';
+        if (clearShort) clearShort.style.display = 'inline';
+        if (mobileSearchSlot) mobileSearchSlot.style.display = 'block';
+        if (desktopSearchSlot) desktopSearchSlot.style.display = 'none';
+      } else {
+        if (pickFull) pickFull.style.display = 'inline';
+        if (pickShort) pickShort.style.display = 'none';
+        if (clearFull) clearFull.style.display = 'inline';
+        if (clearShort) clearShort.style.display = 'none';
+        if (mobileSearchSlot) mobileSearchSlot.style.display = 'none';
+        if (desktopSearchSlot) desktopSearchSlot.style.display = 'block';
+      }
+    }
+
+    window.addEventListener('resize', handleResponsiveLayoutChanges);
+    window.addEventListener('DOMContentLoaded', () => {
+      loadCollection();
+      handleResponsiveLayoutChanges();
+    });
   </script>
 </body>
 </html>
