@@ -142,6 +142,7 @@ def generate_json_from_sheet():
 
 app = Flask(__name__)
 
+# Run generator on startup if credentials exist
 generate_json_from_sheet()
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -431,7 +432,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #0d0221;
     }
 
-    /* Scroll container configured for smooth fast-scrolling and strict snaps on rest */
     .main-content {
       flex: 1;
       min-width: 0;
@@ -666,7 +666,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .checkbox-item:hover { background: var(--purple-border); }
     .checkbox-item input[type="checkbox"] { accent-color: var(--magenta); }
 
-    /* Snap-stop: normal allows rapid scrolling to bypass intermediate rows easily */
     .game-row-section {
       scroll-snap-align: start;
       scroll-snap-stop: normal;
@@ -930,7 +929,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: var(--turquoise);
     }
 
-    /* Description Clamping Styles */
     .description-text {
       margin-top: 4px;
       line-height: 1.4;
@@ -1059,7 +1057,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <button class="sidebar-close-btn" onclick="toggleSidebar()">✕ Collapse</button>
       </div>
 
-      <!-- Range Sliders Section -->
       <div class="filter-section" id="section-sliders">
         <div class="filter-section-header" onclick="toggleFilterSection('section-sliders')">
           <span class="filter-section-title">📊 Range & Numeric Filters</span>
@@ -1135,7 +1132,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Style & Play Modes Section -->
       <div class="filter-section" id="section-style">
         <div class="filter-section-header" onclick="toggleFilterSection('section-style')">
           <span class="filter-section-title">🕹️ Style & Play Modes</span>
@@ -1167,7 +1163,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Dropdowns Section -->
       <div class="filter-section" id="section-dropdowns">
         <div class="filter-section-header" onclick="toggleFilterSection('section-dropdowns')">
           <span class="filter-section-title">🏷️ Categories, Mechanics & Themes</span>
@@ -2135,10 +2130,16 @@ def index():
 def get_collection():
     json_path = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
     if os.path.exists(json_path):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return jsonify(data)
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return jsonify(data)
+        except Exception as e:
+            print(f"Error reading JSON file: {e}")
+            return jsonify([])
+    print(f"JSON file not found at path: {json_path}")
     return jsonify([])
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
