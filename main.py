@@ -1592,7 +1592,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div id="modal-content"></div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button id="modal-try-again-btn" class="btn-luck" style="flex: 1; padding: 10px;">🎲 Try Again</button>
-        <button id="modal-change-filters-btn" class="btn-primary" style="flex: 1; padding: 10px;">Change Filters</button>
+        <button id="modal-change-filters-btn" class="btn-primary" style="flex: 1; padding: 10px;">Filters</button>
         <button id="modal-close-btn" class="btn-clear-filters" style="display: none;">Awesome!</button>
       </div>
     </div>
