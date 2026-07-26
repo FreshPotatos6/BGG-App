@@ -175,7 +175,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RENGAW'S MEEPLES // Collection Dash</title>
   <style>
     :root {
@@ -1039,6 +1039,124 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       margin-top: 16px;
       width: 100%;
     }
+
+    /* MOBILE OPTIMIZATIONS */
+    @media (max-width: 600px) {
+      body {
+        padding: 0 8px 8px 8px;
+      }
+
+      header {
+        padding: 8px 12px;
+        gap: 8px;
+      }
+
+      .header-left .meeple-logo {
+        font-size: 1.4rem;
+      }
+
+      h1 {
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+      }
+
+      .header-right-column {
+        max-width: 100%;
+      }
+
+      .header-actions-top {
+        gap: 6px;
+      }
+
+      .btn-clear-filters {
+        display: none;
+      }
+
+      button, select {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+      }
+
+      .side-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 85vw;
+        max-width: 320px;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 200;
+        border-radius: 0 12px 12px 0;
+        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.8);
+      }
+
+      .sidebar-toggle-tab {
+        display: none;
+      }
+
+      .range-slider-container input[type="range"]::-webkit-slider-thumb {
+        width: 26px;
+        height: 26px;
+      }
+
+      .app-layout {
+        margin-top: 8px;
+      }
+
+      .main-content {
+        height: calc(100vh - var(--header-height) - 16px);
+        padding-right: 0;
+      }
+
+      .game-grid-row {
+        gap: 8px;
+      }
+
+      .game-card {
+        border-width: 1px;
+      }
+
+      .card-img-wrapper {
+        height: 120px;
+        padding: 4px;
+      }
+
+      .card-content {
+        padding: 8px;
+        gap: 4px;
+      }
+
+      .game-title {
+        font-size: 0.82rem;
+      }
+
+      .ratings-row {
+        font-size: 0.7rem;
+        min-height: 16px;
+      }
+
+      .game-stats {
+        gap: 3px;
+        padding-top: 4px;
+        font-size: 0.68rem;
+      }
+
+      .stat-badge {
+        padding: 2px 3px;
+      }
+
+      .expansion-icon-btn {
+        width: 36px;
+        height: 36px;
+        top: 4px;
+        right: 4px;
+      }
+
+      .expansion-close-btn, .sidebar-close-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1889,11 +2007,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         return;
       }
 
-      const gridWidth = grid.clientWidth || 1000;
-      const minCardWidth = 220;
-      const gap = 20;
-      let itemsPerRow = Math.floor((gridWidth + gap) / (minCardWidth + gap));
-      if (itemsPerRow < 1) itemsPerRow = 1;
+      const isMobile = window.innerWidth <= 600;
+      let itemsPerRow = 2;
+
+      if (!isMobile) {
+        const gridWidth = grid.clientWidth || 1000;
+        const minCardWidth = 220;
+        const gap = 20;
+        itemsPerRow = Math.floor((gridWidth + gap) / (minCardWidth + gap));
+        if (itemsPerRow < 1) itemsPerRow = 1;
+      }
 
       let rowsHTML = "";
       
@@ -1902,7 +2025,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         
         rowsHTML += `
           <div class="game-row-section">
-            <div class="game-grid-row">
+            <div class="game-grid-row" style="${isMobile ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
               ${rowGames.map(g => createGameCardHTML(g)).join('')}
             </div>
           </div>
