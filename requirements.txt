@@ -2,3 +2,5 @@ Flask
 gunicorn
 requests
 pandas
+gspread
+google-auth
