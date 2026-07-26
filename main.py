@@ -845,7 +845,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: rgba(21, 8, 51, 0.98);
       backdrop-filter: blur(4px);
       z-index: 20;
-      padding: 14px;
+      padding: 10px;
       flex-direction: column;
       overflow-y: auto;
       border-radius: 12px;
@@ -855,27 +855,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .expansions-header {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 900;
       color: var(--yellow);
       text-transform: uppercase;
       border-bottom: 2px dashed var(--magenta);
-      padding-bottom: 6px;
-      margin-bottom: 10px;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      white-space: nowrap;
+      gap: 4px;
     }
 
     .expansion-close-btn {
       background: var(--magenta);
       color: #fff;
       border: 1px solid var(--turquoise);
-      padding: 2px 8px;
+      padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       cursor: pointer;
       font-weight: bold;
+      flex-shrink: 0;
     }
     .expansion-close-btn:hover {
       background: var(--turquoise);
@@ -886,9 +889,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: var(--panel-bg);
       border: 1px solid var(--purple-border);
       border-radius: 6px;
-      padding: 8px;
-      margin-bottom: 6px;
-      font-size: 0.8rem;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
     }
 
     .expansion-title {
@@ -936,6 +939,31 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       overflow-y: auto;
     }
 
+    .modal-close-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--magenta);
+      color: #fff;
+      border: 2px solid var(--yellow);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 110;
+      box-shadow: 0 0 8px rgba(247, 37, 133, 0.5);
+    }
+    .modal-close-x:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+      border-color: var(--turquoise);
+    }
+
     .modal-title {
       color: var(--magenta);
       font-size: 1.3rem;
@@ -943,6 +971,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 12px;
+      padding-right: 30px;
     }
 
     .detail-section {
@@ -1043,38 +1072,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     /* MOBILE OPTIMIZATIONS */
     @media (max-width: 600px) {
       body {
-        padding: 0 8px 8px 8px;
+        padding: 0 6px 6px 6px;
       }
 
       header {
-        padding: 8px 12px;
-        gap: 8px;
+        padding: 6px 10px;
+        gap: 6px;
       }
 
       .header-left .meeple-logo {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
       }
 
       h1 {
-        font-size: 1.1rem;
-        letter-spacing: 1px;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
       }
 
       .header-right-column {
         max-width: 100%;
+        gap: 4px;
       }
 
       .header-actions-top {
-        gap: 6px;
+        gap: 4px;
+        justify-content: space-between;
+      }
+
+      .global-search-input {
+        padding: 4px 8px 4px 28px;
+        font-size: 0.8rem;
+      }
+
+      .global-search-icon {
+        font-size: 0.75rem;
+        left: 8px;
       }
 
       .btn-clear-filters {
-        display: none;
+        display: inline-block;
+        padding: 4px 6px;
+        font-size: 0.7rem;
       }
 
       button, select {
-        padding: 6px 8px;
-        font-size: 0.78rem;
+        padding: 4px 6px;
+        font-size: 0.75rem;
       }
 
       .side-toolbar {
@@ -1100,16 +1143,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       .app-layout {
-        margin-top: 8px;
+        margin-top: 6px;
       }
 
       .main-content {
-        height: calc(100vh - var(--header-height) - 16px);
+        height: calc(100vh - var(--header-height) - 12px);
         padding-right: 0;
       }
 
       .game-grid-row {
-        gap: 8px;
+        gap: 6px;
       }
 
       .game-card {
@@ -1122,39 +1165,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
 
       .card-content {
-        padding: 8px;
+        padding: 6px;
         gap: 4px;
       }
 
       .game-title {
-        font-size: 0.82rem;
+        font-size: 0.78rem;
       }
 
       .ratings-row {
-        font-size: 0.7rem;
-        min-height: 16px;
+        font-size: 0.65rem;
+        min-height: 14px;
       }
 
       .game-stats {
-        gap: 3px;
-        padding-top: 4px;
-        font-size: 0.68rem;
+        gap: 2px;
+        padding-top: 3px;
+        font-size: 0.62rem;
       }
 
       .stat-badge {
-        padding: 2px 3px;
+        padding: 2px;
       }
 
       .expansion-icon-btn {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         top: 4px;
         right: 4px;
       }
 
       .expansion-close-btn, .sidebar-close-btn {
-        padding: 8px 12px;
-        font-size: 0.85rem;
+        padding: 6px 10px;
+        font-size: 0.78rem;
       }
     }
   </style>
@@ -1169,9 +1212,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 Pick For Me</button>
+        <button id="luck-btn" class="btn-luck" title="Pick For Me">🎲 Pick</button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters">⚙️ Filters</button>
-        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters">Clear Filters</button>
+        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters">Clear</button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
           <option value="title">Title</option>
@@ -1417,7 +1460,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div id="detail-modal" class="grid-overlay-container">
-    <div class="modal-card">
+    <div class="modal-card" style="position: relative;">
+      <div class="modal-close-x" onclick="closeDetailModal()">✕</div>
       <div id="detail-modal-content"></div>
     </div>
   </div>
@@ -1498,6 +1542,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       isAscending = !isAscending;
       sortDirBtn.textContent = isAscending ? "▲" : "▼";
       renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     sortSelect.addEventListener('change', () => {
@@ -1505,9 +1550,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       isAscending = (val === 'title' || val === 'year');
       sortDirBtn.textContent = isAscending ? "▲" : "▼";
       renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    globalSearch.addEventListener('input', () => renderGames());
+    globalSearch.addEventListener('input', () => {
+      renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
     luckBtn.addEventListener('click', () => {
       if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
@@ -1522,9 +1571,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
     
+    function closeDetailModal() {
+      detailModal.classList.remove('open');
+    }
+
     detailModal.addEventListener('click', (e) => {
       if (e.target === detailModal) {
-        detailModal.classList.remove('open');
+        closeDetailModal();
       }
     });
 
@@ -1535,6 +1588,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         e.preventDefault();
         const scrollDelta = e.key === 'ArrowDown' ? 120 : -120;
         grid.scrollBy({ top: scrollDelta, behavior: 'smooth' });
+      } else if (e.key === 'Escape') {
+        closeDetailModal();
+        luckModal.classList.remove('open');
       }
     });
 
@@ -1565,6 +1621,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       tMin.dispatchEvent(new Event('input'));
       yMin.dispatchEvent(new Event('input'));
       cMin.dispatchEvent(new Event('input'));
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     resetBtn.addEventListener('click', executeResetFilters);
@@ -1630,6 +1687,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         valDisplay.textContent = formatFn(minV, maxV);
         renderGames();
+        grid.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       minElem.addEventListener('input', update);
@@ -1766,10 +1824,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       setupDualSlider(cMin, cMax, cVal, cTrack, formatConflictLabel);
 
-      filterPlayed.addEventListener('change', () => renderGames());
-      filterUnplayed.addEventListener('change', () => renderGames());
-      filterCampaign.addEventListener('change', () => renderGames());
-      filterSolo.addEventListener('change', () => renderGames());
+      filterPlayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterUnplayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterCampaign.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterSolo.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
 
       renderGames();
       
@@ -1819,18 +1877,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdownSearch('des-search', 'des-list');
       setupDropdownSearch('art-search', 'art-list');
 
-      document.getElementById('theme-select-all').onclick = () => toggleAll('theme', themes, true);
-      document.getElementById('theme-clear-all').onclick = () => toggleAll('theme', themes, false);
-      document.getElementById('cat-select-all').onclick = () => toggleAll('cat', categories, true);
-      document.getElementById('cat-clear-all').onclick = () => toggleAll('cat', categories, false);
-      document.getElementById('mech-select-all').onclick = () => toggleAll('mech', mechanics, true);
-      document.getElementById('mech-clear-all').onclick = () => toggleAll('mech', mechanics, false);
-      document.getElementById('pub-select-all').onclick = () => toggleAll('pub', publishers, true);
-      document.getElementById('pub-clear-all').onclick = () => toggleAll('pub', publishers, false);
-      document.getElementById('des-select-all').onclick = () => toggleAll('des', designers, true);
-      document.getElementById('des-clear-all').onclick = () => toggleAll('des', designers, false);
-      document.getElementById('art-select-all').onclick = () => toggleAll('art', artists, true);
-      document.getElementById('art-clear-all').onclick = () => toggleAll('art', artists, false);
+      document.getElementById('theme-select-all').onclick = () => { toggleAll('theme', themes, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('theme-clear-all').onclick = () => { toggleAll('theme', themes, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('cat-select-all').onclick = () => { toggleAll('cat', categories, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('cat-clear-all').onclick = () => { toggleAll('cat', categories, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('mech-select-all').onclick = () => { toggleAll('mech', mechanics, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('mech-clear-all').onclick = () => { toggleAll('mech', mechanics, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('pub-select-all').onclick = () => { toggleAll('pub', publishers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('pub-clear-all').onclick = () => { toggleAll('pub', publishers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('des-select-all').onclick = () => { toggleAll('des', designers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('des-clear-all').onclick = () => { toggleAll('des', designers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('art-select-all').onclick = () => { toggleAll('art', artists, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('art-clear-all').onclick = () => { toggleAll('art', artists, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
     }
 
     function renderStyleCheckboxes(stylesSet) {
@@ -1847,6 +1905,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           if (e.target.checked) selectedStyles.add(e.target.value);
           else selectedStyles.delete(e.target.value);
           renderGames();
+          grid.scrollTo({ top: 0, behavior: 'smooth' });
         };
       });
     }
@@ -1891,6 +1950,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           if (e.target.checked) targetSet.add(e.target.value);
           else targetSet.delete(e.target.value);
           renderGames();
+          grid.scrollTo({ top: 0, behavior: 'smooth' });
         };
       });
     }
@@ -2045,6 +2105,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         });
       });
 
+      document.querySelectorAll('.expansions-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) {
+            overlay.closest('.game-card').classList.remove('show-expansions');
+          }
+        });
+      });
+
       document.querySelectorAll('.expansion-close-btn').forEach(closeBtn => {
         closeBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -2054,7 +2122,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
 
       document.querySelectorAll('.game-card').forEach(card => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
           const gameId = card.getAttribute('data-id');
           const game = games.find(g => g.id === gameId);
           if (game) openDetailModal(game);
@@ -2107,7 +2176,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               return `
                 <div class="expansion-item">
                   <div class="expansion-title">${ex.title}</div>
-                  <div style="display:flex; justify-content:space-between; color: var(--text-muted); font-size: 0.75rem;">
+                  <div style="display:flex; justify-content:space-between; color: var(--text-muted); font-size: 0.7rem;">
                     <span>${exWeightStr}</span>
                     <span style="color: var(--magenta); font-weight:700;">${exRatingStr}</span>
                   </div>
@@ -2230,7 +2299,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     function togglePlayStateFilter(state) {
-      detailModal.classList.remove('open');
+      closeDetailModal();
       if (state === 'played') {
         filterPlayed.checked = !filterPlayed.checked;
         if (filterPlayed.checked) filterUnplayed.checked = false;
@@ -2239,10 +2308,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (filterUnplayed.checked) filterPlayed.checked = false;
       }
       renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function toggleTagFilter(prefix, val) {
-      detailModal.classList.remove('open');
+      closeDetailModal();
 
       let targetSet, checkboxes;
       if (prefix === 'theme') { targetSet = selectedThemes; checkboxes = document.querySelectorAll('input[data-prefix="theme"]'); }
@@ -2263,6 +2333,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
 
       renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     window.onload = loadCollection;
