@@ -186,6 +186,11 @@ def api_collection():
 def index():
     return render_template_string(HTML_TEMPLATE)
 
+@app.route('/Jens')
+def trigger_jens_sync():
+    generate_json_from_sheet()
+    return redirect(url_for('index'))
+
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
