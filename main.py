@@ -2674,3 +2674,4 @@ function openDetailModal(g) {
   </script>
 </body>
 </html>
+"""
