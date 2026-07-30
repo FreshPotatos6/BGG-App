@@ -52,13 +52,6 @@ def get_row_value(row, keys, default="Unknown"):
                 return str(r_val).strip()
     return default
 
-def parse_list_from_cell(val):
-    if not val:
-        return []
-    if isinstance(val, list):
-        return [str(x).strip() for x in val if str(x).strip()]
-    return [x.strip() for x in str(val).split(',') if x.strip()]
-
 def get_google_creds():
     """Retrieve Google credentials from Environment Variable or local credentials.json."""
     scope = [
@@ -125,16 +118,11 @@ def generate_json_from_sheet():
             designer_val = get_row_value(row, ["Designers", "Designer", "Game Designer"], "Unknown")
             artist_val = get_row_value(row, ["Artists", "Artist"], "Unknown")
             publisher_val = get_row_value(row, ["Publisher", "Publishers"], "Unknown")
-
-            # Awards parsing
-            major_awards = parse_list_from_cell(get_row_value(row, ["Major Awards", "Major Award"], ""))
-            minor_awards = parse_list_from_cell(get_row_value(row, ["Minor Awards", "Minor Award"], ""))
-
-            # Community Recommended Players parsing
-            comm_rec = parse_list_from_cell(get_row_value(row, ["Community Rec. Players", "Community Rec Players"], ""))
-
-            # BGA Link parsing
-            bga_link = get_row_value(row, ["BGA", "Board Game Arena"], "")
+            
+            major_awards_val = str(row.get("Major Awards", "")).strip()
+            minor_awards_val = str(row.get("Minor Awards", "")).strip()
+            community_rec_players = str(row.get("Community Rec. Players", "")).strip()
+            bga_link = str(row.get("BGA", "")).strip()
 
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
@@ -143,13 +131,17 @@ def generate_json_from_sheet():
                 "playing_time_raw": raw_play_time if raw_play_time else "0",
                 "playing_time": clean_int(row.get("Play Time"), 0),
                 "weight": clean_float(row.get("Weight / Complexity"), 0.0),
-                "bgg_rating": clean_float(get_row_value(row, ["BGG Geek Rating", "BGG Rating"], 0.0), 0.0),
+                "bgg_rating": clean_float(row.get("BGG Geek Rating"), 0.0), # Updated to BGG Geek Rating
                 "user_rating": clean_float(row.get("User Rating"), 0.0),
                 "plays_recorded": clean_int(row.get("Plays Recorded"), 0),
                 "popularity_owned": clean_int(row.get("Popularity (Owned)", 0), 0),
                 "publisher": publisher_val,
                 "designer": designer_val,
                 "artist": artist_val,
+                "major_awards": major_awards_val,
+                "minor_awards": minor_awards_val,
+                "community_rec_players": community_rec_players,
+                "bga_link": bga_link,
                 "description": row.get("Description", "No description available."),
                 "is_expansion": is_expansion,
                 "is_standalone": is_standalone,
@@ -158,17 +150,13 @@ def generate_json_from_sheet():
                 "max_players": clean_int(row.get("Max Players", 4), 4),
                 "image": row.get("Full Image URL", ""),
                 "thumbnail": row.get("Thumbnail URL", ""),
-                "categories": parse_list_from_cell(row.get("Categories", "")),
-                "mechanics": parse_list_from_cell(row.get("Mechanics", "")),
-                "themes": parse_list_from_cell(row.get("Themes", "")),
+                "categories": [c.strip() for c in str(row.get("Categories", "")).split(",") if c.strip()],
+                "mechanics": [m.strip() for m in str(row.get("Mechanics", "")).split(",") if m.strip()],
+                "themes": [t.strip() for t in str(row.get("Themes", "")).split(",") if t.strip()],
                 "game_mode": game_mode,
                 "conflict_level": str(row.get("Conflict Level", "Medium")).strip(),
                 "campaign_structure": campaign_struct,
-                "supports_one_off": supports_one_off,
-                "major_awards": major_awards,
-                "minor_awards": minor_awards,
-                "community_rec_players": comm_rec,
-                "bga_link": bga_link if bga_link != "Unknown" else ""
+                "supports_one_off": supports_one_off
             })
             
         GAMES_CACHE = games_list
@@ -774,23 +762,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 8px 20px rgba(0, 245, 212, 0.3);
     }
 
-    .award-ribbon-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: #ffd700;
-      color: #000;
-      padding: 2px 6px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 900;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
     .card-img-wrapper {
       height: 200px;
       width: 100%;
@@ -813,6 +784,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       max-height: 100%;
       object-fit: contain;
       filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.7));
+    }
+
+    .award-ribbon {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--yellow);
+      color: #0d0221;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 8px rgba(254, 228, 64, 0.8);
+      z-index: 10;
     }
 
     .expansion-icon-btn {
@@ -885,11 +874,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       text-align: center;
       font-weight: 600;
       border: 1px solid var(--purple-border);
-    }
-
-    .stat-badge.warning-badge {
-      border-color: #ffbe0b;
-      color: #ffbe0b;
     }
 
     .ratings-row {
@@ -1142,21 +1126,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-size: 0.85rem;
       transition: all 0.2s ease;
     }
-
-    .bga-link-btn {
-      color: var(--yellow);
-      border-color: var(--yellow);
-    }
-    .bga-link-btn:hover {
-      background: var(--yellow);
-      color: #0d0221;
-      box-shadow: 0 0 12px rgba(254, 228, 64, 0.4);
-    }
-
-    .bgg-link-btn:hover {
+    .bgg-link-btn:hover, .bga-link-btn:hover {
       background: var(--turquoise);
       color: #0d0221;
       box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
+    }
+
+    .bga-link-btn {
+      border-color: var(--magenta);
+      color: var(--magenta);
+      background: rgba(247, 37, 133, 0.1);
+    }
+    .bga-link-btn:hover {
+      background: var(--magenta);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(247, 37, 133, 0.4);
     }
 
     .modal-close-btn {
@@ -1371,7 +1355,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <option value="popularity_owned" selected>Popularity</option>
           <option value="title">Title</option>
           <option value="user_rating">Luke's Rating</option>
-          <option value="bgg_rating">BGG Rating</option>
+          <option value="bgg_rating">BGG Geek Rating</option>
           <option value="weight">Weight</option>
           <option value="playing_time">Playtime</option>
           <option value="year">Year Published</option>
@@ -1444,7 +1428,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
           <div class="filter-group">
             <div class="filter-label-header">
-              <label>BGG Rating</label>
+              <label>BGG Geek Rating</label>
               <span id="bgg-val" class="value-display">1.0 - 10.0</span>
             </div>
             <div class="range-slider-container">
@@ -1499,7 +1483,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       <div class="filter-section" id="section-style">
         <div class="filter-section-header" onclick="toggleFilterSection('section-style')">
-          <span class="filter-section-title">🕹️ Style & Play Modes</span>
+          <span class="filter-section-title">🕹️ Style, Play Modes & Awards</span>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="filter-section-content">
@@ -1525,15 +1509,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <input type="checkbox" id="filter-solo">
             Solo
           </label>
-        </div>
-      </div>
 
-      <div class="filter-section" id="section-awards">
-        <div class="filter-section-header" onclick="toggleFilterSection('section-awards')">
-          <span class="filter-section-title">🏆 Awards & Accolades</span>
-          <span class="collapse-icon">▼</span>
-        </div>
-        <div class="filter-section-content">
+          <!-- Major Awards Filter Dropdown -->
           <div class="filter-group">
             <label>Major Awards</label>
             <div class="dropdown-container">
@@ -1549,6 +1526,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             </div>
           </div>
 
+          <!-- Minor Awards Filter Dropdown -->
           <div class="filter-group">
             <label>Minor Awards</label>
             <div class="dropdown-container">
@@ -1563,6 +1541,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -1823,10 +1802,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       currentDetailGame = null;
     }
 
-    function closeLuckModal() {
-      luckModal.classList.remove('open');
-    }
-
     detailModal.addEventListener('click', (e) => {
       if (e.target === detailModal) {
         closeDetailModal();
@@ -1998,15 +1973,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           let cStruct = String(g.campaign_structure ?? "").trim().toLowerCase();
           let isCampaign = cStruct !== "" && cStruct !== "none" && cStruct !== "n/a";
 
-          const majorAwards = parseList(g.major_awards);
-          const minorAwards = parseList(g.minor_awards);
-          const commRecPlayers = parseList(g.community_rec_players);
-
-          const hasSpiel = majorAwards.some(a => {
-            const lower = a.toLowerCase();
-            return lower.includes("spiel des jahres") || lower.includes("kenner spiel des jahres");
-          });
-
           return {
             ...g,
             id: String(g.id ?? "").trim(),
@@ -2019,14 +1985,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             parsedThemes: parseList(g.themes),
             parsedDesigners: parseList(g.designer),
             parsedArtists: parseList(g.artist),
-            parsedMajorAwards: majorAwards,
-            parsedMinorAwards: minorAwards,
-            parsedCommRecPlayers: commRecPlayers,
-            hasSpielAward: hasSpiel,
-            bga_link: g.bga_link || "",
+            parsedMajorAwards: parseList(g.major_awards),
+            parsedMinorAwards: parseList(g.minor_awards),
             publisher: g.publisher ?? "Unknown",
             designer: g.designer ?? "Unknown",
             artist: g.artist ?? "Unknown",
+            major_awards: g.major_awards ?? "",
+            minor_awards: g.minor_awards ?? "",
+            community_rec_players: g.community_rec_players ?? "",
+            bga_link: g.bga_link ?? "",
             description: g.description ?? "No description available.",
             game_mode: g.game_mode ?? "Competitive",
             conflict_level_num: cNum,
@@ -2133,11 +2100,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         g.parsedThemes.forEach(t => themes.add(t));
         g.parsedCategories.forEach(c => categories.add(c));
         g.parsedMechanics.forEach(m => mechanics.add(m));
+        g.parsedMajorAwards.forEach(ma => majorAwards.add(ma));
+        g.parsedMinorAwards.forEach(mi => minorAwards.add(mi));
         if (g.publisher && g.publisher !== "Unknown") publishers.add(g.publisher);
         g.parsedDesigners.forEach(d => { if (d !== "Unknown") designers.add(d); });
         g.parsedArtists.forEach(a => { if (a !== "Unknown") artists.add(a); });
-        g.parsedMajorAwards.forEach(a => majorAwards.add(a));
-        g.parsedMinorAwards.forEach(a => minorAwards.add(a));
       });
 
       renderStyleCheckboxes(styles);
@@ -2147,8 +2114,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderCheckboxList('pub-list', publishers, selectedPublishers, 'pub');
       renderCheckboxList('des-list', designers, selectedDesigners, 'des');
       renderCheckboxList('art-list', artists, selectedArtists, 'art');
-      renderCheckboxList('major-award-list', majorAwards, selectedMajorAwards, 'majoraward');
-      renderCheckboxList('minor-award-list', minorAwards, selectedMinorAwards, 'minoraward');
+      renderCheckboxList('major-award-list', majorAwards, selectedMajorAwards, 'major-award');
+      renderCheckboxList('minor-award-list', minorAwards, selectedMinorAwards, 'minor-award');
 
       setupDropdownToggle('theme-toggle', 'theme-menu');
       setupDropdownToggle('cat-toggle', 'cat-menu');
@@ -2180,10 +2147,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       document.getElementById('des-clear-all').onclick = () => { toggleAll('des', designers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
       document.getElementById('art-select-all').onclick = () => { toggleAll('art', artists, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
       document.getElementById('art-clear-all').onclick = () => { toggleAll('art', artists, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('major-award-select-all').onclick = () => { toggleAll('majoraward', majorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('major-award-clear-all').onclick = () => { toggleAll('majoraward', majorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('minor-award-select-all').onclick = () => { toggleAll('minoraward', minorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('minor-award-clear-all').onclick = () => { toggleAll('minoraward', minorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('major-award-select-all').onclick = () => { toggleAll('major-award', majorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('major-award-clear-all').onclick = () => { toggleAll('major-award', majorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('minor-award-select-all').onclick = () => { toggleAll('minor-award', minorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('minor-award-clear-all').onclick = () => { toggleAll('minor-award', minorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
     }
 
     function renderStyleCheckboxes(stylesSet) {
@@ -2208,7 +2175,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function setupDropdownToggle(btnId, menuId) {
       const btn = document.getElementById(btnId);
       const menu = document.getElementById(menuId);
-      if (!btn || !menu) return;
       btn.onclick = (e) => {
         e.stopPropagation();
         menu.classList.toggle('show');
@@ -2220,7 +2186,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function setupDropdownSearch(searchId, listId) {
       const searchInput = document.getElementById(searchId);
-      if (!searchInput) return;
       searchInput.addEventListener('click', (e) => e.stopPropagation());
       searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
@@ -2235,7 +2200,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function renderCheckboxList(containerId, itemsSet, targetSet, prefix) {
       const container = document.getElementById(containerId);
-      if (!container) return;
       container.innerHTML = Array.from(itemsSet).sort().map(item => `
         <label class="checkbox-item">
           <input type="checkbox" data-prefix="${prefix}" value="${item}" ${targetSet.has(item) ? 'checked' : ''}>
@@ -2261,8 +2225,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       else if (prefix === 'pub') targetSet = selectedPublishers;
       else if (prefix === 'des') targetSet = selectedDesigners;
       else if (prefix === 'art') targetSet = selectedArtists;
-      else if (prefix === 'majoraward') targetSet = selectedMajorAwards;
-      else if (prefix === 'minoraward') targetSet = selectedMinorAwards;
+      else if (prefix === 'major-award') targetSet = selectedMajorAwards;
+      else if (prefix === 'minor-award') targetSet = selectedMinorAwards;
 
       targetSet.clear();
       if (check) fullSet.forEach(item => targetSet.add(item));
@@ -2288,18 +2252,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         return isAscending ? valA - valB : valB - valA;
       });
-    }
-
-    function checkCommunityRecWarning(g, selectedMinP, selectedMaxP) {
-      if (!g.parsedCommRecPlayers || g.parsedCommRecPlayers.length === 0) return false;
-      for (let p = selectedMinP; p <= selectedMaxP; p++) {
-        if (p >= g.min_players && p <= g.max_players) {
-          const pStr = String(p);
-          const isRec = g.parsedCommRecPlayers.some(rec => rec.trim() === pStr || rec.trim() === `${pStr}+`);
-          if (!isRec) return true;
-        }
-      }
-      return false;
     }
 
     function renderGames() {
@@ -2361,7 +2313,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         } else {
           matchesLuke = (minLuke <= 1.0);
         }
-
         let matchesYear = true;
         if (g.year > 0) {
           if (yMin.value == '0' && g.year < 1990) matchesYear = true;
@@ -2393,8 +2344,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const matchesCat = selectedCategories.size === 0 || Array.from(selectedCategories).every(c => g.parsedCategories.includes(c));
         const matchesMech = selectedMechanics.size === 0 || Array.from(selectedMechanics).every(m => g.parsedMechanics.includes(m));
         
-        const matchesMajorAward = selectedMajorAwards.size === 0 || Array.from(selectedMajorAwards).every(a => g.parsedMajorAwards.includes(a));
-        const matchesMinorAward = selectedMinorAwards.size === 0 || Array.from(selectedMinorAwards).every(a => g.parsedMinorAwards.includes(a));
+        const matchesMajorAward = selectedMajorAwards.size === 0 || Array.from(selectedMajorAwards).some(ma => g.parsedMajorAwards.includes(ma));
+        const matchesMinorAward = selectedMinorAwards.size === 0 || Array.from(selectedMinorAwards).some(mi => g.parsedMinorAwards.includes(mi));
 
         return matchesPlayers && matchesWeight && matchesTime && matchesBgg && matchesLuke && matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech && matchesMajorAward && matchesMinorAward;
       });
@@ -2476,30 +2427,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const userRatingVal = g.user_rating ? Math.round(g.user_rating) : null;
       const userRating = userRatingVal ? `⭐ Luke: ${userRatingVal}` : '';
-      const bggRating = g.bgg_rating ? `🌐 BGG: ${g.bgg_rating.toFixed(1)}` : '🌐 BGG: N/A';
+      const bggRating = g.bgg_rating ? `🌐 BGG Geek: ${g.bgg_rating.toFixed(1)}` : '🌐 BGG Geek: N/A';
 
       const isTopRated = userRatingVal !== null && [8, 9, 10].includes(userRatingVal);
       const cardClass = isTopRated ? "game-card top-rated" : "game-card";
 
       const minP = g.min_players;
       const maxP = g.max_players;
-      let playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
-
-      const minSelectedP = parseFloat(pMin.value);
-      const maxSelectedP = parseFloat(pMax.value);
-      const hasRecWarning = checkCommunityRecWarning(g, minSelectedP, maxSelectedP);
-      const playerBadgeClass = hasRecWarning ? "stat-badge warning-badge" : "stat-badge";
-      if (hasRecWarning) {
-        playerStr += " ⚠️";
-      }
-
+      const playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
+      
       const timeStr = g.playing_time_raw ? `${g.playing_time_raw}` : `${g.playing_time}`;
       const timeDisplay = timeStr.toLowerCase().replace(/min/g, '').trim();
 
       const weight = g.weight > 0 ? g.weight.toFixed(1) : 'N/A';
       const img = g.image ?? g.thumbnail ?? 'https://via.placeholder.com/300x200?text=No+Image';
 
-      const awardRibbonHTML = g.hasSpielAward ? `<div class="award-ribbon-badge" title="Spiel des Jahres / Kenner Winner">🏆 Spiel Winner</div>` : '';
+      let awardRibbonHTML = '';
+      const hasSpiel = (g.major_awards && (g.major_awards.toLowerCase().includes('spiel') || g.major_awards.toLowerCase().includes('kenner'))) ||
+                       (g.minor_awards && (g.minor_awards.toLowerCase().includes('spiel') || g.minor_awards.toLowerCase().includes('kenner')));
+      if (hasSpiel) {
+        awardRibbonHTML = `<div class="award-ribbon" title="Spiel des Jahres Winner">🏆</div>`;
+      }
 
       let expansionIconHTML = '';
       let expansionListHTML = '';
@@ -2551,7 +2499,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <span>${userRating}</span>
             </div>
             <div class="game-stats">
-              <div class="${playerBadgeClass}">👥 ${playerStr}</div>
+              <div class="stat-badge">👥 ${playerStr}</div>
               <div class="stat-badge">⏱️ ${timeDisplay}</div>
               <div class="stat-badge">⚖️ ${weight}</div>
               <div class="stat-badge">📅 ${year}</div>
@@ -2579,8 +2527,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       else if (prefix === 'pub') targetSet = selectedPublishers;
       else if (prefix === 'des') targetSet = selectedDesigners;
       else if (prefix === 'art') targetSet = selectedArtists;
-      else if (prefix === 'majoraward') targetSet = selectedMajorAwards;
-      else if (prefix === 'minoraward') targetSet = selectedMinorAwards;
+      else if (prefix === 'major-award') targetSet = selectedMajorAwards;
+      else if (prefix === 'minor-award') targetSet = selectedMinorAwards;
 
       if (targetSet) {
         if (targetSet.has(value)) {
@@ -2601,111 +2549,125 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
-    function openDetailModal(g) {
-      currentDetailGame = g;
+    function openDetailModal(game) {
+      currentDetailGame = game;
       
-      const userRatingVal = g.user_rating ? Math.round(g.user_rating) : 'N/A';
-      const bggRatingVal = g.bgg_rating ? g.bgg_rating.toFixed(1) : 'N/A';
+      let playerFilterActive = false;
+      let targetPlayerCount = null;
+      let communityWarningHTML = '';
+      
+      const currentMinP = parseInt(pMin.value);
+      const currentMaxP = parseInt(pMax.value);
+      if (currentMinP > 1 || currentMaxP < 10) {
+        if (currentMinP === currentMaxP) {
+          playerFilterActive = true;
+          targetPlayerCount = currentMinP;
+        }
+      }
 
-      const allAwards = [...g.parsedMajorAwards.map(a => ({ name: a, type: 'majoraward' })), ...g.parsedMinorAwards.map(a => ({ name: a, type: 'minoraward' }))];
+      if (playerFilterActive && targetPlayerCount !== null && game.community_rec_players) {
+        const commStr = game.community_rec_players.toLowerCase();
+        const supportsBox = targetPlayerCount >= game.min_players && targetPlayerCount <= game.max_players;
+        const isNotRecommended = commStr.includes('not recommended') && commStr.includes(targetPlayerCount.toString());
+        if (supportsBox && isNotRecommended) {
+          communityWarningHTML = `<div style="background: rgba(247, 37, 133, 0.2); border: 1px solid var(--magenta); color: var(--yellow); padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem;">⚠️ <strong>Community Warning:</strong> Played at ${targetPlayerCount}p is supported by the box count, but not recommended by the community!</div>`;
+        }
+      }
+
+      let awardsSectionHTML = '';
+      let hasAwards = false;
+      let awardTagsHTML = '';
       
-      let awardsHTML = '';
-      if (allAwards.length > 0) {
-        awardsHTML = `
+      if (game.major_awards) {
+        hasAwards = true;
+        game.parsedMajorAwards.forEach(ma => {
+          const isActive = selectedMajorAwards.has(ma);
+          awardTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="toggleTagFilter('major-award', '${ma.replace(/'/g, "\\'")}')">🏆 ${ma}</span>`;
+        });
+      }
+      if (game.minor_awards) {
+        hasAwards = true;
+        game.parsedMinorAwards.forEach(mi => {
+          const isActive = selectedMinorAwards.has(mi);
+          awardTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="toggleTagFilter('minor-award', '${mi.replace(/'/g, "\\'")}')">🏅 ${mi}</span>`;
+        });
+      }
+
+      if (hasAwards) {
+        awardsSectionHTML = `
           <div class="detail-section">
-            <strong>Awards:</strong><br>
-            ${allAwards.map(a => {
-              const targetSet = a.type === 'majoraward' ? selectedMajorAwards : selectedMinorAwards;
-              const isActive = targetSet.has(a.name);
-              return `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="toggleTagFilter('${a.type}', '${a.name.replace(/'/g, "\\'")}')">🏆 ${a.name}</span>`;
-            }).join(' ')}
+            <strong>Major/Minor Awards:</strong><br>
+            <div style="margin-top: 4px;">${awardTagsHTML}</div>
           </div>
         `;
       }
 
-      const minSelectedP = parseFloat(pMin.value);
-      const maxSelectedP = parseFloat(pMax.value);
-      const hasRecWarning = checkCommunityRecWarning(g, minSelectedP, maxSelectedP);
-      let commRecHTML = '';
-      if (hasRecWarning) {
-        commRecHTML = `
-          <div style="background: rgba(255, 190, 11, 0.15); border: 1px solid #ffbe0b; color: #ffbe0b; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px;">
-            ⚠️ Playable at ${minSelectedP === maxSelectedP ? minSelectedP : `${minSelectedP}-${maxSelectedP}`} players, but not recommended by the community.
-          </div>
-        `;
+      let bgaButtonHTML = '';
+      if (game.bga_link) {
+        bgaButtonHTML = `<a href="${game.bga_link}" target="_blank" class="bga-link-btn">🎮 Play on BGA</a>`;
       }
 
-      let bgaBtnHTML = '';
-      if (g.bga_link && g.bga_link.startsWith('http')) {
-        bgaBtnHTML = `
-          <a href="${g.bga_link}" target="_blank" class="bga-link-btn">
-            🎲 Play on Board Game Arena
-          </a>
-        `;
-      }
+      let themesHTML = game.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t)?'active-tag':''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join('');
+      let catsHTML = game.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c)?'active-tag':''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join('');
+      let mechsHTML = game.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m)?'active-tag':''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join('');
+      
+      let pubHTML = game.publisher !== "Unknown" ? `<span class="clickable-tag ${selectedPublishers.has(game.publisher)?'active-tag':''}" onclick="toggleTagFilter('pub', '${game.publisher.replace(/'/g, "\\'")}')">${game.publisher}</span>` : 'Unknown';
+      let desHTML = game.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d)?'active-tag':''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(', ');
+      let artHTML = game.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a)?'active-tag':''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(', ');
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${g.cleanTitle}</div>
-
-        <div style="display: flex; gap: 15px; margin-bottom: 12px; background: rgba(31, 12, 72, 0.4); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--purple-border);">
-          <div style="color: var(--yellow); font-weight: 800; font-size: 0.95rem;">⭐ Luke: ${userRatingVal}</div>
-          <div style="color: var(--turquoise); font-weight: 800; font-size: 0.95rem;">🌐 BGG Geek Rating: ${bggRatingVal}</div>
+        <div class="modal-title">${game.cleanTitle} (${game.year > 0 ? game.year : 'N/A'})</div>
+        ${communityWarningHTML}
+        
+        <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: var(--panel-bg); padding: 8px; border-radius: 8px; border: 1px solid var(--purple-border);">
+          <div style="flex: 1; text-align: center; font-size: 0.85rem;">
+            <strong style="color: var(--magenta);">🌐 BGG Geek Rating:</strong><br>
+            <span style="font-size: 1.1rem; font-weight: 800; color: var(--yellow);">${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</span>
+          </div>
+          <div style="width: 1px; height: 30px; background: var(--purple-border);"></div>
+          <div style="flex: 1; text-align: center; font-size: 0.85rem;">
+            <strong style="color: var(--magenta);">⭐ Luke's Rating:</strong><br>
+            <span style="font-size: 1.1rem; font-weight: 800; color: var(--yellow);">${game.user_rating ? Math.round(game.user_rating) : 'Unrated'}</span>
+          </div>
         </div>
 
-        ${commRecHTML}
-        ${awardsHTML}
+        ${awardsSectionHTML}
 
         <div class="detail-section">
-          <strong>Publisher:</strong><br>
-          <span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>
+          <strong>Publisher:</strong> ${pubHTML}
+        </div>
+        <div class="detail-section">
+          <strong>Designer(s):</strong> ${desHTML}
+        </div>
+        <div class="detail-section">
+          <strong>Artist(s):</strong> ${artHTML}
         </div>
 
-        <div class="detail-section">
-          <strong>Designers:</strong><br>
-          ${g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')}
+        <div class="meta-tags-grid">
+          <div><strong>Players:</strong> ${game.min_players}-${game.max_players}</div>
+          <div><strong>Play Time:</strong> ${game.playing_time} min</div>
+          <div><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
+          <div><strong>Conflict:</strong> ${game.conflict_level}</div>
         </div>
 
-        <div class="detail-section">
-          <strong>Artists:</strong><br>
-          ${g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')}
-        </div>
-
-        <div class="detail-section">
-          <strong>Categories:</strong><br>
-          ${g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')}
-        </div>
-
-        <div class="detail-section">
-          <strong>Mechanics:</strong><br>
-          ${g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')}
-        </div>
-
-        <div class="detail-section">
-          <strong>Themes:</strong><br>
-          ${g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')}
-        </div>
+        ${themesHTML ? `<div class="detail-section"><strong>Themes:</strong><br>${themesHTML}</div>` : ''}
+        ${catsHTML ? `<div class="detail-section"><strong>Categories:</strong><br>${catsHTML}</div>` : ''}
+        ${mechsHTML ? `<div class="detail-section"><strong>Mechanics:</strong><br>${mechsHTML}</div>` : ''}
 
         <div class="detail-section">
           <strong>Description:</strong>
-          <div class="description-text">${g.description}</div>
+          <div class="description-text">${game.description}</div>
           <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
         </div>
 
-        ${bgaBtnHTML}
-
-        <a href="https://boardgamegeek.com/boardgame/${g.id}" target="_blank" class="bgg-link-btn">
-          View on BoardGameGeek ↗
-        </a>
+        ${bgaButtonHTML}
+        <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
 
       detailModal.classList.add('open');
     }
 
-    loadCollection();
+    window.onload = loadCollection;
   </script>
 </body>
 </html>
-"""
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
