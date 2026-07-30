@@ -41,6 +41,15 @@ def clean_float(val, default=0.0):
         pass
     return default
 
+def parse_list(val):
+    if not val:
+        return []
+    if isinstance(val, list):
+        return [str(x).strip() for x in val if str(x).strip()]
+    if isinstance(val, str):
+        return [x.strip() for x in val.split(',') if x.strip()]
+    return []
+
 def get_row_value(row, keys, default="Unknown"):
     for k in keys:
         if k in row and row[k] is not None and str(row[k]).strip() != "":
@@ -119,6 +128,19 @@ def generate_json_from_sheet():
             artist_val = get_row_value(row, ["Artists", "Artist"], "Unknown")
             publisher_val = get_row_value(row, ["Publisher", "Publishers"], "Unknown")
 
+            # BGG Geek Rating preferred over BGG Rating
+            bgg_geek_val = row.get("BGG Geek Rating", row.get("BGG Rating", 0.0))
+
+            # Awards parsing
+            major_awards = parse_list(row.get("Major Awards", ""))
+            minor_awards = parse_list(row.get("Minor Awards", ""))
+
+            # Community Recommended Player Counts
+            comm_rec_players = parse_list(row.get("Community Rec. Players", ""))
+
+            # BGA Link
+            bga_link = str(row.get("BGA", "")).strip()
+
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
                 "title": row.get("Title", "Unknown"),
@@ -126,6 +148,7 @@ def generate_json_from_sheet():
                 "playing_time_raw": raw_play_time if raw_play_time else "0",
                 "playing_time": clean_int(row.get("Play Time"), 0),
                 "weight": clean_float(row.get("Weight / Complexity"), 0.0),
+                "bgg_rating": clean_float(bgg_geek_val, 0.0),
                 "user_rating": clean_float(row.get("User Rating"), 0.0),
                 "plays_recorded": clean_int(row.get("Plays Recorded"), 0),
                 "popularity_owned": clean_int(row.get("Popularity (Owned)", 0), 0),
@@ -140,19 +163,17 @@ def generate_json_from_sheet():
                 "max_players": clean_int(row.get("Max Players", 4), 4),
                 "image": row.get("Full Image URL", ""),
                 "thumbnail": row.get("Thumbnail URL", ""),
-                "categories": [c.strip() for c in str(row.get("Categories", "")).split(",") if c.strip()],
-                "mechanics": [m.strip() for m in str(row.get("Mechanics", "")).split(",") if m.strip()],
-                "themes": [t.strip() for t in str(row.get("Themes", "")).split(",") if t.strip()],
+                "categories": parse_list(row.get("Categories", "")),
+                "mechanics": parse_list(row.get("Mechanics", "")),
+                "themes": parse_list(row.get("Themes", "")),
+                "major_awards": major_awards,
+                "minor_awards": minor_awards,
+                "comm_rec_players": comm_rec_players,
+                "bga_link": bga_link,
                 "game_mode": game_mode,
                 "conflict_level": str(row.get("Conflict Level", "Medium")).strip(),
                 "campaign_structure": campaign_struct,
-                "supports_one_off": supports_one_off,
-                "bgg_rating": clean_float(row.get("BGG Geek Rating", row.get("BGG Rating")), 0.0),
-                "major_awards": str(row.get("Major Awards", "")).strip(),
-                "minor_awards": str(row.get("Minor Awards", "")).strip(),
-                "bga_url": str(row.get("BGA", row.get("Board Game Arena", ""))).strip(),
-                "box_players": str(row.get("Box Player Count", "")).strip(),
-                "community_rec_players": str(row.get("Community Rec. Players", "")).strip(),
+                "supports_one_off": supports_one_off
             })
             
         GAMES_CACHE = games_list
@@ -253,164 +274,1102 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 4px 15px rgba(247, 37, 133, 0.2);
     }
 
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .meeple-logo { width: 42px; height: 42px; filter: drop-shadow(0 0 8px var(--magenta)); }
-    h1 { font-size: 2.2rem; font-weight: 900; color: var(--yellow); text-transform: uppercase; letter-spacing: 2px; text-shadow: 2px 2px 0px var(--magenta); }
-    .header-right-column { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: 1; max-width: 620px; }
-    .header-actions-top { display: flex; gap: 8px; align-items: center; justify-content: flex-end; width: 100%; flex-wrap: wrap; }
-    .global-search-container { position: relative; width: 100%; }
-    .global-search-input { width: 100%; background: var(--panel-bg); color: var(--text); border: 2px solid var(--purple-border); padding: 6px 12px 6px 36px; border-radius: 8px; font-size: 0.88rem; outline: none; transition: all 0.2s ease; }
-    .global-search-input:focus { border-color: var(--turquoise); box-shadow: 0 0 10px rgba(0, 245, 212, 0.3); }
-    .global-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; color: var(--text-muted); pointer-events: none; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-    button, select { background: var(--panel-bg); color: var(--turquoise); border: 2px solid var(--purple-border); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: all 0.2s ease; }
-    button:hover, select:hover { border-color: var(--turquoise); background: var(--purple-border); color: #fff; }
+    .meeple-logo {
+      width: 42px;
+      height: 42px;
+      filter: drop-shadow(0 0 8px var(--magenta));
+    }
 
-    .btn-primary { background: var(--magenta); color: #fff; border: 2px solid var(--magenta); text-transform: uppercase; letter-spacing: 1px; }
-    .btn-primary:hover { background: var(--turquoise); color: #000; border-color: var(--turquoise); }
-    .btn-clear-filters { background: var(--panel-bg); color: #ffffff; border: 2px solid var(--magenta); text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; }
-    .btn-clear-filters:hover { background: var(--magenta); color: #ffffff; border-color: var(--magenta); box-shadow: 0 0 10px rgba(247, 37, 133, 0.4); }
-    .btn-luck { background: var(--yellow); color: #0d0221; border: 2px solid var(--yellow); font-weight: 900; text-transform: uppercase; }
-    .btn-luck:hover { background: #fff; color: var(--magenta); border-color: var(--magenta); box-shadow: 0 0 10px var(--yellow); }
-    .sort-direction-btn { font-weight: bold; font-size: 0.95rem; padding: 5px 8px; text-align: center; color: var(--yellow); }
+    h1 { 
+      font-size: 2.2rem; 
+      font-weight: 900; 
+      color: var(--yellow); 
+      text-transform: uppercase; 
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 0px var(--magenta);
+    }
 
-    .app-layout { display: flex; gap: 20px; align-items: flex-start; position: relative; margin-top: 20px; }
-    .side-toolbar { width: var(--sidebar-width); flex-shrink: 0; background: var(--card-bg); border: 2px solid var(--turquoise); border-radius: 12px; padding: 0 16px 16px 16px; box-shadow: 0 0 15px rgba(0, 245, 212, 0.15); transition: all 0.3s ease; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - var(--header-height) - 60px); overflow-y: auto; scrollbar-gutter: stable; z-index: 70; }
-    .side-toolbar.collapsed { width: 0; padding: 0; margin: 0; border: none; opacity: 0; pointer-events: none; }
-    .sidebar-toggle-tab { position: absolute; right: -36px; top: 20px; width: 36px; height: 44px; background: var(--card-bg); border: 2px solid var(--turquoise); border-left: none; border-radius: 0 8px 8px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--yellow); font-weight: bold; z-index: 50; box-shadow: 4px 0 10px rgba(0, 245, 212, 0.2); transition: background 0.2s ease, color 0.2s ease; pointer-events: auto; }
-    .sidebar-toggle-tab:hover { background: var(--turquoise); color: #0d0221; }
-    .sidebar-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--purple-border); padding: 16px 0 8px 0; margin-bottom: 4px; position: sticky; top: 0; background: var(--card-bg); z-index: 10; }
-    .sidebar-header-title { font-size: 0.9rem; font-weight: 900; color: var(--yellow); text-transform: uppercase; letter-spacing: 1px; }
-    .sidebar-close-btn { background: var(--magenta); color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
-    .sidebar-close-btn:hover { background: var(--turquoise); color: #0d0221; }
+    .header-right-column {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex: 1;
+      max-width: 620px;
+    }
 
-    .main-content { flex: 1; min-width: 0; height: calc(100vh - var(--header-height) - 60px); overflow-y: auto; scroll-snap-type: y mandatory; scroll-padding-top: 10px; padding-top: 10px; padding-right: 10px; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
-    .filter-section { border: 1px solid var(--purple-border); border-radius: 8px; background: rgba(31, 12, 72, 0.4); }
-    .filter-section-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--panel-bg); cursor: pointer; user-select: none; border-bottom: 1px solid var(--purple-border); }
-    .filter-section-header:hover { background: var(--purple-border); }
-    .filter-section-title { color: var(--yellow); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-    .collapse-icon { font-weight: bold; color: var(--turquoise); transition: transform 0.2s ease; font-size: 0.8rem; }
-    .filter-section.collapsed .filter-section-content { display: none; }
-    .filter-section.collapsed .collapse-icon { transform: rotate(-90deg); }
-    .filter-section-content { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-    .filter-group { display: flex; flex-direction: column; gap: 6px; }
-    .filter-label-header { display: flex; justify-content: space-between; align-items: center; }
-    .filter-group label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-    .value-display { font-size: 0.8rem; color: var(--yellow); font-weight: 800; background: var(--panel-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--purple-border); }
+    .header-actions-top {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      flex-wrap: wrap;
+    }
 
-    .range-slider-container { position: relative; height: 32px; display: flex; align-items: center; }
-    .range-slider-track { position: absolute; width: 100%; height: 6px; background: var(--panel-bg); border: 1px solid var(--purple-border); border-radius: 3px; pointer-events: none; }
-    .range-slider-highlight { position: absolute; height: 6px; background: var(--magenta); border-radius: 3px; pointer-events: none; }
-    .range-slider-container input[type="range"] { position: absolute; width: 100%; pointer-events: none; -webkit-appearance: none; background: none; z-index: 2; margin: 0; }
-    .range-slider-container input[type="range"]::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--yellow); cursor: pointer; border: 2px solid var(--bg); box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+    .global-search-container {
+      position: relative;
+      width: 100%;
+    }
 
-    .checkbox-grid { display: flex; flex-direction: column; gap: 6px; background: var(--panel-bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--purple-border); }
-    .style-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--turquoise); font-weight: 600; cursor: pointer; }
+    .global-search-input {
+      width: 100%;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 2px solid var(--purple-border);
+      padding: 6px 12px 6px 36px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .global-search-input:focus {
+      border-color: var(--turquoise);
+      box-shadow: 0 0 10px rgba(0, 245, 212, 0.3);
+    }
+    .global-search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    button, select {
+      background: var(--panel-bg);
+      color: var(--turquoise);
+      border: 2px solid var(--purple-border);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    button:hover, select:hover { 
+      border-color: var(--turquoise); 
+      background: var(--purple-border);
+      color: #fff;
+    }
+
+    .btn-primary { 
+      background: var(--magenta); 
+      color: #fff; 
+      border: 2px solid var(--magenta); 
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-primary:hover { 
+      background: var(--turquoise); 
+      color: #000; 
+      border-color: var(--turquoise);
+    }
+
+    .btn-clear-filters {
+      background: var(--panel-bg);
+      color: #ffffff;
+      border: 2px solid var(--magenta);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.8rem;
+    }
+    .btn-clear-filters:hover {
+      background: var(--magenta);
+      color: #ffffff;
+      border-color: var(--magenta);
+      box-shadow: 0 0 10px rgba(247, 37, 133, 0.4);
+    }
+
+    .btn-luck {
+      background: var(--yellow);
+      color: #0d0221;
+      border: 2px solid var(--yellow);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .btn-luck:hover {
+      background: #fff;
+      color: var(--magenta);
+      border-color: var(--magenta);
+      box-shadow: 0 0 10px var(--yellow);
+    }
+
+    .sort-direction-btn {
+      font-weight: bold;
+      font-size: 0.95rem;
+      padding: 5px 8px;
+      text-align: center;
+      color: var(--yellow);
+    }
+
+    .app-layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      position: relative;
+      margin-top: 20px;
+    }
+
+    .side-toolbar {
+      width: var(--sidebar-width);
+      flex-shrink: 0;
+      background: var(--card-bg);
+      border: 2px solid var(--turquoise);
+      border-radius: 12px;
+      padding: 0 16px 16px 16px;
+      box-shadow: 0 0 15px rgba(0, 245, 212, 0.15);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - var(--header-height) - 60px);
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      z-index: 70;
+    }
+
+    .side-toolbar.collapsed {
+      width: 0;
+      padding: 0;
+      margin: 0;
+      border: none;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-toggle-tab {
+      position: absolute;
+      right: -36px;
+      top: 20px;
+      width: 36px;
+      height: 44px;
+      background: var(--card-bg);
+      border: 2px solid var(--turquoise);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--yellow);
+      font-weight: bold;
+      z-index: 50;
+      box-shadow: 4px 0 10px rgba(0, 245, 212, 0.2);
+      transition: background 0.2s ease, color 0.2s ease;
+      pointer-events: auto;
+    }
+    .sidebar-toggle-tab:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+    }
+
+    .sidebar-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--purple-border);
+      padding: 16px 0 8px 0;
+      margin-bottom: 4px;
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      z-index: 10;
+    }
+    .sidebar-header-title {
+      font-size: 0.9rem;
+      font-weight: 900;
+      color: var(--yellow);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .sidebar-close-btn {
+      background: var(--magenta);
+      color: #fff;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .sidebar-close-btn:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+    }
+
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      height: calc(100vh - var(--header-height) - 60px);
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      scroll-padding-top: 10px;
+      padding-top: 10px;
+      padding-right: 10px;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .filter-section {
+      border: 1px solid var(--purple-border);
+      border-radius: 8px;
+      background: rgba(31, 12, 72, 0.4);
+    }
+
+    .filter-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--panel-bg);
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--purple-border);
+    }
+    .filter-section-header:hover {
+      background: var(--purple-border);
+    }
+
+    .filter-section-title {
+      color: var(--yellow);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .collapse-icon {
+      font-weight: bold;
+      color: var(--turquoise);
+      transition: transform 0.2s ease;
+      font-size: 0.8rem;
+    }
+
+    .filter-section.collapsed .filter-section-content {
+      display: none;
+    }
+    .filter-section.collapsed .collapse-icon {
+      transform: rotate(-90deg);
+    }
+
+    .filter-section-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-label-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .filter-group label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .value-display {
+      font-size: 0.8rem;
+      color: var(--yellow);
+      font-weight: 800;
+      background: var(--panel-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--purple-border);
+    }
+
+    .range-slider-container {
+      position: relative;
+      height: 32px;
+      display: flex;
+      align-items: center;
+    }
+
+    .range-slider-track {
+      position: absolute;
+      width: 100%;
+      height: 6px;
+      background: var(--panel-bg);
+      border: 1px solid var(--purple-border);
+      border-radius: 3px;
+      pointer-events: none;
+    }
+
+    .range-slider-highlight {
+      position: absolute;
+      height: 6px;
+      background: var(--magenta);
+      border-radius: 3px;
+      pointer-events: none;
+    }
+
+    .range-slider-container input[type="range"] {
+      position: absolute;
+      width: 100%;
+      pointer-events: none;
+      -webkit-appearance: none;
+      background: none;
+      z-index: 2;
+      margin: 0;
+    }
+
+    .range-slider-container input[type="range"]::-webkit-slider-thumb {
+      pointer-events: auto;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--yellow);
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 4px rgba(0,0,0,0.6);
+    }
+
+    .checkbox-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--panel-bg);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--purple-border);
+    }
+
+    .style-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--turquoise);
+      font-weight: 600;
+      cursor: pointer;
+    }
     .style-item input { accent-color: var(--magenta); }
 
     .dropdown-container { position: relative; }
-    .dropdown-toggle { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); color: var(--turquoise); font-size: 0.85rem; padding: 8px; }
-    .dropdown-menu { display: none; position: absolute; top: 105%; left: 0; right: 0; background: var(--card-bg); border: 2px solid var(--turquoise); border-radius: 8px; max-height: 240px; overflow-y: auto; z-index: 99; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.9); scrollbar-gutter: stable; }
+
+    .dropdown-toggle {
+      width: 100%;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-bg);
+      color: var(--turquoise);
+      font-size: 0.85rem;
+      padding: 8px;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 105%;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border: 2px solid var(--turquoise);
+      border-radius: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 99;
+      padding: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.9);
+      scrollbar-gutter: stable;
+    }
+
     .dropdown-menu.show { display: block; }
-    .dropdown-search { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--purple-border); border-radius: 6px; padding: 6px 8px; font-size: 0.8rem; margin-bottom: 6px; outline: none; }
-    .dropdown-controls { display: flex; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--purple-border); }
-    .dropdown-controls button { padding: 3px 6px; font-size: 0.7rem; flex: 1; border-color: var(--magenta); color: #fff; }
-    .checkbox-item { display: flex; align-items: center; gap: 6px; padding: 4px; font-size: 0.8rem; cursor: pointer; border-radius: 4px; color: var(--text); }
+
+    .dropdown-search {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--purple-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+      outline: none;
+    }
+
+    .dropdown-controls {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--purple-border);
+    }
+
+    .dropdown-controls button {
+      padding: 3px 6px;
+      font-size: 0.7rem;
+      flex: 1;
+      border-color: var(--magenta);
+      color: #fff;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 4px;
+      color: var(--text);
+    }
+
     .checkbox-item:hover { background: var(--purple-border); }
     .checkbox-item input[type="checkbox"] { accent-color: var(--magenta); }
 
-    .game-row-section { scroll-snap-align: start; scroll-snap-stop: normal; scroll-margin-top: 10px; margin-bottom: 25px; display: flex; flex-direction: column; }
-    .game-grid-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; align-items: stretch; }
-    .game-card { background: var(--card-bg); border: 2px solid var(--purple-border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
-    .game-card.top-rated { border: 2px solid var(--yellow); box-shadow: 0 0 12px rgba(254, 228, 64, 0.25); }
-    .game-card:hover { transform: translateY(-4px); border-color: var(--turquoise); box-shadow: 0 8px 20px rgba(0, 245, 212, 0.3); }
+    .game-row-section {
+      scroll-snap-align: start;
+      scroll-snap-stop: normal;
+      scroll-margin-top: 10px;
+      margin-bottom: 25px;
+      display: flex;
+      flex-direction: column;
+    }
 
-    .card-img-wrapper { height: 200px; width: 100%; background: radial-gradient(circle, #1a083d 0%, #080214 100%); display: flex; align-items: center; justify-content: center; padding: 8px; border-bottom: 2px solid var(--purple-border); position: relative; flex-shrink: 0; }
-    .game-card.top-rated .card-img-wrapper { border-bottom: 2px solid var(--yellow); }
-    .card-img-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.7)); }
+    .game-grid-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
 
-    .card-award-badge { position: absolute; top: 8px; left: 8px; background: rgba(13, 2, 33, 0.85); border: 1px solid var(--yellow); font-size: 1rem; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; z-index: 10; }
-    .expansion-icon-btn { position: absolute; top: 8px; right: 8px; background: var(--yellow); color: #0d0221; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(254, 228, 64, 0.8); cursor: pointer; z-index: 10; transition: transform 0.2s ease, background 0.2s ease; }
-    .expansion-icon-btn svg { width: 14px; height: 14px; stroke: #0d0221; stroke-width: 3.5; stroke-linecap: round; }
-    .expansion-icon-btn:hover { transform: scale(1.15); background: #fff; }
-    .expansion-icon-btn:hover svg { stroke: var(--magenta); }
+    .game-card {
+      background: var(--card-bg);
+      border: 2px solid var(--purple-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
 
-    .card-content { padding: 14px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; gap: 8px; }
-    .game-title { font-size: 1.05rem; font-weight: 800; color: var(--yellow); line-height: 1.2; }
-    .game-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 8px; border-top: 1px solid var(--purple-border); font-size: 0.8rem; }
-    .game-card.top-rated .game-stats { border-top: 1px solid var(--yellow); }
-    .stat-badge { background: var(--panel-bg); color: var(--turquoise); padding: 4px 6px; border-radius: 4px; text-align: center; font-weight: 600; border: 1px solid var(--purple-border); }
-    .ratings-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--magenta); font-weight: 700; min-height: 20px; margin-top: auto; }
+    .game-card.top-rated {
+      border: 2px solid var(--yellow);
+      box-shadow: 0 0 12px rgba(254, 228, 64, 0.25);
+    }
 
-    .expansions-overlay { display: none; position: absolute; inset: 0; background: rgba(21, 8, 51, 0.98); backdrop-filter: blur(4px); z-index: 20; padding: 10px; flex-direction: column; overflow-y: auto; border-radius: 12px; }
-    .game-card.show-expansions .expansions-overlay { display: flex; }
-    .expansions-header { font-size: 0.75rem; font-weight: 900; color: var(--yellow); text-transform: uppercase; border-bottom: 2px dashed var(--magenta); padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; gap: 4px; }
-    .expansion-close-btn { background: var(--magenta); color: #fff; border: 1px solid var(--turquoise); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: bold; flex-shrink: 0; }
-    .expansion-close-btn:hover { background: var(--turquoise); color: #0d0221; }
-    .expansion-item { background: var(--panel-bg); border: 1px solid var(--purple-border); border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; font-size: 0.75rem; }
-    .expansion-title { font-weight: 800; color: var(--turquoise); margin-bottom: 2px; }
+    .game-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--turquoise);
+      box-shadow: 0 8px 20px rgba(0, 245, 212, 0.3);
+    }
 
-    .modal-overlay, .grid-overlay-container { display: none; position: fixed; inset: 0; background: rgba(13, 2, 33, 0.85); backdrop-filter: blur(6px); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
-    .modal-overlay.open, .grid-overlay-container.open { display: flex; }
-    .modal-card { background: var(--card-bg); border: 4px solid var(--yellow); border-radius: 16px; max-width: 550px; width: 100%; padding: 20px; box-shadow: 0 0 30px rgba(254, 228, 64, 0.4); position: relative; max-height: 90vh; overflow-y: auto; }
-    .modal-close-x { position: absolute; top: 12px; right: 12px; background: var(--magenta); color: #fff; border: 2px solid var(--yellow); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; cursor: pointer; z-index: 110; box-shadow: 0 0 8px rgba(247, 37, 133, 0.5); }
-    .modal-close-x:hover { background: var(--turquoise); color: #0d0221; border-color: var(--turquoise); }
-    .modal-title { color: var(--magenta); font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-right: 30px; }
-    .detail-section { margin-bottom: 12px; font-size: 0.85rem; color: var(--text-muted); }
-    .detail-section strong { color: var(--turquoise); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .meta-tags-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; background: rgba(31, 12, 72, 0.3); padding: 10px; border-radius: 8px; border: 1px solid var(--purple-border); }
-    .description-text { margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }
-    .description-text.expanded { display: block; overflow: visible; }
-    .read-more-btn { background: none; border: none; color: var(--yellow); font-size: 0.8rem; font-weight: bold; padding: 4px 0 0 0; cursor: pointer; text-decoration: underline; display: inline-block; }
-    .read-more-btn:hover { color: var(--turquoise); background: none; }
-    .clickable-tag { display: inline-block; background: transparent; color: var(--yellow); border: 1px solid var(--yellow); padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; margin: 2px; cursor: pointer; transition: all 0.2s ease; }
-    .clickable-tag:hover { background: rgba(254, 228, 64, 0.15); transform: translateY(-1px); }
-    .clickable-tag.active-tag { background: var(--turquoise); color: #0d0221; border-color: var(--turquoise); box-shadow: 0 0 8px rgba(0, 245, 212, 0.4); }
-    .clickable-tag.active-tag:hover { background: var(--magenta); color: #fff; border-color: var(--magenta); }
+    .award-ribbon {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--magenta);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--yellow);
+      z-index: 10;
+      font-weight: 800;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
 
-    .bgg-link-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 15px; padding: 10px; background: var(--panel-bg); color: var(--turquoise); border: 2px solid var(--turquoise); border-radius: 8px; font-weight: 800; text-transform: uppercase; text-decoration: none; letter-spacing: 1px; font-size: 0.85rem; transition: all 0.2s ease; }
-    .bgg-link-btn:hover { background: var(--turquoise); color: #0d0221; box-shadow: 0 0 12px rgba(0, 245, 212, 0.4); }
+    .not-rec-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: #d90429;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      z-index: 10;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
 
+    .card-img-wrapper {
+      height: 200px;
+      width: 100%;
+      background: radial-gradient(circle, #1a083d 0%, #080214 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      border-bottom: 2px solid var(--purple-border);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .game-card.top-rated .card-img-wrapper {
+      border-bottom: 2px solid var(--yellow);
+    }
+
+    .card-img-wrapper img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.7));
+    }
+
+    .expansion-icon-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--yellow);
+      color: #0d0221;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 8px rgba(254, 228, 64, 0.8);
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .expansion-icon-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: #0d0221;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+    }
+    .expansion-icon-btn:hover {
+      transform: scale(1.15);
+      background: #fff;
+    }
+    .expansion-icon-btn:hover svg {
+      stroke: var(--magenta);
+    }
+
+    .card-content {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .game-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1.2;
+    }
+
+    .game-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--purple-border);
+      font-size: 0.8rem;
+    }
+
+    .game-card.top-rated .game-stats {
+      border-top: 1px solid var(--yellow);
+    }
+
+    .stat-badge {
+      background: var(--panel-bg);
+      color: var(--turquoise);
+      padding: 4px 6px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 600;
+      border: 1px solid var(--purple-border);
+    }
+
+    .ratings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--magenta);
+      font-weight: 700;
+      min-height: 20px;
+      margin-top: auto;
+    }
+
+    .expansions-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(21, 8, 51, 0.98);
+      backdrop-filter: blur(4px);
+      z-index: 20;
+      padding: 10px;
+      flex-direction: column;
+      overflow-y: auto;
+      border-radius: 12px;
+    }
+    .game-card.show-expansions .expansions-overlay {
+      display: flex;
+    }
+
+    .expansions-header {
+      font-size: 0.75rem;
+      font-weight: 900;
+      color: var(--yellow);
+      text-transform: uppercase;
+      border-bottom: 2px dashed var(--magenta);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      white-space: nowrap;
+      gap: 4px;
+    }
+
+    .expansion-close-btn {
+      background: var(--magenta);
+      color: #fff;
+      border: 1px solid var(--turquoise);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .expansion-close-btn:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+    }
+
+    .expansion-item {
+      background: var(--panel-bg);
+      border: 1px solid var(--purple-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+    }
+
+    .expansion-title {
+      font-weight: 800;
+      color: var(--turquoise);
+      margin-bottom: 2px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 2, 33, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .grid-overlay-container {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 2, 33, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .grid-overlay-container.open { display: flex; }
+
+    .modal-card {
+      background: var(--card-bg);
+      border: 4px solid var(--yellow);
+      border-radius: 16px;
+      max-width: 550px;
+      width: 100%;
+      padding: 20px;
+      box-shadow: 0 0 30px rgba(254, 228, 64, 0.4);
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-close-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--magenta);
+      color: #fff;
+      border: 2px solid var(--yellow);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      z-index: 110;
+      box-shadow: 0 0 8px rgba(247, 37, 133, 0.5);
+    }
+    .modal-close-x:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+      border-color: var(--turquoise);
+    }
+
+    .modal-title {
+      color: var(--magenta);
+      font-size: 1.3rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      padding-right: 30px;
+    }
+
+    .detail-section {
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .detail-section strong {
+      color: var(--turquoise);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-tags-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+      background: rgba(31, 12, 72, 0.3);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--purple-border);
+    }
+
+    .description-text {
+      margin-top: 4px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 6;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .description-text.expanded {
+      display: block;
+      overflow: visible;
+    }
+
+    .read-more-btn {
+      background: none;
+      border: none;
+      color: var(--yellow);
+      font-size: 0.8rem;
+      font-weight: bold;
+      padding: 4px 0 0 0;
+      cursor: pointer;
+      text-decoration: underline;
+      display: inline-block;
+    }
+    .read-more-btn:hover {
+      color: var(--turquoise);
+      background: none;
+    }
+
+    .clickable-tag {
+      display: inline-block;
+      background: transparent;
+      color: var(--yellow);
+      border: 1px solid var(--yellow);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      margin: 2px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .clickable-tag:hover {
+      background: rgba(254, 228, 64, 0.15);
+      transform: translateY(-1px);
+    }
+    .clickable-tag.active-tag {
+      background: var(--turquoise);
+      color: #0d0221;
+      border-color: var(--turquoise);
+      box-shadow: 0 0 8px rgba(0, 245, 212, 0.4);
+    }
+    .clickable-tag.active-tag:hover {
+      background: var(--magenta);
+      color: #fff;
+      border-color: var(--magenta);
+    }
+
+    .bga-link-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--magenta);
+      color: #fff;
+      border: 2px solid var(--magenta);
+      border-radius: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-decoration: none;
+      letter-spacing: 1px;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+    .bga-link-btn:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+      border-color: var(--turquoise);
+      box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
+    }
+
+    .bgg-link-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--panel-bg);
+      color: var(--turquoise);
+      border: 2px solid var(--turquoise);
+      border-radius: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-decoration: none;
+      letter-spacing: 1px;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+    .bgg-link-btn:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+      box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
+    }
+
+    .modal-close-btn {
+      margin-top: 16px;
+      width: 100%;
+    }
+
+    /* Desktop visibility helpers for header button labels */
     .btn-text-play-desktop { display: inline; }
     .btn-text-play-mobile { display: none; }
     .btn-text-clear-desktop { display: inline; }
     .btn-text-clear-mobile { display: none; }
 
+    /* MOBILE OPTIMIZATIONS */
     @media (max-width: 600px) {
-      body { padding: 0 6px 6px 6px; }
-      header { padding: 6px 10px; gap: 6px; }
-      .header-left { width: 100%; justify-content: space-between; }
-      .header-left .meeple-logo { width: 28px; height: 28px; }
-      h1 { font-size: 0.95rem; letter-spacing: 0.5px; }
-      #toggle-filters-btn .filter-icon { display: none; }
-      .header-right-column { max-width: 100%; gap: 4px; align-items: stretch; }
-      .header-actions-top { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 4px; justify-content: stretch; }
-      .header-actions-top button, .header-actions-top select { width: 100%; text-align: center; padding: 4px 2px; font-size: 0.7rem; }
+      body {
+        padding: 0 6px 6px 6px;
+      }
+
+      header {
+        padding: 6px 10px;
+        gap: 6px;
+      }
+
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .header-left .meeple-logo {
+        width: 28px;
+        height: 28px;
+      }
+
+      h1 {
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+      }
+
+      #toggle-filters-btn .filter-icon {
+        display: none;
+      }
+
+      .header-right-column {
+        max-width: 100%;
+        gap: 4px;
+        align-items: stretch;
+      }
+
+      .header-actions-top {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr) auto;
+        gap: 4px;
+        justify-content: stretch;
+      }
+
+      .header-actions-top button,
+      .header-actions-top select {
+        width: 100%;
+        text-align: center;
+        padding: 4px 2px;
+        font-size: 0.7rem;
+      }
+
+      /* Switch header button labels on mobile */
       .btn-text-play-desktop { display: none; }
       .btn-text-play-mobile { display: inline; }
       .btn-text-clear-desktop { display: none; }
       .btn-text-clear-mobile { display: inline; }
-      .global-search-container { width: 100%; }
-      .global-search-input { padding: 4px 8px 4px 28px; font-size: 0.8rem; }
-      .global-search-icon { font-size: 0.75rem; left: 8px; }
-      .btn-clear-filters { display: inline-block; padding: 4px 6px; font-size: 0.7rem; }
-      .side-toolbar { position: fixed; top: 0; left: 0; width: 85vw; max-width: 320px; height: 100vh; max-height: 100vh; z-index: 200; border-radius: 0 12px 12px 0; box-shadow: 5px 0 25px rgba(0, 0, 0, 0.8); }
-      .sidebar-toggle-tab { display: none; }
-      .range-slider-container input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; }
-      .app-layout { margin-top: 6px; }
-      .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
-      .game-grid-row { gap: 6px; }
-      .game-card { border-width: 1px; }
-      .card-img-wrapper { height: 120px; padding: 4px; }
-      .card-content { padding: 6px; gap: 4px; }
-      .game-title { font-size: 0.78rem; }
-      .ratings-row { font-size: 0.65rem; min-height: 14px; }
-      .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
-      .stat-badge { padding: 2px; }
-      .expansion-icon-btn { width: 32px; height: 32px; top: 4px; right: 4px; }
-      .expansion-close-btn, .sidebar-close-btn { padding: 4px 6px; font-size: 0.7rem; }
-      .expansion-close-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; padding: 0; border-radius: 50%; }
-      .meta-tags-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+
+      .global-search-container {
+        width: 100%;
+      }
+
+      .global-search-input {
+        padding: 4px 8px 4px 28px;
+        font-size: 0.8rem;
+      }
+
+      .global-search-icon {
+        font-size: 0.75rem;
+        left: 8px;
+      }
+
+      .btn-clear-filters {
+        display: inline-block;
+        padding: 4px 6px;
+        font-size: 0.7rem;
+      }
+
+      .side-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 85vw;
+        max-width: 320px;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 200;
+        border-radius: 0 12px 12px 0;
+        box-shadow: 5px 0 25px rgba(0, 0, 0, 0.8);
+      }
+
+      .sidebar-toggle-tab {
+        display: none;
+      }
+
+      .range-slider-container input[type="range"]::-webkit-slider-thumb {
+        width: 26px;
+        height: 26px;
+      }
+
+      .app-layout {
+        margin-top: 6px;
+      }
+
+      .main-content {
+        height: calc(100vh - var(--header-height) - 12px);
+        padding-right: 0;
+      }
+
+      .game-grid-row {
+        gap: 6px;
+      }
+
+      .game-card {
+        border-width: 1px;
+      }
+
+      .card-img-wrapper {
+        height: 120px;
+        padding: 4px;
+      }
+
+      .card-content {
+        padding: 6px;
+        gap: 4px;
+      }
+
+      .game-title {
+        font-size: 0.78rem;
+      }
+
+      .ratings-row {
+        font-size: 0.65rem;
+        min-height: 14px;
+      }
+
+      .game-stats {
+        gap: 2px;
+        padding-top: 3px;
+        font-size: 0.62rem;
+      }
+
+      .stat-badge {
+        padding: 2px;
+      }
+
+      .expansion-icon-btn {
+        width: 32px;
+        height: 32px;
+        top: 4px;
+        right: 4px;
+      }
+
+      .expansion-close-btn, .sidebar-close-btn {
+        padding: 4px 6px;
+        font-size: 0.7rem;
+      }
+
+      .expansion-close-btn {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        padding: 0;
+        border-radius: 50%;
+      }
+
+      .meta-tags-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 8px;
+      }
     }
   </style>
 </head>
@@ -419,10 +1378,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <header id="main-header">
     <div class="header-left">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <svg class="meeple-logo" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg" fill="#fee440">
+        <svg class="meeple-logo" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg" fill="#fee440" style="vertical-align: middle;">
           <path fill="#fee440" d="M256 54.99c-27 0-46.418 14.287-57.633 32.23-10.03 16.047-14.203 34.66-15.017 50.962-30.608 15.135-64.515 30.394-91.815 45.994-14.32 8.183-26.805 16.414-36.203 25.26C45.934 218.28 39 228.24 39 239.99c0 5 2.44 9.075 5.19 12.065 2.754 2.99 6.054 5.312 9.812 7.48 7.515 4.336 16.99 7.95 27.412 11.076 15.483 4.646 32.823 8.1 47.9 9.577-14.996 25.84-34.953 49.574-52.447 72.315C56.65 378.785 39 403.99 39 431.99c0 4-.044 7.123.31 10.26.355 3.137 1.256 7.053 4.41 10.156 3.155 3.104 7.017 3.938 10.163 4.28 3.146.345 6.315.304 10.38.304h111.542c8.097 0 14.026.492 20.125-3.43 6.1-3.92 8.324-9.275 12.67-17.275l.088-.16.08-.166s9.723-19.77 21.324-39.388c5.8-9.808 12.097-19.576 17.574-26.498 2.74-3.46 5.304-6.204 7.15-7.754.564-.472.82-.56 1.184-.76.363.2.62.288 1.184.76 1.846 1.55 4.41 4.294 7.15 7.754 5.477 6.922 11.774 16.69 17.574 26.498 11.6 19.618 21.324 39.387 21.324 39.387l.08.165.088.16c4.346 8 6.55 13.323 12.61 17.254 6.058 3.93 11.974 3.45 19.957 3.45H448c4 0 7.12.043 10.244-.304 3.123-.347 6.998-1.21 10.12-4.332 3.12-3.122 3.984-6.997 4.33-10.12.348-3.122.306-6.244.306-10.244 0-28-17.65-53.205-37.867-79.488-17.493-22.74-37.45-46.474-52.447-72.315 15.077-1.478 32.417-4.93 47.9-9.576 10.422-3.125 19.897-6.74 27.412-11.075 3.758-2.168 7.058-4.49 9.81-7.48 2.753-2.99 5.192-7.065 5.192-12.065 0-11.75-6.934-21.71-16.332-30.554-9.398-8.846-21.883-17.077-36.203-25.26-27.3-15.6-61.207-30.86-91.815-45.994-.814-16.3-4.988-34.915-15.017-50.96C302.418 69.276 283 54.99 256 54.99z"></path>
         </svg>
         <h1>Rengaw's Meeples</h1>
+      </div>
+      <div class="global-search-container mobile-search-slot" style="display: none;">
+        <span class="global-search-icon">🔍</span>
+        <input type="text" id="global-search-mobile" class="global-search-input" placeholder="Search collection...">
       </div>
     </div>
 
@@ -563,7 +1526,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       <div class="filter-section" id="section-style">
         <div class="filter-section-header" onclick="toggleFilterSection('section-style')">
-          <span class="filter-section-title">🕹️ Style & Play Modes</span>
+          <span class="filter-section-title">🕹️ Style, Modes & Awards</span>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="filter-section-content">
@@ -589,17 +1552,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <input type="checkbox" id="filter-solo">
             Solo
           </label>
-        </div>
-      </div>
 
-      <!-- AWARDS & ACHIEVEMENTS FILTER BLOCK -->
-      <div class="filter-section" id="section-awards">
-        <div class="filter-section-header" onclick="toggleFilterSection('section-awards')">
-          <span class="filter-section-title">🏆 Awards & Achievements</span>
-          <span class="collapse-icon">▼</span>
-        </div>
-        <div class="filter-section-content">
-          <div id="awards-list" class="checkbox-grid"></div>
+          <div class="filter-group" style="margin-top: 6px;">
+            <label>Major Awards</label>
+            <div class="dropdown-container">
+              <button id="major-award-toggle" class="dropdown-toggle">All Major Awards <span>▼</span></button>
+              <div id="major-award-menu" class="dropdown-menu">
+                <input type="text" id="major-award-search" class="dropdown-search" placeholder="Search major awards...">
+                <div class="dropdown-controls">
+                  <button id="major-award-select-all">All</button>
+                  <button id="major-award-clear-all">Clear</button>
+                </div>
+                <div id="major-award-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Minor Awards</label>
+            <div class="dropdown-container">
+              <button id="minor-award-toggle" class="dropdown-toggle">All Minor Awards <span>▼</span></button>
+              <div id="minor-award-menu" class="dropdown-menu">
+                <input type="text" id="minor-award-search" class="dropdown-search" placeholder="Search minor awards...">
+                <div class="dropdown-controls">
+                  <button id="minor-award-select-all">All</button>
+                  <button id="minor-award-clear-all">Clear</button>
+                </div>
+                <div id="minor-award-list"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -707,25 +1690,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     </aside>
 
-    <main id="game-grid" class="main-content"></main>
+    <main id="game-grid" class="main-content">
+    </main>
 
   </div>
 
   <div id="detail-modal" class="grid-overlay-container">
-    <div class="modal-card">
+    <div class="modal-card" style="position: relative;">
       <div class="modal-close-x" onclick="closeDetailModal()">✕</div>
       <div id="detail-modal-content"></div>
     </div>
   </div>
 
   <div id="luck-modal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="position: relative;">
       <div class="modal-close-x" onclick="closeLuckModal()">✕</div>
       <div class="modal-title" style="text-align: center;">✨ Play Game ✨</div>
       <div id="modal-content"></div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button id="modal-try-again-btn" class="btn-luck" style="flex: 1; padding: 10px;">🎲 Try Again</button>
         <button id="modal-change-filters-btn" class="btn-primary" style="flex: 1; padding: 10px;">Filters</button>
+        <button id="modal-close-btn" class="btn-clear-filters" style="display: none;">Awesome!</button>
       </div>
     </div>
   </div>
@@ -739,7 +1724,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     let selectedPlayerCounts = new Set();
     let selectedStyles = new Set();
-    let selectedAwards = new Set();
+    let selectedMajorAwards = new Set();
+    let selectedMinorAwards = new Set();
     let selectedThemes = new Set();
     let selectedCategories = new Set();
     let selectedMechanics = new Set();
@@ -760,14 +1746,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const luckBtn = document.getElementById('luck-btn');
     const luckModal = document.getElementById('luck-modal');
     const modalContent = document.getElementById('modal-content');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalTryAgainBtn = document.getElementById('modal-try-again-btn');
     const modalChangeFiltersBtn = document.getElementById('modal-change-filters-btn');
     const detailModal = document.getElementById('detail-modal');
     const detailModalContent = document.getElementById('detail-modal-content');
     const globalSearch = document.getElementById('global-search');
+    const globalSearchMobile = document.getElementById('global-search-mobile');
 
-    if (globalSearch) {
-      globalSearch.addEventListener('input', handleSearch);
+    if (globalSearch && globalSearchMobile) {
+      globalSearch.addEventListener('input', (e) => { globalSearchMobile.value = e.target.value; handleSearch(); });
+      globalSearchMobile.addEventListener('input', (e) => { globalSearch.value = e.target.value; handleSearch(); });
     }
 
     function handleSearch() {
@@ -791,15 +1780,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function updateHeaderHeightVariable() {
       const headerElem = document.getElementById('main-header');
       if (headerElem) {
-        document.documentElement.style.setProperty('--header-height', `${headerElem.offsetHeight}px`);
+        const height = headerElem.offsetHeight;
+        document.documentElement.style.setProperty('--header-height', `${height}px`);
       }
     }
+
     window.addEventListener('resize', updateHeaderHeightVariable);
 
     function toggleSidebar() {
       toolbar.classList.toggle('collapsed');
       setTimeout(renderGames, 300);
     }
+
     toggleBtn.addEventListener('click', toggleSidebar);
 
     function toggleFilterSection(sectionId) {
@@ -823,35 +1815,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     luckBtn.addEventListener('click', triggerRandomGamePick);
     if (modalTryAgainBtn) modalTryAgainBtn.addEventListener('click', triggerRandomGamePick);
+    
     if (modalChangeFiltersBtn) {
       modalChangeFiltersBtn.addEventListener('click', () => {
         luckModal.classList.remove('open');
-        if (toolbar.classList.contains('collapsed')) toggleSidebar();
+        if (toolbar.classList.contains('collapsed')) {
+          toggleSidebar();
+        }
       });
     }
 
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
+
     function triggerRandomGamePick() {
       if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games match your current filters!</p>`;
+        modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games available with your current filter selection!</p>`;
       } else {
         const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        modalContent.innerHTML = createGameCardHTML(currentlyFilteredGames[randomIndex]);
+        const randomGame = currentlyFilteredGames[randomIndex];
+        modalContent.innerHTML = createGameCardHTML(randomGame);
       }
       luckModal.classList.add('open');
     }
 
-    function closeLuckModal() { luckModal.classList.remove('open'); }
-    function closeDetailModal() { detailModal.classList.remove('open'); currentDetailGame = null; }
+    modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
+    
+    function closeDetailModal() {
+      detailModal.classList.remove('open');
+      currentDetailGame = null;
+    }
 
     detailModal.addEventListener('click', (e) => {
-      if (e.target === detailModal) closeDetailModal();
+      if (e.target === detailModal) {
+        closeDetailModal();
+      }
     });
 
     window.addEventListener('keydown', (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-      if (e.key === 'Escape') {
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const scrollDelta = e.key === 'ArrowDown' ? 120 : -120;
+        grid.scrollBy({ top: scrollDelta, behavior: 'smooth' });
+      } else if (e.key === 'Escape') {
         closeDetailModal();
-        closeLuckModal();
+        luckModal.classList.remove('open');
       }
     });
 
@@ -868,10 +1877,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       filterCampaign.checked = false;
       filterSolo.checked = false;
       if (globalSearch) globalSearch.value = '';
+      if (globalSearchMobile) globalSearchMobile.value = '';
 
       selectedPlayerCounts.clear();
       selectedStyles.clear();
-      selectedAwards.clear();
+      selectedMajorAwards.clear();
+      selectedMinorAwards.clear();
       selectedThemes.clear();
       selectedCategories.clear();
       selectedMechanics.clear();
@@ -890,7 +1901,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       cMin.dispatchEvent(new Event('input'));
       grid.scrollTo({ top: 0, behavior: 'smooth' });
 
-      if (currentDetailGame) openDetailModal(currentDetailGame);
+      if (currentDetailGame) {
+        openDetailModal(currentDetailGame);
+      }
     }
 
     resetBtn.addEventListener('click', executeResetFilters);
@@ -916,6 +1929,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return 1998 + idx;
     }
 
+    function sliderIndexFromYear(yr) {
+      if (yr <= 0) return 0;
+      if (yr < 1990) return 0;
+      if (yr <= 1995) return 1;
+      if (yr <= 2000) return 2;
+      let idx = yr - 1998;
+      if (idx > 28) idx = 28;
+      if (idx < 0) idx = 0;
+      return idx;
+    }
+
     function formatYearLabel(minIdx, maxIdx) {
       const minStr = minIdx === 0 ? "<1990" : yearFromSliderIndex(minIdx, false);
       const maxStr = maxIdx >= 28 ? "2026+" : yearFromSliderIndex(maxIdx, true);
@@ -938,9 +1962,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         if (minV > maxV) {
           if (e && e.target === minElem) {
-            minElem.value = maxV; minV = maxV;
+            minElem.value = maxV;
+            minV = maxV;
           } else {
-            maxElem.value = minV; maxV = minV;
+            maxElem.value = minV;
+            maxV = minV;
           }
         }
 
@@ -954,6 +1980,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         valDisplay.textContent = formatFn(minV, maxV);
         renderGames();
+        grid.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
       minElem.addEventListener('input', update);
@@ -965,13 +1992,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateHeaderHeightVariable();
       try {
         const response = await fetch('/api/collection');
-        if (!response.ok) throw new Error("JSON endpoint status " + response.status);
+        if (!response.ok) throw new Error("JSON endpoint returned " + response.status);
         
         let rawData = await response.json();
 
         if (!Array.isArray(rawData)) {
           if (rawData.games && Array.isArray(rawData.games)) rawData = rawData.games;
           else if (rawData.collection && Array.isArray(rawData.collection)) rawData = rawData.collection;
+          else if (rawData.items && Array.isArray(rawData.items)) rawData = rawData.items;
           else rawData = Object.values(rawData);
         }
 
@@ -979,24 +2007,25 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           const parsedUserRating = parseFloat(g.user_rating);
           const parsedBggRating = parseFloat(g.bgg_rating);
           
-          const isExpansion = ["yes", "true", "1"].includes(String(g.is_expansion ?? "").trim().toLowerCase());
-          const isStandalone = ["yes", "true", "1"].includes(String(g.is_standalone ?? "").trim().toLowerCase());
+          const expCol = String(g.is_expansion ?? "").trim().toLowerCase();
+          const isExpansion = expCol === 'yes' || expCol === 'true' || expCol === '1' || g.is_expansion === true;
+
+          const saCol = String(g.is_standalone ?? "").trim().toLowerCase();
+          const isStandalone = saCol === 'yes' || saCol === 'true' || saCol === '1' || g.is_standalone === true;
+          
           const parentId = String(g.parent_game_id ?? "").trim();
 
-          let minP = clean_int(g.min_players, 1);
-          let maxP = clean_int(g.max_players, 4);
+          let minP = 1, maxP = 4;
+          if (g.min_players) {
+            minP = parseInt(g.min_players);
+            maxP = g.max_players ? parseInt(g.max_players) : minP;
+          }
 
           let cStr = String(g.conflict_level ?? "Medium").trim().toLowerCase();
           let cNum = conflictValToNum[cStr] || 2;
 
           let cStruct = String(g.campaign_structure ?? "").trim().toLowerCase();
           let isCampaign = cStruct !== "" && cStruct !== "none" && cStruct !== "n/a";
-
-          // Dynamically gather major and minor awards from Google Sheet columns
-          const parsedAwards = [
-            ...parseList(g.major_awards),
-            ...parseList(g.minor_awards)
-          ];
 
           return {
             ...g,
@@ -1008,9 +2037,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             parsedCategories: parseList(g.categories),
             parsedMechanics: parseList(g.mechanics),
             parsedThemes: parseList(g.themes),
+            parsedMajorAwards: parseList(g.major_awards),
+            parsedMinorAwards: parseList(g.minor_awards),
+            parsedCommRecPlayers: parseList(g.comm_rec_players).map(p => parseInt(p)).filter(p => !isNaN(p)),
             parsedDesigners: parseList(g.designer),
             parsedArtists: parseList(g.artist),
-            parsedAwards: parsedAwards,
             publisher: g.publisher ?? "Unknown",
             designer: g.designer ?? "Unknown",
             artist: g.artist ?? "Unknown",
@@ -1019,14 +2050,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             conflict_level_num: cNum,
             is_campaign: isCampaign,
             supports_one_off: g.supports_one_off === true,
-            plays_recorded: clean_int(g.plays_recorded, 0),
-            popularity_owned: clean_int(g.popularity_owned, 0),
+            plays_recorded: parseInt(g.plays_recorded ?? 0),
+            popularity_owned: parseInt(g.popularity_owned ?? 0),
             min_players: minP,
             max_players: maxP,
             playing_time_raw: g.playing_time_raw || String(g.playing_time || 0),
-            playing_time: clean_int(g.playing_time, 0),
-            weight: clean_float(g.weight, 0.0),
-            year: clean_int(g.year, 0),
+            playing_time: parseInt(g.playing_time ?? 0),
+            weight: parseFloat(g.weight ?? 0) || 0,
+            year: parseInt(g.year ?? 0) || 0,
             user_rating: (!isNaN(parsedUserRating) && parsedUserRating > 0) ? parsedUserRating : null,
             bgg_rating: (!isNaN(parsedBggRating) && parsedBggRating > 0) ? parsedBggRating : null
           };
@@ -1040,13 +2071,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             item.parsedExpansions = [];
             baseGamesMap[item.id] = item;
           }
-          if (item.is_expansion) expansionItems.push(item);
+          
+          if (item.is_expansion) {
+            expansionItems.push(item);
+          }
         });
 
         expansionItems.forEach(item => {
           let parent = baseGamesMap[item.parent_game_id];
           if (!parent && item.parent_game_id) {
-            parent = Object.values(baseGamesMap).find(bg => bg.cleanTitle.toLowerCase() === item.parent_game_id.toLowerCase());
+            parent = Object.values(baseGamesMap).find(bg => 
+              bg.cleanTitle.toLowerCase() === item.parent_game_id.toLowerCase()
+            );
           }
 
           if (parent) {
@@ -1062,11 +2098,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         games = Object.values(baseGamesMap);
 
       } catch (err) {
-        console.error("Could not fetch collection:", err);
+        console.error("Could not fetch /api/collection:", err);
       }
 
       if (!games || games.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.2rem; margin-top: 40px;">⚠️ Could not load games.</p>`;
+        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.2rem; margin-top: 40px;">⚠️ Could not load games from memory or json.</p>`;
         return;
       }
 
@@ -1087,17 +2123,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       setupDualSlider(cMin, cMax, cVal, cTrack, formatConflictLabel);
 
-      filterPlayed.addEventListener('change', renderGames);
-      filterUnplayed.addEventListener('change', renderGames);
-      filterCampaign.addEventListener('change', renderGames);
-      filterSolo.addEventListener('change', renderGames);
+      filterPlayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterUnplayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterCampaign.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+      filterSolo.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
 
       renderGames();
+      
+      setTimeout(() => {
+        grid.scrollTo({ top: 0 });
+      }, 50);
     }
 
     function setupMultiSelects() {
       const styles = new Set();
-      const awards = new Set();
+      const majorAwards = new Set();
+      const minorAwards = new Set();
       const themes = new Set();
       const categories = new Set();
       const mechanics = new Set();
@@ -1107,7 +2148,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       games.forEach(g => {
         if (g.game_mode) styles.add(g.game_mode);
-        g.parsedAwards.forEach(a => awards.add(a));
+        g.parsedMajorAwards.forEach(a => majorAwards.add(a));
+        g.parsedMinorAwards.forEach(a => minorAwards.add(a));
         g.parsedThemes.forEach(t => themes.add(t));
         g.parsedCategories.forEach(c => categories.add(c));
         g.parsedMechanics.forEach(m => mechanics.add(m));
@@ -1117,7 +2159,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
 
       renderStyleCheckboxes(styles);
-      renderAwardCheckboxes(awards);
+      renderCheckboxList('major-award-list', majorAwards, selectedMajorAwards, 'majoraward');
+      renderCheckboxList('minor-award-list', minorAwards, selectedMinorAwards, 'minoraward');
       renderCheckboxList('theme-list', themes, selectedThemes, 'theme');
       renderCheckboxList('cat-list', categories, selectedCategories, 'cat');
       renderCheckboxList('mech-list', mechanics, selectedMechanics, 'mech');
@@ -1125,6 +2168,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderCheckboxList('des-list', designers, selectedDesigners, 'des');
       renderCheckboxList('art-list', artists, selectedArtists, 'art');
 
+      setupDropdownToggle('major-award-toggle', 'major-award-menu');
+      setupDropdownToggle('minor-award-toggle', 'minor-award-menu');
       setupDropdownToggle('theme-toggle', 'theme-menu');
       setupDropdownToggle('cat-toggle', 'cat-menu');
       setupDropdownToggle('mech-toggle', 'mech-menu');
@@ -1132,6 +2177,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdownToggle('des-toggle', 'des-menu');
       setupDropdownToggle('art-toggle', 'art-menu');
 
+      setupDropdownSearch('major-award-search', 'major-award-list');
+      setupDropdownSearch('minor-award-search', 'minor-award-list');
       setupDropdownSearch('theme-search', 'theme-list');
       setupDropdownSearch('cat-search', 'cat-list');
       setupDropdownSearch('mech-search', 'mech-list');
@@ -1139,25 +2186,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdownSearch('des-search', 'des-list');
       setupDropdownSearch('art-search', 'art-list');
 
-      document.getElementById('theme-select-all').onclick = () => toggleAll('theme', themes, true);
-      document.getElementById('theme-clear-all').onclick = () => toggleAll('theme', themes, false);
-      document.getElementById('cat-select-all').onclick = () => toggleAll('cat', categories, true);
-      document.getElementById('cat-clear-all').onclick = () => toggleAll('cat', categories, false);
-      document.getElementById('mech-select-all').onclick = () => toggleAll('mech', mechanics, true);
-      document.getElementById('mech-clear-all').onclick = () => toggleAll('mech', mechanics, false);
-      document.getElementById('pub-select-all').onclick = () => toggleAll('pub', publishers, true);
-      document.getElementById('pub-clear-all').onclick = () => toggleAll('pub', publishers, false);
-      document.getElementById('des-select-all').onclick = () => toggleAll('des', designers, true);
-      document.getElementById('des-clear-all').onclick = () => toggleAll('des', designers, false);
-      document.getElementById('art-select-all').onclick = () => toggleAll('art', artists, true);
-      document.getElementById('art-clear-all').onclick = () => toggleAll('art', artists, false);
+      document.getElementById('major-award-select-all').onclick = () => { toggleAll('majoraward', majorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('major-award-clear-all').onclick = () => { toggleAll('majoraward', majorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('minor-award-select-all').onclick = () => { toggleAll('minoraward', minorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('minor-award-clear-all').onclick = () => { toggleAll('minoraward', minorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('theme-select-all').onclick = () => { toggleAll('theme', themes, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('theme-clear-all').onclick = () => { toggleAll('theme', themes, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('cat-select-all').onclick = () => { toggleAll('cat', categories, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('cat-clear-all').onclick = () => { toggleAll('cat', categories, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('mech-select-all').onclick = () => { toggleAll('mech', mechanics, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('mech-clear-all').onclick = () => { toggleAll('mech', mechanics, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('pub-select-all').onclick = () => { toggleAll('pub', publishers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('pub-clear-all').onclick = () => { toggleAll('pub', publishers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('des-select-all').onclick = () => { toggleAll('des', designers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('des-clear-all').onclick = () => { toggleAll('des', designers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('art-select-all').onclick = () => { toggleAll('art', artists, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+      document.getElementById('art-clear-all').onclick = () => { toggleAll('art', artists, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
     }
 
     function renderStyleCheckboxes(stylesSet) {
       const container = document.getElementById('style-list');
       container.innerHTML = Array.from(stylesSet).sort().map(style => `
         <label class="style-item">
-          <input type="checkbox" value="${style}" ${selectedStyles.has(style) ? 'checked' : ''}>
+          <input type="checkbox" value="${style}" data-style="${style}" ${selectedStyles.has(style) ? 'checked' : ''}>
           ${style}
         </label>
       `).join('');
@@ -1167,26 +2218,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           if (e.target.checked) selectedStyles.add(e.target.value);
           else selectedStyles.delete(e.target.value);
           renderGames();
-        };
-      });
-    }
-
-    function renderAwardCheckboxes(awardsSet) {
-      const container = document.getElementById('awards-list');
-      if (!container) return;
-      
-      container.innerHTML = Array.from(awardsSet).sort().map(award => `
-        <label class="style-item">
-          <input type="checkbox" value="${award}" ${selectedAwards.has(award) ? 'checked' : ''}>
-          🏆 ${award}
-        </label>
-      `).join('');
-
-      container.querySelectorAll('input').forEach(cb => {
-        cb.onchange = (e) => {
-          if (e.target.checked) selectedAwards.add(e.target.value);
-          else selectedAwards.delete(e.target.value);
-          renderGames();
+          grid.scrollTo({ top: 0, behavior: 'smooth' });
         };
       });
     }
@@ -1208,9 +2240,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       searchInput.addEventListener('click', (e) => e.stopPropagation());
       searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
-        const labels = document.getElementById(listId).querySelectorAll('.checkbox-item');
+        const listContainer = document.getElementById(listId);
+        const labels = listContainer.querySelectorAll('.checkbox-item');
         labels.forEach(label => {
-          label.style.display = label.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+          const text = label.textContent.toLowerCase();
+          label.style.display = text.includes(query) ? 'flex' : 'none';
         });
       });
     }
@@ -1229,13 +2263,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           if (e.target.checked) targetSet.add(e.target.value);
           else targetSet.delete(e.target.value);
           renderGames();
+          grid.scrollTo({ top: 0, behavior: 'smooth' });
         };
       });
     }
 
     function toggleAll(prefix, fullSet, check) {
       let targetSet;
-      if (prefix === 'theme') targetSet = selectedThemes;
+      if (prefix === 'majoraward') targetSet = selectedMajorAwards;
+      else if (prefix === 'minoraward') targetSet = selectedMinorAwards;
+      else if (prefix === 'theme') targetSet = selectedThemes;
       else if (prefix === 'cat') targetSet = selectedCategories;
       else if (prefix === 'mech') targetSet = selectedMechanics;
       else if (prefix === 'pub') targetSet = selectedPublishers;
@@ -1256,7 +2293,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         let valB = b[key];
 
         if (key === 'title') {
-          return isAscending ? a.cleanTitle.localeCompare(b.cleanTitle) : b.cleanTitle.localeCompare(a.cleanTitle);
+          valA = a.cleanTitle;
+          valB = b.cleanTitle;
+          return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
 
         if (valA === null || valA === undefined) return 1;
@@ -1271,9 +2310,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const minP = parseFloat(pMin.value), maxP = parseFloat(pMax.value);
       const minW = parseFloat(wMin.value), maxW = parseFloat(wMax.value);
-      const minMinutes = parseFloat(tMin.value), maxMinutes = parseFloat(tMax.value);
-      const minBgg = parseFloat(bMin.value), maxBgg = parseFloat(bMax.value);
-      const minLuke = parseFloat(lMin.value), maxLuke = parseFloat(lMax.value);
+      const minMinutes = parseFloat(tMin.value);
+      const maxMinutes = parseFloat(tMax.value);
+      const minBgg = parseFloat(bMin.value);
+      const maxBgg = parseFloat(bMax.value);
+      const minLuke = parseFloat(lMin.value);
+      const maxLuke = parseFloat(lMax.value);
 
       const minYear = yearFromSliderIndex(yMin.value, false);
       const maxYear = yearFromSliderIndex(yMax.value, true);
@@ -1285,7 +2327,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const reqUnplayed = filterUnplayed.checked;
       const reqCampaign = filterCampaign.checked;
       const reqSolo = filterSolo.checked;
-
       const globalQuery = (globalSearch ? globalSearch.value.trim().toLowerCase() : '');
 
       currentlyFilteredGames = games.filter(g => {
@@ -1300,13 +2341,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (reqPlayed && g.plays_recorded === 0) return false;
         if (reqUnplayed && g.plays_recorded > 0) return false;
 
-        const matchesPlayers = g.min_players <= maxP && g.max_players >= minP;
+        let matchesPlayers = false;
+        if (selectedPlayerCounts.size > 0) {
+          matchesPlayers = Array.from(selectedPlayerCounts).some(p => g.min_players <= p && g.max_players >= p);
+        } else {
+          matchesPlayers = g.min_players <= maxP && g.max_players >= minP;
+        }
+
         const matchesWeight = g.weight === 0 || (g.weight >= minW && g.weight <= maxW);
         const matchesTime = g.playing_time === 0 || (g.playing_time >= minMinutes && g.playing_time <= maxMinutes);
         
-        const matchesBgg = (g.bgg_rating !== null) ? (g.bgg_rating >= minBgg && g.bgg_rating <= maxBgg) : (minBgg <= 1.0);
-        const matchesLuke = (g.user_rating !== null) ? (g.user_rating >= minLuke && g.user_rating <= maxLuke) : (minLuke <= 1.0);
+        let matchesBgg = true;
+        if (g.bgg_rating !== null) {
+          matchesBgg = g.bgg_rating >= minBgg && g.bgg_rating <= maxBgg;
+        } else {
+          matchesBgg = (minBgg <= 1.0);
+        }
 
+        let matchesLuke = true;
+        if (g.user_rating !== null) {
+          matchesLuke = g.user_rating >= minLuke && g.user_rating <= maxLuke;
+        } else {
+          matchesLuke = (minLuke <= 1.0);
+        }
         let matchesYear = true;
         if (g.year > 0) {
           if (yMin.value == '0' && g.year < 1990) matchesYear = true;
@@ -1319,14 +2376,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (reqCampaign) {
           matchesCampaign = g.is_campaign;
         } else {
-          if (g.is_campaign && !g.supports_one_off) matchesCampaign = false;
+          if (g.is_campaign && !g.supports_one_off) {
+            matchesCampaign = false;
+          }
         }
         
         let matchesSolo = true;
-        if (!reqCampaign && reqSolo) matchesSolo = g.supports_one_off;
+        if (!reqCampaign && reqSolo) {
+          matchesSolo = g.supports_one_off;
+        }
 
         const matchesStyle = selectedStyles.size === 0 || selectedStyles.has(g.game_mode);
-        const matchesAward = selectedAwards.size === 0 || Array.from(selectedAwards).every(a => g.parsedAwards.includes(a));
+        
+        const matchesMajorAward = selectedMajorAwards.size === 0 || Array.from(selectedMajorAwards).every(a => g.parsedMajorAwards.includes(a));
+        const matchesMinorAward = selectedMinorAwards.size === 0 || Array.from(selectedMinorAwards).every(a => g.parsedMinorAwards.includes(a));
         const matchesTheme = selectedThemes.size === 0 || Array.from(selectedThemes).every(t => g.parsedThemes.includes(t));
         const matchesPub = selectedPublishers.size === 0 || selectedPublishers.has(g.publisher);
         const matchesDes = selectedDesigners.size === 0 || Array.from(selectedDesigners).every(d => g.parsedDesigners.includes(d));
@@ -1334,9 +2397,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const matchesCat = selectedCategories.size === 0 || Array.from(selectedCategories).every(c => g.parsedCategories.includes(c));
         const matchesMech = selectedMechanics.size === 0 || Array.from(selectedMechanics).every(m => g.parsedMechanics.includes(m));
 
-        return matchesPlayers && matchesWeight && matchesTime && matchesBgg && matchesLuke && matchesYear && 
-               matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesAward && 
-               matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
+        return matchesPlayers && matchesWeight && matchesTime && matchesBgg && matchesLuke && matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesMajorAward && matchesMinorAward && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
       });
 
       const sorted = sortGames(currentlyFilteredGames);
@@ -1351,12 +2412,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       if (!isMobile) {
         const gridWidth = grid.clientWidth || 1000;
-        itemsPerRow = Math.max(1, Math.floor((gridWidth + 20) / (220 + 20)));
+        const minCardWidth = 220;
+        const gap = 20;
+        itemsPerRow = Math.floor((gridWidth + gap) / (minCardWidth + gap));
+        if (itemsPerRow < 1) itemsPerRow = 1;
       }
 
       let rowsHTML = "";
+      
       for (let i = 0; i < sorted.length; i += itemsPerRow) {
         const rowGames = sorted.slice(i, i + itemsPerRow);
+        
         rowsHTML += `
           <div class="game-row-section">
             <div class="game-grid-row" style="${isMobile ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
@@ -1370,8 +2436,45 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       attachCardEventListeners();
     }
 
+    function attachCardEventListeners() {
+      document.querySelectorAll('.expansion-icon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const card = btn.closest('.game-card');
+          card.classList.add('show-expansions');
+        });
+      });
+
+      document.querySelectorAll('.expansions-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) {
+            overlay.closest('.game-card').classList.remove('show-expansions');
+          }
+        });
+      });
+
+      document.querySelectorAll('.expansion-close-btn').forEach(closeBtn => {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const card = closeBtn.closest('.game-card');
+          card.classList.remove('show-expansions');
+        });
+      });
+
+      document.querySelectorAll('.game-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
+          const gameId = card.getAttribute('data-id');
+          const game = games.find(g => g.id === gameId);
+          if (game) openDetailModal(game);
+        });
+      });
+    }
+
     function createGameCardHTML(g) {
       const title = g.cleanTitle;
+      const year = g.year > 0 ? g.year : "N/A";
+
       const userRatingVal = g.user_rating ? Math.round(g.user_rating) : null;
       const userRating = userRatingVal ? `⭐ Luke: ${userRatingVal}` : '';
       const bggRating = g.bgg_rating ? `🌐 BGG: ${g.bgg_rating.toFixed(1)}` : '🌐 BGG: N/A';
@@ -1387,10 +2490,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const timeDisplay = timeStr.toLowerCase().replace(/min/g, '').trim();
 
       const weight = g.weight > 0 ? g.weight.toFixed(1) : 'N/A';
-      const img = g.image || g.thumbnail || 'https://via.placeholder.com/300x200?text=No+Image';
+      const img = g.image ?? g.thumbnail ?? 'https://via.placeholder.com/300x200?text=No+Image';
 
-      const isSpielWinner = g.parsedAwards && g.parsedAwards.some(a => a.toLowerCase().includes('spiel'));
-      const awardBadgeHTML = isSpielWinner ? `<div class="card-award-badge" title="Spiel des Jahres Winner">🏆</div>` : '';
+      // Spiel / Kenner Spiel Award Ribbon Check
+      const allAwards = [...g.parsedMajorAwards, ...g.parsedMinorAwards].map(a => a.toLowerCase());
+      const isSpielWinner = allAwards.some(a => a.includes("spiel des jahres") || a.includes("kenner spiel des jahres"));
+      const ribbonHTML = isSpielWinner ? `<div class="award-ribbon" title="Spiel des Jahres / Kenner Winner">🎗️ Winner</div>` : '';
+
+      // Check Community Recommended player count warning
+      let notRecWarningHTML = '';
+      const filterPMin = parseInt(pMin.value);
+      const filterPMax = parseInt(pMax.value);
+      if (filterPMin === filterPMax && g.parsedCommRecPlayers.length > 0) {
+        if (!g.parsedCommRecPlayers.includes(filterPMin)) {
+          notRecWarningHTML = `<div class="not-rec-badge" title="Not community recommended for ${filterPMin} players">⚠️ Not Rec. for ${filterPMin}P</div>`;
+        }
+      }
 
       let expansionIconHTML = '';
       let expansionListHTML = '';
@@ -1398,7 +2513,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (g.parsedExpansions && g.parsedExpansions.length > 0) {
         expansionIconHTML = `
           <div class="expansion-icon-btn" title="View Expansions">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14"/></svg>
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
           </div>`;
         
         expansionListHTML = `
@@ -1407,135 +2524,219 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <span>🧩 Expansions (${g.parsedExpansions.length})</span>
               <button class="expansion-close-btn" title="Close Expansions">✕</button>
             </div>
-            ${g.parsedExpansions.map(ex => `
+            ${g.parsedExpansions.map(ex => {
+              const exRatingVal = ex.user_rating ? Math.round(ex.user_rating) : null;
+              const exRatingStr = exRatingVal ? `⭐ ${exRatingVal}` : (ex.bgg_rating ? `🌐 ${ex.bgg_rating.toFixed(1)}` : '');
+              const exWeightStr = ex.weight > 0 ? `⚖️ ${ex.weight.toFixed(1)}` : '';
+              return `
                 <div class="expansion-item">
                   <div class="expansion-title">${ex.title}</div>
-                  <div style="display:flex; justify-content:space-between; color: var(--text-muted);">
-                    <span>${ex.user_rating ? `⭐ ${Math.round(ex.user_rating)}` : (ex.bgg_rating ? `🌐 ${ex.bgg_rating.toFixed(1)}` : '')}</span>
-                    <span>${ex.weight > 0 ? `⚖️ ${ex.weight.toFixed(1)}` : ''}</span>
+                  <div style="display:flex; justify-content:space-between; color: var(--text-muted); font-size: 0.7rem;">
+                    <span>${exWeightStr}</span>
+                    <span style="color: var(--magenta); font-weight:700;">${exRatingStr}</span>
                   </div>
                 </div>
-              `).join('')}
-          </div>`;
+              `;
+            }).join('')}
+          </div>
+        `;
       }
 
       return `
         <div class="${cardClass}" data-id="${g.id}">
-          ${awardBadgeHTML}
-          ${expansionIconHTML}
+          ${expansionListHTML}
           <div class="card-img-wrapper">
-            <img src="${img}" alt="${title}" loading="lazy">
+            ${ribbonHTML}
+            ${notRecWarningHTML}
+            ${expansionIconHTML}
+            <img src="${img}" alt="${title}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
           </div>
           <div class="card-content">
             <div class="game-title">${title}</div>
-            <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}p</div>
-              <div class="stat-badge">⏱️ ${timeDisplay}m</div>
-              <div class="stat-badge">⚖️ ${weight}</div>
-              <div class="stat-badge">🎮 ${g.game_mode}</div>
-            </div>
             <div class="ratings-row">
-              <span>${userRating}</span>
               <span>${bggRating}</span>
+              <span>${userRating}</span>
+            </div>
+            <div class="game-stats">
+              <div class="stat-badge">👥 ${playerStr}</div>
+              <div class="stat-badge">⏱️ ${timeDisplay}</div>
+              <div class="stat-badge">⚖️ ${weight}</div>
+              <div class="stat-badge">📅 ${year}</div>
             </div>
           </div>
-          ${expansionListHTML}
         </div>
       `;
     }
 
-    function attachCardEventListeners() {
-      document.querySelectorAll('.expansion-icon-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          btn.closest('.game-card').classList.add('show-expansions');
-        });
-      });
-
-      document.querySelectorAll('.expansion-close-btn').forEach(closeBtn => {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          closeBtn.closest('.game-card').classList.remove('show-expansions');
-        });
-      });
-
-      document.querySelectorAll('.game-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
-          const game = games.find(g => g.id === card.getAttribute('data-id'));
-          if (game) openDetailModal(game);
-        });
-      });
+    function toggleDescription(btn) {
+      const descElem = btn.previousElementSibling;
+      descElem.classList.toggle('expanded');
+      if (descElem.classList.contains('expanded')) {
+        btn.textContent = 'Show Less';
+      } else {
+        btn.textContent = 'Read More';
+      }
     }
 
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      
-      const categoriesHTML = game.parsedCategories.map(c => 
-        `<span class="clickable-tag" onclick="filterByTag('cat', '${c}')">${c}</span>`
-      ).join('');
+    function toggleTagFilter(prefix, value) {
+      let targetSet;
+      if (prefix === 'majoraward') targetSet = selectedMajorAwards;
+      else if (prefix === 'minoraward') targetSet = selectedMinorAwards;
+      else if (prefix === 'theme') targetSet = selectedThemes;
+      else if (prefix === 'cat') targetSet = selectedCategories;
+      else if (prefix === 'mech') targetSet = selectedMechanics;
+      else if (prefix === 'pub') targetSet = selectedPublishers;
+      else if (prefix === 'des') targetSet = selectedDesigners;
+      else if (prefix === 'art') targetSet = selectedArtists;
 
-      const mechanicsHTML = game.parsedMechanics.map(m => 
-        `<span class="clickable-tag" onclick="filterByTag('mech', '${m}')">${m}</span>`
-      ).join('');
+      if (targetSet) {
+        if (targetSet.has(value)) {
+          targetSet.delete(value);
+        } else {
+          targetSet.add(value);
+        }
 
-      const themesHTML = game.parsedThemes.map(t => 
-        `<span class="clickable-tag" onclick="filterByTag('theme', '${t}')">${t}</span>`
-      ).join('');
+        const checkbox = document.querySelector(`input[data-prefix="${prefix}"][value="${CSS.escape(value)}"]`);
+        if (checkbox) {
+          checkbox.checked = targetSet.has(value);
+        }
 
-      const bgaHTML = game.bga_url ? `<a href="${game.bga_url}" target="_blank" class="bgg-link-btn">Play on Board Game Arena ↗</a>` : '';
+        renderGames();
+        if (currentDetailGame) {
+          openDetailModal(currentDetailGame);
+        }
+      }
+    }
+
+    function openDetailModal(g) {
+      currentDetailGame = g;
+      const title = g.cleanTitle;
+      const year = g.year > 0 ? g.year : "N/A";
+      const bggRating = g.bgg_rating ? g.bgg_rating.toFixed(1) : 'N/A';
+      const userRating = g.user_rating ? Math.round(g.user_rating) : 'N/A';
+      const weight = g.weight > 0 ? g.weight.toFixed(1) : 'N/A';
+      const img = g.image ?? g.thumbnail ?? 'https://via.placeholder.com/300x200?text=No+Image';
+
+      const minP = g.min_players;
+      const maxP = g.max_players;
+      const playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
+
+      // BGA Link Button
+      const bgaBtnHTML = g.bga_link ? `
+        <a href="${g.bga_link}" target="_blank" rel="noopener noreferrer" class="bga-link-btn">
+          ▶️ Play on Board Game Arena
+        </a>
+      ` : '';
+
+      // Community Rec Players Warning
+      let commRecHTML = '';
+      if (g.parsedCommRecPlayers.length > 0) {
+        commRecHTML = `
+          <div class="detail-section">
+            <strong>Community Rec. Players:</strong> ${g.parsedCommRecPlayers.join(', ')}
+          </div>
+        `;
+      }
+
+      // Awards HTML
+      let awardsHTML = '';
+      const hasMajor = g.parsedMajorAwards && g.parsedMajorAwards.length > 0;
+      const hasMinor = g.parsedMinorAwards && g.parsedMinorAwards.length > 0;
+
+      if (hasMajor || hasMinor) {
+        awardsHTML = `
+          <div class="detail-section">
+            <strong>Awards:</strong><br>
+            ${g.parsedMajorAwards.map(a => `
+              <span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('majoraward', '${a.replace(/'/g, "\\'")}')">🏆 ${a}</span>
+            `).join('')}
+            ${g.parsedMinorAwards.map(a => `
+              <span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minoraward', '${a.replace(/'/g, "\\'")}')">🎖️ ${a}</span>
+            `).join('')}
+          </div>
+        `;
+      }
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.cleanTitle} (${game.year > 0 ? game.year : 'N/A'})</div>
+        <div class="modal-title">${title} (${year})</div>
+        
+        <div style="text-align: center; margin-bottom: 15px;">
+          <img src="${img}" alt="${title}" style="max-width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);">
+        </div>
+
         <div class="meta-tags-grid">
-          <div><strong>Publisher:</strong> <span class="clickable-tag" onclick="filterByTag('pub', '${game.publisher}')">${game.publisher}</span></div>
-          <div><strong>Designer:</strong> ${game.parsedDesigners.map(d => `<span class="clickable-tag" onclick="filterByTag('des', '${d}')">${d}</span>`).join('')}</div>
-          <div><strong>Artist:</strong> ${game.parsedArtists.map(a => `<span class="clickable-tag" onclick="filterByTag('art', '${a}')">${a}</span>`).join('')}</div>
+          <div><strong>Luke's Rating:</strong> ⭐ ${userRating}</div>
+          <div><strong>BGG Geek Rating:</strong> 🌐 ${bggRating}</div>
+          <div><strong>Players:</strong> 👥 ${playerStr}</div>
+          <div><strong>Playtime:</strong> ⏱️ ${g.playing_time_raw || g.playing_time} min</div>
+          <div><strong>Weight:</strong> ⚖️ ${weight}</div>
+          <div><strong>Plays Recorded:</strong> 🎲 ${g.plays_recorded}</div>
         </div>
+
+        ${commRecHTML}
+        ${awardsHTML}
+
         <div class="detail-section">
-          <strong>Categories:</strong> <div>${categoriesHTML || 'None'}</div>
+          <strong>Publisher:</strong><br>
+          <span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>
         </div>
+
         <div class="detail-section">
-          <strong>Mechanics:</strong> <div>${mechanicsHTML || 'None'}</div>
+          <strong>Designer:</strong><br>
+          ${g.parsedDesigners.map(d => `
+            <span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>
+          `).join('')}
         </div>
+
         <div class="detail-section">
-          <strong>Themes:</strong> <div>${themesHTML || 'None'}</div>
+          <strong>Artist:</strong><br>
+          ${g.parsedArtists.map(a => `
+            <span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>
+          `).join('')}
         </div>
+
+        <div class="detail-section">
+          <strong>Themes:</strong><br>
+          ${g.parsedThemes.map(t => `
+            <span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>
+          `).join('')}
+        </div>
+
+        <div class="detail-section">
+          <strong>Categories:</strong><br>
+          ${g.parsedCategories.map(c => `
+            <span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>
+          `).join('')}
+        </div>
+
+        <div class="detail-section">
+          <strong>Mechanics:</strong><br>
+          ${g.parsedMechanics.map(m => `
+            <span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>
+          `).join('')}
+        </div>
+
         <div class="detail-section">
           <strong>Description:</strong>
-          <div id="modal-desc" class="description-text">${game.description}</div>
-          <button class="read-more-btn" onclick="toggleDescription()">Read More ▼</button>
+          <div class="description-text">${g.description}</div>
+          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
         </div>
-        ${bgaHTML}
+
+        ${bgaBtnHTML}
+
+        <a href="https://boardgamegeek.com/boardgame/${g.id}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
+          🔗 View on BoardGameGeek
+        </a>
       `;
 
       detailModal.classList.add('open');
     }
 
-    function toggleDescription() {
-      const desc = document.getElementById('modal-desc');
-      const btn = event.target;
-      desc.classList.toggle('expanded');
-      btn.textContent = desc.classList.contains('expanded') ? 'Read Less ▲' : 'Read More ▼';
-    }
-
-    function filterByTag(prefix, val) {
-      if (prefix === 'cat') selectedCategories.add(val);
-      if (prefix === 'mech') selectedMechanics.add(val);
-      if (prefix === 'theme') selectedThemes.add(val);
-      if (prefix === 'pub') selectedPublishers.add(val);
-      if (prefix === 'des') selectedDesigners.add(val);
-      if (prefix === 'art') selectedArtists.add(val);
-      
-      closeDetailModal();
-      renderGames();
-    }
-
-    window.onload = loadCollection;
+    document.addEventListener('DOMContentLoaded', loadCollection);
   </script>
 </body>
 </html>
 """
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
