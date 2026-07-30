@@ -2375,299 +2375,225 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         
         rowsHTML += `
           <div class="game-row-section">
-            <div class="game-grid-row" style="${isMobile ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
-              ${rowGames.map(g => createGameCardHTML(g)).join('')}
+            <div class="game-grid-row">
+              ${rowGames.map(game => createGameCardHTML(game)).join('')}
             </div>
           </div>
         `;
       }
 
       grid.innerHTML = rowsHTML;
-      attachCardEventListeners();
+      attachCardEvents();
     }
 
-    function attachCardEventListeners() {
-      document.querySelectorAll('.expansion-icon-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const card = btn.closest('.game-card');
-          card.classList.add('show-expansions');
-        });
-      });
+    function createGameCardHTML(game) {
+      const isTopRated = (game.user_rating !== null && game.user_rating >= 8.0) || (game.bgg_rating !== null && game.bgg_rating >= 8.0);
+      const hasRibbon = game.major_awards && game.major_awards.trim() !== "";
+      const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
 
-      document.querySelectorAll('.expansions-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
-          if (e.target === overlay) {
-            overlay.closest('.game-card').classList.remove('show-expansions');
-          }
-        });
-      });
+      const thumbUrl = game.thumbnail || game.image || '';
 
-      document.querySelectorAll('.expansion-close-btn').forEach(closeBtn => {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const card = closeBtn.closest('.game-card');
-          card.classList.remove('show-expansions');
-        });
-      });
+      return `
+        <div class="game-card ${isTopRated ? 'top-rated' : ''}" data-id="${game.id}">
+          ${hasRibbon ? `<div class="award-ribbon" title="Award Winner">🏆</div>` : ''}
+          ${hasExpansions ? `
+            <div class="expansion-icon-btn" onclick="event.stopPropagation(); toggleExpansionsCard(this)" title="View Expansions">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5V19M5 12H19" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          ` : ''}
+          <div class="card-img-wrapper">
+            ${thumbUrl ? `<img src="${thumbUrl}" alt="${game.cleanTitle}" loading="lazy">` : `<span style="font-size: 2rem;">🎲</span>`}
+          </div>
+          <div class="card-content">
+            <div>
+              <div class="game-title">${game.cleanTitle}</div>
+            </div>
+            <div class="game-stats">
+              <div class="stat-badge">👥 ${game.min_players}-${game.max_players}p</div>
+              <div class="stat-badge">⏱️ ${game.playing_time}m</div>
+              <div class="stat-badge">⚖️ ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
+              <div class="stat-badge">📅 ${game.year > 0 ? game.year : 'N/A'}</div>
+            </div>
+            <div class="ratings-row">
+              <span>⭐ Luke: ${game.user_rating !== null ? game.user_rating.toFixed(1) : 'N/A'}</span>
+              <span> geek: ${game.bgg_rating !== null ? game.bgg_rating.toFixed(1) : 'N/A'}</span>
+            </div>
+          </div>
+          ${hasExpansions ? `
+            <div class="expansions-overlay">
+              <div class="expansions-header">
+                <span>📦 Expansions (${game.parsedExpansions.length})</span>
+                <button class="expansion-close-btn" onclick="event.stopPropagation(); closeExpansionsCard(this)">✕</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                ${game.parsedExpansions.map(exp => `
+                  <div class="expansion-item">
+                    <div class="expansion-title">${exp.title}</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                      <span>⚖️ ${exp.weight > 0 ? exp.weight.toFixed(1) : 'N/A'}</span>
+                      <span>⭐ ${exp.user_rating !== null ? exp.user_rating.toFixed(1) : 'N/A'}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
 
+    function toggleExpansionsCard(btn) {
+      const card = btn.closest('.game-card');
+      card.classList.add('show-expansions');
+    }
+
+    function closeExpansionsCard(btn) {
+      const card = btn.closest('.game-card');
+      card.classList.remove('show-expansions');
+    }
+
+    function attachCardEvents() {
       document.querySelectorAll('.game-card').forEach(card => {
         card.addEventListener('click', (e) => {
           if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
-          const gameId = card.getAttribute('data-id');
-          const game = games.find(g => g.id === gameId);
+          const id = card.getAttribute('data-id');
+          const game = games.find(g => g.id === id);
           if (game) openDetailModal(game);
         });
       });
     }
 
-    function createGameCardHTML(g) {
-      const title = g.cleanTitle;
-      const year = g.year > 0 ? g.year : "N/A";
-
-      const userRatingVal = g.user_rating ? Math.round(g.user_rating) : null;
-      const userRating = userRatingVal ? `⭐ Luke: ${userRatingVal}` : '';
-      const bggRating = g.bgg_rating ? `🌐 BGG Geek: ${g.bgg_rating.toFixed(1)}` : '🌐 BGG Geek: N/A';
-
-      const isTopRated = userRatingVal !== null && [8, 9, 10].includes(userRatingVal);
-      const cardClass = isTopRated ? "game-card top-rated" : "game-card";
-
-      const minP = g.min_players;
-      const maxP = g.max_players;
-      const playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
-      
-      const timeStr = g.playing_time_raw ? `${g.playing_time_raw}` : `${g.playing_time}`;
-      const timeDisplay = timeStr.toLowerCase().replace(/min/g, '').trim();
-
-      const weight = g.weight > 0 ? g.weight.toFixed(1) : 'N/A';
-      const img = g.image ?? g.thumbnail ?? 'https://via.placeholder.com/300x200?text=No+Image';
-
-      let awardRibbonHTML = '';
-      const hasSpiel = (g.major_awards && (g.major_awards.toLowerCase().includes('spiel') || g.major_awards.toLowerCase().includes('kenner'))) ||
-                       (g.minor_awards && (g.minor_awards.toLowerCase().includes('spiel') || g.minor_awards.toLowerCase().includes('kenner')));
-      if (hasSpiel) {
-        awardRibbonHTML = `<div class="award-ribbon" title="Spiel des Jahres Winner">🏆</div>`;
-      }
-
-      let expansionIconHTML = '';
-      let expansionListHTML = '';
-
-      if (g.parsedExpansions && g.parsedExpansions.length > 0) {
-        expansionIconHTML = `
-          <div class="expansion-icon-btn" title="View Expansions">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </div>`;
-        
-        expansionListHTML = `
-          <div class="expansions-overlay">
-            <div class="expansions-header">
-              <span>🧩 Expansions (${g.parsedExpansions.length})</span>
-              <button class="expansion-close-btn" title="Close Expansions">✕</button>
-            </div>
-            ${g.parsedExpansions.map(ex => {
-              const exRatingVal = ex.user_rating ? Math.round(ex.user_rating) : null;
-              const exRatingStr = exRatingVal ? `⭐ ${exRatingVal}` : (ex.bgg_rating ? `🌐 ${ex.bgg_rating.toFixed(1)}` : '');
-              const exWeightStr = ex.weight > 0 ? `⚖️ ${ex.weight.toFixed(1)}` : '';
-              return `
-                <div class="expansion-item">
-                  <div class="expansion-title">${ex.title}</div>
-                  <div style="display:flex; justify-content:space-between; color: var(--text-muted); font-size: 0.7rem;">
-                    <span>${exWeightStr}</span>
-                    <span style="color: var(--magenta); font-weight:700;">${exRatingStr}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `;
-      }
-
-      return `
-        <div class="${cardClass}" data-id="${g.id}">
-          ${expansionListHTML}
-          <div class="card-img-wrapper">
-            ${awardRibbonHTML}
-            ${expansionIconHTML}
-            <img src="${img}" alt="${title}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
-          </div>
-          <div class="card-content">
-            <div class="game-title">${title}</div>
-            <div class="ratings-row">
-              <span>${bggRating}</span>
-              <span>${userRating}</span>
-            </div>
-            <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}</div>
-              <div class="stat-badge">⏱️ ${timeDisplay}</div>
-              <div class="stat-badge">⚖️ ${weight}</div>
-              <div class="stat-badge">📅 ${year}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function toggleDescription(btn) {
-      const descElem = btn.previousElementSibling;
-      descElem.classList.toggle('expanded');
-      if (descElem.classList.contains('expanded')) {
-        btn.textContent = 'Show Less';
-      } else {
-        btn.textContent = 'Read More';
-      }
-    }
-
-    function toggleTagFilter(prefix, value) {
-      let targetSet;
-      if (prefix === 'theme') targetSet = selectedThemes;
-      else if (prefix === 'cat') targetSet = selectedCategories;
-      else if (prefix === 'mech') targetSet = selectedMechanics;
-      else if (prefix === 'pub') targetSet = selectedPublishers;
-      else if (prefix === 'des') targetSet = selectedDesigners;
-      else if (prefix === 'art') targetSet = selectedArtists;
-      else if (prefix === 'major-award') targetSet = selectedMajorAwards;
-      else if (prefix === 'minor-award') targetSet = selectedMinorAwards;
-
-      if (targetSet) {
-        if (targetSet.has(value)) {
-          targetSet.delete(value);
-        } else {
-          targetSet.add(value);
-        }
-
-        const checkbox = document.querySelector(`input[data-prefix="${prefix}"][value="${CSS.escape(value)}"]`);
-        if (checkbox) {
-          checkbox.checked = targetSet.has(value);
-        }
-
-        renderGames();
-        if (currentDetailGame) {
-          openDetailModal(currentDetailGame);
-        }
-      }
-    }
-
     function openDetailModal(game) {
       currentDetailGame = game;
+      const imgUrl = game.image || game.thumbnail || '';
       
-      let playerFilterActive = false;
-      let targetPlayerCount = null;
-      let communityWarningHTML = '';
-      
-      const currentMinP = parseInt(pMin.value);
-      const currentMaxP = parseInt(pMax.value);
-      if (currentMinP > 1 || currentMaxP < 10) {
-        if (currentMinP === currentMaxP) {
-          playerFilterActive = true;
-          targetPlayerCount = currentMinP;
-        }
-      }
-
-      if (playerFilterActive && targetPlayerCount !== null && game.community_rec_players) {
-        const commStr = game.community_rec_players.toLowerCase();
-        const supportsBox = targetPlayerCount >= game.min_players && targetPlayerCount <= game.max_players;
-        const isNotRecommended = commStr.includes('not recommended') && commStr.includes(targetPlayerCount.toString());
-        if (supportsBox && isNotRecommended) {
-          communityWarningHTML = `<div style="background: rgba(247, 37, 133, 0.2); border: 1px solid var(--magenta); color: var(--yellow); padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem;">⚠️ <strong>Community Warning:</strong> Played at ${targetPlayerCount}p is supported by the box count, but not recommended by the community!</div>`;
-        }
-      }
-
-      let awardsSectionHTML = '';
-      let hasAwards = false;
-      let awardTagsHTML = '';
-      
-      if (game.major_awards) {
-        hasAwards = true;
-        game.parsedMajorAwards.forEach(ma => {
-          const isActive = selectedMajorAwards.has(ma);
-          awardTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="toggleTagFilter('major-award', '${ma.replace(/'/g, "\\'")}')">🏆 ${ma}</span>`;
-        });
-      }
-      if (game.minor_awards) {
-        hasAwards = true;
-        game.parsedMinorAwards.forEach(mi => {
-          const isActive = selectedMinorAwards.has(mi);
-          awardTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="toggleTagFilter('minor-award', '${mi.replace(/'/g, "\\'")}')">🏅 ${mi}</span>`;
-        });
-      }
-
-      if (hasAwards) {
-        awardsSectionHTML = `
-          <div class="detail-section">
-            <strong>Major/Minor Awards:</strong><br>
-            <div style="margin-top: 4px;">${awardTagsHTML}</div>
-          </div>
-        `;
-      }
-
-      let bgaButtonHTML = '';
-      if (game.bga_link) {
-        bgaButtonHTML = `<a href="${game.bga_link}" target="_blank" class="bga-link-btn">🎮 Play on BGA</a>`;
-      }
-
-      let themesHTML = game.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t)?'active-tag':''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join('');
-      let catsHTML = game.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c)?'active-tag':''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join('');
-      let mechsHTML = game.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m)?'active-tag':''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join('');
-      
-      let pubHTML = game.publisher !== "Unknown" ? `<span class="clickable-tag ${selectedPublishers.has(game.publisher)?'active-tag':''}" onclick="toggleTagFilter('pub', '${game.publisher.replace(/'/g, "\\'")}')">${game.publisher}</span>` : 'Unknown';
-      let desHTML = game.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d)?'active-tag':''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(', ');
-      let artHTML = game.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a)?'active-tag':''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(', ');
-
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.cleanTitle} (${game.year > 0 ? game.year : 'N/A'})</div>
-        ${communityWarningHTML}
-        
-        <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: var(--panel-bg); padding: 8px; border-radius: 8px; border: 1px solid var(--purple-border);">
-          <div style="flex: 1; text-align: center; font-size: 0.85rem;">
-            <strong style="color: var(--magenta);">🌐 BGG Geek Rating:</strong><br>
-            <span style="font-size: 1.1rem; font-weight: 800; color: var(--yellow);">${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</span>
+        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+          ${imgUrl ? `<img src="${imgUrl}" alt="${game.cleanTitle}" style="width: 90px; height: 90px; object-fit: contain; background: var(--bg); border-radius: 8px; padding: 4px; border: 1px solid var(--purple-border);">` : ''}
+          <div>
+            <div class="modal-title" style="margin-bottom: 4px;">${game.cleanTitle}</div>
+            <div style="font-size: 0.85rem; color: var(--turquoise); font-weight: bold;">Publisher: ${game.publisher}</div>
           </div>
-          <div style="width: 1px; height: 30px; background: var(--purple-border);"></div>
-          <div style="flex: 1; text-align: center; font-size: 0.85rem;">
-            <strong style="color: var(--magenta);">⭐ Luke's Rating:</strong><br>
-            <span style="font-size: 1.1rem; font-weight: 800; color: var(--yellow);">${game.user_rating ? Math.round(game.user_rating) : 'Unrated'}</span>
-          </div>
-        </div>
-
-        ${awardsSectionHTML}
-
-        <div class="detail-section">
-          <strong>Publisher:</strong> ${pubHTML}
-        </div>
-        <div class="detail-section">
-          <strong>Designer(s):</strong> ${desHTML}
-        </div>
-        <div class="detail-section">
-          <strong>Artist(s):</strong> ${artHTML}
         </div>
 
         <div class="meta-tags-grid">
-          <div><strong>Players:</strong> ${game.min_players}-${game.max_players}</div>
-          <div><strong>Play Time:</strong> ${game.playing_time} min</div>
-          <div><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div><strong>Conflict:</strong> ${game.conflict_level}</div>
+          <div><strong>Designers:</strong><br><span style="color: var(--text);">${game.designer}</span></div>
+          <div><strong>Artists:</strong><br><span style="color: var(--text);">${game.artist}</span></div>
+          <div><strong>Game Mode:</strong><br><span style="color: var(--text);">${game.game_mode}</span></div>
+          <div><strong>Conflict Level:</strong><br><span style="color: var(--text);">${game.conflict_level}</span></div>
         </div>
-
-        ${themesHTML ? `<div class="detail-section"><strong>Themes:</strong><br>${themesHTML}</div>` : ''}
-        ${catsHTML ? `<div class="detail-section"><strong>Categories:</strong><br>${catsHTML}</div>` : ''}
-        ${mechsHTML ? `<div class="detail-section"><strong>Mechanics:</strong><br>${mechsHTML}</div>` : ''}
 
         <div class="detail-section">
           <strong>Description:</strong>
-          <div class="description-text">${game.description}</div>
-          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
+          <div id="modal-desc" class="description-text">${game.description}</div>
+          <button id="read-more-toggle" class="read-more-btn" onclick="toggleModalDescription()" style="display: none;">Read More</button>
         </div>
 
-        ${bgaButtonHTML}
-        <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
+        <div class="detail-section">
+          <strong>Themes:</strong><br>
+          <div style="margin-top: 4px;">
+            ${game.parsedThemes.length > 0 ? game.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="filterByTag('theme', '${t}')">${t}</span>`).join('') : '<span style="color: var(--text-muted);">None</span>'}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Categories:</strong><br>
+          <div style="margin-top: 4px;">
+            ${game.parsedCategories.length > 0 ? game.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="filterByTag('cat', '${c}')">${c}</span>`).join('') : '<span style="color: var(--text-muted);">None</span>'}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Mechanics:</strong><br>
+          <div style="margin-top: 4px;">
+            ${game.parsedMechanics.length > 0 ? game.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="filterByTag('mech', '${m}')">${m}</span>`).join('') : '<span style="color: var(--text-muted);">None</span>'}
+          </div>
+        </div>
+
+        ${game.major_awards ? `
+          <div class="detail-section">
+            <strong>Major Awards:</strong><br>
+            <div style="margin-top: 4px; color: var(--yellow);">${game.major_awards}</div>
+          </div>
+        ` : ''}
+
+        ${game.minor_awards ? `
+          <div class="detail-section">
+            <strong>Minor Awards:</strong><br>
+            <div style="margin-top: 4px; color: var(--yellow);">${game.minor_awards}</div>
+          </div>
+        ` : ''}
+
+        ${game.bgg_link ? `
+          <a href="${game.bgg_link}" target="_blank" class="bgg-link-btn">
+            <span>🔗 View on BoardGameGeek</span>
+          </a>
+        ` : ''}
+
+        ${game.bga_link ? `
+          <a href="${game.bga_link}" target="_blank" class="bga-link-btn">
+            <span>🌐 Play on Board Game Arena</span>
+          </a>
+        ` : ''}
       `;
 
       detailModal.classList.add('open');
+
+      setTimeout(() => {
+        const descElem = document.getElementById('modal-desc');
+        const readMoreBtn = document.getElementById('read-more-toggle');
+        if (descElem && readMoreBtn) {
+          if (descElem.scrollHeight > descElem.clientHeight || descElem.innerText.length > 250) {
+            readMoreBtn.style.display = 'inline-block';
+          } else {
+            readMoreBtn.style.display = 'none';
+          }
+        }
+      }, 50);
     }
 
-    window.onload = loadCollection;
+    function toggleModalDescription() {
+      const descElem = document.getElementById('modal-desc');
+      const btn = document.getElementById('read-more-toggle');
+      if (descElem.classList.contains('expanded')) {
+        descElem.classList.remove('expanded');
+        btn.textContent = 'Read More';
+      } else {
+        descElem.classList.add('expanded');
+        btn.textContent = 'Show Less';
+      }
+    }
+
+    function filterByTag(type, tagVal) {
+      let targetSet;
+      if (type === 'theme') targetSet = selectedThemes;
+      else if (type === 'cat') targetSet = selectedCategories;
+      else if (type === 'mech') targetSet = selectedMechanics;
+
+      if (targetSet.has(tagVal)) {
+        targetSet.delete(tagVal);
+      } else {
+        targetSet.add(tagVal);
+      }
+
+      const prefix = type === 'theme' ? 'theme' : (type === 'cat' ? 'cat' : 'mech');
+      document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(cb => {
+        if (cb.value === tagVal) cb.checked = targetSet.has(tagVal);
+      });
+
+      renderGames();
+      if (currentDetailGame) {
+        openDetailModal(currentDetailGame);
+      }
+    }
+
+    loadCollection();
   </script>
 </body>
 </html>
+"""
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
