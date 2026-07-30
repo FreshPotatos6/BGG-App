@@ -52,6 +52,22 @@ def get_row_value(row, keys, default="Unknown"):
                 return str(r_val).strip()
     return default
 
+def parse_player_count_string(val, default_min=1, default_max=4):
+    """Parses player count strings (e.g., '1-4', '2', '3-5 players') into min and max integers."""
+    if not val:
+        return default_min, default_max
+    
+    val_str = str(val).strip()
+    numbers = re.findall(r'\d+', val_str)
+    
+    if len(numbers) >= 2:
+        return int(numbers[0]), int(numbers[1])
+    elif len(numbers) == 1:
+        num = int(numbers[0])
+        return num, num
+    
+    return default_min, default_max
+
 def get_google_creds():
     """Retrieve Google credentials from Environment Variable or local credentials.json."""
     scope = [
@@ -119,6 +135,13 @@ def generate_json_from_sheet():
             artist_val = get_row_value(row, ["Artists", "Artist"], "Unknown")
             publisher_val = get_row_value(row, ["Publisher", "Publishers"], "Unknown")
 
+            box_players_raw = row.get("Box Player Count", "")
+            if box_players_raw is not None and str(box_players_raw).strip() != "":
+                min_p, max_p = parse_player_count_string(box_players_raw, 1, 4)
+            else:
+                min_p = clean_int(row.get("Min Players"), 1)
+                max_p = clean_int(row.get("Max Players"), max(min_p, 4))
+
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
                 "title": row.get("Title", "Unknown"),
@@ -137,8 +160,8 @@ def generate_json_from_sheet():
                 "is_expansion": is_expansion,
                 "is_standalone": is_standalone,
                 "parent_game_id": parent_ref,
-                "min_players": clean_int(row.get("Min Players", 1), 1),
-                "max_players": clean_int(row.get("Max Players", 4), 4),
+                "min_players": min_p,
+                "max_players": max_p,
                 "image": row.get("Full Image URL", ""),
                 "thumbnail": row.get("Thumbnail URL", ""),
                 "categories": [c.strip() for c in str(row.get("Categories", "")).split(",") if c.strip()],
@@ -816,19 +839,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       bottom: 8px;
       right: 8px;
-      background: var(--yellow);
-      color: #0d0221;
+      background: transparent;
+      color: var(--yellow);
       width: 28px;
       height: 28px;
-      border-radius: 50%;
+      border-radius: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--bg);
-      box-shadow: 0 0 8px rgba(254, 228, 64, 0.8);
-      font-size: 0.9rem;
+      border: none;
+      box-shadow: none;
+      font-size: 1.1rem;
       z-index: 10;
       pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
     }
 
     .card-content {
@@ -1845,11 +1869,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           
           const parentId = String(g.parent_game_id ?? "").trim();
 
-          let minP = 1, maxP = 4;
-          if (g.min_players) {
-            minP = parseInt(g.min_players);
-            maxP = g.max_players ? parseInt(g.max_players) : minP;
-          }
+          let minP = g.min_players ? parseInt(g.min_players) : 1;
+          let maxP = g.max_players ? parseInt(g.max_players) : 4;
 
           let cStr = String(g.conflict_level ?? "Medium").trim().toLowerCase();
           let cNum = conflictValToNum[cStr] || 2;
@@ -2325,62 +2346,61 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       if (g.parsedExpansions && g.parsedExpansions.length > 0) {
         expansionIconHTML = `
-          <div class="expansion-icon-btn" title="View Expansions">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14"/>
+          <button class="expansion-icon-btn" title="View Expansions (${g.parsedExpansions.length})">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19M5 12H19" stroke-width="3" stroke-linecap="round"/>
             </svg>
-          </div>`;
+          </button>
+        `;
         
         expansionListHTML = `
-          <div class="expansions-overlay">
+          <div class="expansions-overlay" onclick="event.stopPropagation();">
             <div class="expansions-header">
-              <span>🧩 Expansions (${g.parsedExpansions.length})</span>
-              <button class="expansion-close-btn" title="Close Expansions">✕</button>
+              <span>Expansions (${g.parsedExpansions.length})</span>
+              <button class="expansion-close-btn">✕ Close</button>
             </div>
-            ${g.parsedExpansions.map(ex => {
-              const exRatingVal = ex.user_rating ? Math.round(ex.user_rating) : null;
-              const exRatingStr = exRatingVal ? `⭐ ${exRatingVal}` : (ex.bgg_rating ? `🌐 ${ex.bgg_rating.toFixed(1)}` : '');
-              const exWeightStr = ex.weight > 0 ? `⚖️ ${ex.weight.toFixed(1)}` : '';
-              return `
+            <div style="display: flex; flexDirection: column; gap: 4px;">
+              ${g.parsedExpansions.map(exp => `
                 <div class="expansion-item">
-                  <div class="expansion-title">${ex.title}</div>
-                  <div style="display:flex; justify-content:space-between; color: var(--text-muted); font-size: 0.7rem;">
-                    <span>${exWeightStr}</span>
-                    <span style="color: var(--magenta); font-weight:700;">${exRatingStr}</span>
+                  <div class="expansion-title">${exp.title}</div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">
+                    Weight: ${exp.weight > 0 ? exp.weight.toFixed(1) : 'N/A'} | Luke: ${exp.user_rating ? Math.round(exp.user_rating) : 'N/A'}
                   </div>
                 </div>
-              `;
-            }).join('')}
+              `).join('')}
+            </div>
           </div>
         `;
       }
 
-      const allAwardsText = [...g.parsedMajorAwards, ...g.parsedMinorAwards].join(' ').toLowerCase();
-      const hasSpiel = allAwardsText.includes('spiel des jahres') || allAwardsText.includes('kenner spiel des jahres');
-      let medalIconHTML = '';
-      if (hasSpiel) {
-        medalIconHTML = `<div class="medal-icon-badge" title="Spiel Des Jahres Winner">🥇</div>`;
+      let medalBadgeHTML = '';
+      if (userRatingVal !== null && [8, 9, 10].includes(userRatingVal)) {
+        medalBadgeHTML = `<div class="medal-icon-badge" title="Top Rated (Luke's Rating: ${userRatingVal})">🏆</div>`;
       }
 
       return `
         <div class="${cardClass}" data-id="${g.id}">
-          ${expansionListHTML}
           <div class="card-img-wrapper">
+            <img src="${img}" alt="${title}" loading="lazy">
             ${expansionIconHTML}
-            ${medalIconHTML}
-            <img src="${img}" alt="${title}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+            ${medalBadgeHTML}
+            ${expansionListHTML}
           </div>
           <div class="card-content">
-            <div class="game-title">${title}</div>
-            <div class="ratings-row">
-              <span>${bggRating}</span>
-              <span>${userRating}</span>
+            <div>
+              <div class="game-title">${title}</div>
             </div>
+            
             <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}</div>
-              <div class="stat-badge">⏱️ ${timeDisplay}</div>
-              <div class="stat-badge">⚖️ ${weight}</div>
-              <div class="stat-badge">📅 ${year}</div>
+              <div class="stat-badge" title="Player Count">👥 ${playerStr}</div>
+              <div class="stat-badge" title="Playing Time">⏱️ ${timeDisplay}m</div>
+              <div class="stat-badge" title="Weight (Complexity)">⚖️ ${weight}</div>
+              <div class="stat-badge" title="Year Published">📅 ${year}</div>
+            </div>
+
+            <div class="ratings-row">
+              <span>${userRating}</span>
+              <span style="margin-left: auto;">${bggRating}</span>
             </div>
           </div>
         </div>
@@ -2391,88 +2411,145 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       currentDetailGame = game;
       const title = game.cleanTitle;
       const year = game.year > 0 ? game.year : "N/A";
-      const bggRating = game.bgg_rating ? game.bgg_rating.toFixed(1) : "N/A";
-      const userRating = game.user_rating ? Math.round(game.user_rating) : "N/A";
-      const weight = game.weight > 0 ? game.weight.toFixed(1) : "N/A";
-      const playtime = game.playing_time_raw || `${game.playing_time} min`;
+      const userRating = game.user_rating ? Math.round(game.user_rating) : 'N/A';
+      const bggRating = game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A';
+      const weight = game.weight > 0 ? game.weight.toFixed(1) : 'N/A';
+      const timeStr = game.playing_time_raw ? `${game.playing_time_raw} min` : `${game.playing_time} min`;
       const minP = game.min_players;
       const maxP = game.max_players;
-      const players = minP === maxP ? `${minP}` : `${minP} - ${maxP}`;
+      const playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
+      const img = game.image ?? game.thumbnail ?? 'https://via.placeholder.com/300x200?text=No+Image';
+      const conflictStr = conflictMap[game.conflict_level_num] || "Medium";
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${title} (${year})</div>
-        <div class="meta-tags-grid">
-          <div class="detail-section"><strong>BGG Rating:</strong> ${bggRating}</div>
-          <div class="detail-section"><strong>Luke's Rating:</strong> ${userRating}</div>
-          <div class="detail-section"><strong>Weight:</strong> ${weight}</div>
-          <div class="detail-section"><strong>Playtime:</strong> ${playtime}</div>
-          <div class="detail-section"><strong>Players:</strong> ${players}</div>
-          <div class="detail-section"><strong>Publisher:</strong> ${game.publisher}</div>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-start;">
+          <img src="${img}" alt="${title}" style="width: 140px; height: 140px; object-fit: contain; background: var(--panel-bg); border-radius: 8px; border: 2px solid var(--purple-border); padding: 4px; flex-shrink: 0;">
+          <div style="flex: 1; min-width: 200px;">
+            <div class="modal-title">${title}</div>
+            <div class="detail-section"><strong>Publisher:</strong> ${game.publisher}</div>
+            <div class="detail-section"><strong>Designers:</strong> ${game.designer}</div>
+            <div class="detail-section"><strong>Artists:</strong> ${game.artist}</div>
+          </div>
         </div>
-        <div class="detail-section">
-          <strong>Major Awards:</strong>
-          <div>${game.parsedMajorAwards.length > 0 ? game.parsedMajorAwards.map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major-award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join('') : '<span style="color:var(--text-muted)">None</span>'}</div>
+
+        <div class="meta-tags-grid" style="margin-top: 15px;">
+          <div class="detail-section" style="margin: 0;"><strong>Year:</strong> ${year}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Players:</strong> ${playerStr}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Playtime:</strong> ${timeStr}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Weight:</strong> ${weight}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Luke's Rating:</strong> ⭐ ${userRating}</div>
+          <div class="detail-section" style="margin: 0;"><strong>BGG Rating:</strong> 🌐 ${bggRating}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Conflict:</strong> ⚔️ ${conflictStr}</div>
+          <div class="detail-section" style="margin: 0;"><strong>Plays:</strong> 🎮 ${game.plays_recorded}</div>
         </div>
-        <div class="detail-section">
-          <strong>Minor Awards:</strong>
-          <div>${game.parsedMinorAwards.length > 0 ? game.parsedMinorAwards.map(a => `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor-award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join('') : '<span style="color:var(--text-muted)">None</span>'}</div>
-        </div>
-        <div class="detail-section">
-          <strong>Themes:</strong>
-          <div>${game.parsedThemes.length > 0 ? game.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join('') : '<span style="color:var(--text-muted)">None</span>'}</div>
-        </div>
-        <div class="detail-section">
-          <strong>Categories:</strong>
-          <div>${game.parsedCategories.length > 0 ? game.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join('') : '<span style="color:var(--text-muted)">None</span>'}</div>
-        </div>
-        <div class="detail-section">
-          <strong>Mechanics:</strong>
-          <div>${game.parsedMechanics.length > 0 ? game.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join('') : '<span style="color:var(--text-muted)">None</span>'}</div>
-        </div>
+
         <div class="detail-section">
           <strong>Description:</strong>
-          <div class="description-text">${game.description}</div>
-          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
+          <div id="modal-desc-text" class="description-text">${game.description}</div>
+          <button id="modal-read-more-btn" class="read-more-btn" style="display: none;" onclick="toggleModalDescription()">Read More</button>
         </div>
-        <a class="bgg-link-btn" href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank">View on BoardGameGeek ↗</a>
+
+        ${game.parsedThemes.length > 0 ? `
+          <div class="detail-section">
+            <strong>Themes:</strong>
+            <div style="margin-top: 4px;">${game.parsedThemes.map(t => `<span class="clickable-tag" onclick="filterByTag('theme', '${t}')">${t}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${game.parsedCategories.length > 0 ? `
+          <div class="detail-section">
+            <strong>Categories:</strong>
+            <div style="margin-top: 4px;">${game.parsedCategories.map(c => `<span class="clickable-tag" onclick="filterByTag('cat', '${c}')">${c}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${game.parsedMechanics.length > 0 ? `
+          <div class="detail-section">
+            <strong>Mechanics:</strong>
+            <div style="margin-top: 4px;">${game.parsedMechanics.map(m => `<span class="clickable-tag" onclick="filterByTag('mech', '${m}')">${m}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${game.parsedMajorAwards.length > 0 ? `
+          <div class="detail-section">
+            <strong>Major Awards:</strong>
+            <div style="margin-top: 4px;">${game.parsedMajorAwards.map(a => `<span class="clickable-tag" onclick="filterByTag('major-award', '${a}')">${a}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${game.parsedMinorAwards.length > 0 ? `
+          <div class="detail-section">
+            <strong>Minor Awards:</strong>
+            <div style="margin-top: 4px;">${game.parsedMinorAwards.map(a => `<span class="clickable-tag" onclick="filterByTag('minor-award', '${a}')">${a}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${game.id && !isNaN(game.id) ? `
+          <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
+            🔗 View on BoardGameGeek ↗
+          </a>
+        ` : ''}
       `;
+
       detailModal.classList.add('open');
+
+      setTimeout(() => {
+        const descEl = document.getElementById('modal-desc-text');
+        const btnEl = document.getElementById('modal-read-more-btn');
+        if (descEl && btnEl) {
+          if (descEl.scrollHeight > descEl.clientHeight) {
+            btnEl.style.display = 'inline-block';
+          }
+        }
+      }, 50);
     }
 
-    function toggleDescription(btn) {
-      const descElem = btn.previousElementSibling;
-      descElem.classList.toggle('expanded');
-      btn.textContent = descElem.classList.contains('expanded') ? 'Show Less' : 'Read More';
-    }
-
-    function toggleTagFilter(prefix, value) {
-      let targetSet;
-      if (prefix === 'major-award') targetSet = selectedMajorAwards;
-      else if (prefix === 'minor-award') targetSet = selectedMinorAwards;
-      else if (prefix === 'theme') targetSet = selectedThemes;
-      else if (prefix === 'cat') targetSet = selectedCategories;
-      else if (prefix === 'mech') targetSet = selectedMechanics;
-      else if (prefix === 'pub') targetSet = selectedPublishers;
-      else if (prefix === 'des') targetSet = selectedDesigners;
-      else if (prefix === 'art') targetSet = selectedArtists;
-
-      if (targetSet) {
-        if (targetSet.has(value)) targetSet.delete(value);
-        else targetSet.add(value);
-
-        const checkbox = document.querySelector(`input[data-prefix="${prefix}"][value="${CSS.escape(value)}"]`);
-        if (checkbox) checkbox.checked = targetSet.has(value);
-
-        renderGames();
-        if (currentDetailGame) openDetailModal(currentDetailGame);
+    function toggleModalDescription() {
+      const descEl = document.getElementById('modal-desc-text');
+      const btnEl = document.getElementById('modal-read-more-btn');
+      if (descEl.classList.contains('expanded')) {
+        descEl.classList.remove('expanded');
+        btnEl.textContent = 'Read More';
+      } else {
+        descEl.classList.add('expanded');
+        btnEl.textContent = 'Show Less';
       }
     }
 
-    loadCollection();
+    function filterByTag(type, value) {
+      closeDetailModal();
+      if (toolbar.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+
+      if (type === 'theme') {
+        selectedThemes.clear();
+        selectedThemes.add(value);
+        document.querySelectorAll('input[data-prefix="theme"]').forEach(cb => cb.checked = (cb.value === value));
+      } else if (type === 'cat') {
+        selectedCategories.clear();
+        selectedCategories.add(value);
+        document.querySelectorAll('input[data-prefix="cat"]').forEach(cb => cb.checked = (cb.value === value));
+      } else if (type === 'mech') {
+        selectedMechanics.clear();
+        selectedMechanics.add(value);
+        document.querySelectorAll('input[data-prefix="mech"]').forEach(cb => cb.checked = (cb.value === value));
+      } else if (type === 'major-award') {
+        selectedMajorAwards.clear();
+        selectedMajorAwards.add(value);
+        document.querySelectorAll('input[data-prefix="major-award"]').forEach(cb => cb.checked = (cb.value === value));
+      } else if (type === 'minor-award') {
+        selectedMinorAwards.clear();
+        selectedMinorAwards.add(value);
+        document.querySelectorAll('input[data-prefix="minor-award"]').forEach(cb => cb.checked = (cb.value === value));
+      }
+
+      renderGames();
+      grid.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.onload = loadCollection;
   </script>
 </body>
 </html>
 """
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
