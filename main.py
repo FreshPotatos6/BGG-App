@@ -2611,7 +2611,6 @@ function openDetailModal(g) {
       <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
         🌐 View on BGG
       </a>
-        ` : ''}
       `;
 
       detailModal.classList.add('open');
@@ -2675,4 +2674,3 @@ function openDetailModal(g) {
   </script>
 </body>
 </html>
-"""
