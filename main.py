@@ -2351,12 +2351,6 @@ function createGameCardHTML(g) {
   return lower.includes('spiel des jahres') || lower.includes('kennerspiel des jahres');
 });
 
-const medalBadgeHTML = hasSdJ 
-  ? `<div class="medal-icon-badge" title="Spiel / Kennerspiel des Jahres Winner">🎖️</div>` 
-  : '';
-
-
-
 
   // 1. Expansions + Button Logic
   let expansionIconHTML = '';
