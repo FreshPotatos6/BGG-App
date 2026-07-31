@@ -809,6 +809,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.7));
     }
 
+    .image-badges-top-left {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .score-badge-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      border: 2px solid var(--bg);
+    }
+    .score-badge-bgg {
+      background: var(--turquoise);
+      color: #0d0221;
+    }
+    .score-badge-luke {
+      background: var(--yellow);
+      color: #0d0221;
+    }
+
     .expansion-icon-btn {
       position: absolute;
       top: 8px;
@@ -824,9 +855,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       justify-content: center;
     }
     .expansion-icon-btn svg {
-      width: 26px;
-      height: 26px;
-      filter: drop-shadow(0 0 4px rgba(254, 228, 64, 0.8));
+      width: 28px;
+      height: 28px;
+      fill: var(--turquoise);
+      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
     }
     .expansion-icon-btn:hover {
       transform: scale(1.2);
@@ -891,38 +923,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       border: 1px solid var(--purple-border);
     }
 
-    .ratings-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.82rem;
-      font-weight: 700;
-      min-height: 20px;
-      margin-bottom: 4px;
-    }
-
-    .rating-bgg {
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .rating-luke {
-      color: var(--yellow);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
     .expansions-overlay {
       display: none;
       position: absolute;
       inset: 0;
       background: rgba(21, 8, 51, 0.98);
       backdrop-filter: blur(4px);
-      z-index: 20;
-      padding: 10px;
+      z-index: 25;
+      padding: 12px;
       flex-direction: column;
       overflow-y: auto;
       overflow-x: hidden;
@@ -933,12 +941,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     .expansions-header {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 900;
       color: var(--yellow);
       text-transform: uppercase;
       border-bottom: 2px dashed var(--magenta);
-      padding-bottom: 4px;
+      padding-bottom: 6px;
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
@@ -1161,11 +1169,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
     }
 
-    .modal-close-btn {
-      margin-top: 16px;
-      width: 100%;
-    }
-
     .btn-text-play-desktop { display: inline; }
     .btn-text-play-mobile { display: none; }
     .btn-text-clear-desktop { display: inline; }
@@ -1255,9 +1258,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .card-img-wrapper { height: 120px; padding: 4px; }
       .card-content { padding: 6px; gap: 4px; }
       .game-title { font-size: 0.78rem; }
-      .ratings-row { font-size: 0.65rem; min-height: 14px; margin-bottom: 2px; }
       .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
       .stat-badge { padding: 2px; }
+      .score-badge-circle { width: 24px; height: 24px; font-size: 0.6rem; }
       .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.7rem; top: 4px; right: 4px; }
       .medal-icon-badge { bottom: 4px; right: 4px; top: auto; }
       .expansion-close-btn, .sidebar-close-btn { padding: 4px 6px; font-size: 0.7rem; }
@@ -1283,7 +1286,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="luck-btn" class="btn-luck" title="Play Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Play Game</span><span class="btn-text-play-mobile">Play</span></button>
+        <button id="luck-btn" class="btn-luck" title="Pick Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Pick Game</span><span class="btn-text-play-mobile">Pick</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="btn-icon">⚙️ </span>Filters</button>
         <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
         <select id="sort-select">
@@ -1400,7 +1403,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             </div>
           </div>
 
-          <div class="filter-group">
+          <div class="filter-group" style="display:none;">
             <div class="filter-label-header">
               <label>Conflict Level</label>
               <span id="conflict-val" class="value-display">Low - High</span>
@@ -1604,7 +1607,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div id="luck-modal" class="modal-overlay">
     <div class="modal-card" style="position: relative;">
       <div class="modal-close-x" onclick="closeLuckModal()">✕</div>
-      <div class="modal-title" style="text-align: center;">✨ Play Game ✨</div>
+      <div class="modal-title" style="text-align: center;">✨ Pick Game ✨</div>
       <div id="modal-content"></div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button id="modal-try-again-btn" class="btn-luck" style="flex: 1; padding: 10px;">🎲 Try Again</button>
@@ -1730,6 +1733,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       luckModal.classList.remove('open');
     }
 
+    luckModal.addEventListener('click', (e) => {
+      if (e.target === luckModal) {
+        closeLuckModal();
+      }
+    });
+
     function triggerRandomGamePick() {
       if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
         modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games available with your current filter selection!</p>`;
@@ -1746,12 +1755,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
       const playerStr = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
       
-      const bggHtml = game.bgg_rating ? `<span class="rating-bgg" title="BGG Rating">🎲 ${game.bgg_rating.toFixed(1)}</span>` : '<span></span>';
-      const lukeHtml = game.user_rating !== null ? `<span class="rating-luke" title="Luke's Rating">⭐ ${game.user_rating.toFixed(1)}</span>` : '<span></span>';
+      const bggHtml = game.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${game.bgg_rating.toFixed(1)}</span>` : '';
+      const lukeHtml = game.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${game.user_rating.toFixed(1)}</span>` : '';
 
       detailModalContent.innerHTML = `
         <div class="modal-title">${game.cleanTitle} (${game.year || 'N/A'})</div>
-        <div class="ratings-row" style="font-size: 1rem; margin-bottom: 12px;">
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
           ${bggHtml}
           ${lukeHtml}
         </div>
@@ -1759,7 +1768,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="detail-section"><strong>Players:</strong> 👥 ${playerStr}</div>
           <div class="detail-section"><strong>Playtime:</strong> ⏱️ ${game.playing_time}</div>
           <div class="detail-section"><strong>Weight:</strong> ⚖️ ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section"><strong>Conflict:</strong> ⚔️ ${conflictMap[game.conflict_level_num] || 'Medium'}</div>
           <div class="detail-section"><strong>Mode:</strong> ${game.game_mode}</div>
           <div class="detail-section"><strong>Plays:</strong> 🎲 ${game.plays_recorded}</div>
         </div>
@@ -1936,17 +1944,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (idx === 1) return isMax ? 1995 : 1990;
       if (idx === 2) return isMax ? 2000 : 1996;
       return 1998 + idx;
-    }
-
-    function sliderIndexFromYear(yr) {
-      if (yr <= 0) return 0;
-      if (yr < 1990) return 0;
-      if (yr <= 1995) return 1;
-      if (yr <= 2000) return 2;
-      let idx = yr - 1998;
-      if (idx > 28) idx = 28;
-      if (idx < 0) idx = 0;
-      return idx;
     }
 
     function formatYearLabel(minIdx, maxIdx) {
@@ -2310,6 +2307,70 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
+    function createGameCardHTML(g) {
+      const playerStr = g.min_players === g.max_players ? `${g.min_players}` : `${g.min_players}-${g.max_players}`;
+      const timeStr = g.playing_time ? `${g.playing_time}'` : 'N/A';
+      const weightStr = g.weight ? g.weight.toFixed(1) : 'N/A';
+      const yearStr = g.year ? `${g.year}` : 'N/A';
+
+      const hasExp = g.parsedExpansions && g.parsedExpansions.length > 0;
+      const topRatedClass = (g.user_rating && g.user_rating >= 8.5) || (g.bgg_rating && g.bgg_rating >= 8.0) ? 'top-rated' : '';
+      
+      const bggCircle = g.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${g.bgg_rating.toFixed(1)}</span>` : '';
+      const lukeCircle = g.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${g.user_rating.toFixed(1)}</span>` : '';
+
+      return `
+        <div class="game-card ${topRatedClass}" data-id="${g.id}">
+          <div class="card-img-wrapper" onclick="openDetailModal(games.find(x => x.id === '${g.id}'))">
+            <div class="image-badges-top-left">
+              ${bggCircle}
+              ${lukeCircle}
+            </div>
+            ${hasExp ? `
+              <button class="expansion-icon-btn" onclick="event.stopPropagation(); toggleCardExpansions('${g.id}')" title="View Expansions">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              </button>
+            ` : ''}
+            <img src="${g.thumbnail || g.image}" alt="${g.cleanTitle}" loading="lazy">
+          </div>
+          <div class="card-content" onclick="openDetailModal(games.find(x => x.id === '${g.id}'))">
+            <div class="game-title">${g.cleanTitle}</div>
+            <div class="game-stats">
+              <span class="stat-badge" title="Player Count">👥 ${playerStr}</span>
+              <span class="stat-badge" title="Play Time">⏱️ ${timeStr}</span>
+              <span class="stat-badge" title="Weight">⚖️ ${weightStr}</span>
+              <span class="stat-badge" title="Year Published">📅 ${yearStr}</span>
+            </div>
+          </div>
+          ${hasExp ? `
+            <div class="expansions-overlay" id="exp-overlay-${g.id}">
+              <div class="expansions-header">
+                <span>Expansions (${g.parsedExpansions.length})</span>
+                <button class="expansion-close-btn" onclick="event.stopPropagation(); toggleCardExpansions('${g.id}')">✕</button>
+              </div>
+              <div style="flex:1; overflow-y:auto; padding-right:2px;">
+                ${g.parsedExpansions.map(e => `
+                  <div class="expansion-item">
+                    <div class="expansion-title">${e.title}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">
+                      Weight: ${e.weight ? e.weight.toFixed(1) : 'N/A'} | Rating: ${e.user_rating || e.bgg_rating || 'N/A'}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function toggleCardExpansions(id) {
+      const card = document.querySelector(`.game-card[data-id="${id}"]`);
+      if (card) {
+        card.classList.toggle('show-expansions');
+      }
+    }
+
     function renderGames() {
       if (!games || games.length === 0) return;
 
@@ -2367,180 +2428,47 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (g.user_rating !== null) {
           matchesLuke = g.user_rating >= minLuke && g.user_rating <= maxLuke;
         } else {
-          matchesLuke = (minLuke <= 1.0);
-        }
-        let matchesYear = true;
-        if (g.year > 0) {
-          if (yMin.value == '0' && g.year < 1990) matchesYear = true;
-          else matchesYear = g.year >= minYear && g.year <= maxYear;
+          matchesLuke = (minLuke <= 1);
         }
 
+        const matchesYear = g.year === 0 || (g.year >= minYear && g.year <= maxYear);
         const matchesConflict = g.conflict_level_num >= minConflict && g.conflict_level_num <= maxConflict;
-        
-        let matchesCampaign = true;
-        if (reqCampaign) {
-          matchesCampaign = g.is_campaign;
-        } else {
-          if (g.is_campaign && !g.supports_one_off) {
-            matchesCampaign = false;
-          }
-        }
-        
-        let matchesSolo = true;
-        if (!reqCampaign && reqSolo) {
-          matchesSolo = g.supports_one_off;
-        }
 
-        const matchesStyle = selectedStyles.size === 0 || selectedStyles.has(g.game_mode);
-        const matchesMajorAward = selectedMajorAwards.size === 0 || Array.from(selectedMajorAwards).every(a => g.parsedMajorAwards.includes(a));
-        const matchesMinorAward = selectedMinorAwards.size === 0 || Array.from(selectedMinorAwards).every(a => g.parsedMinorAwards.includes(a));
-        const matchesTheme = selectedThemes.size === 0 || Array.from(selectedThemes).every(t => g.parsedThemes.includes(t));
-        const matchesPub = selectedPublishers.size === 0 || selectedPublishers.has(g.publisher);
-        const matchesDes = selectedDesigners.size === 0 || Array.from(selectedDesigners).every(d => g.parsedDesigners.includes(d));
-        const matchesArt = selectedArtists.size === 0 || Array.from(selectedArtists).every(a => g.parsedArtists.includes(a));
-        const matchesCat = selectedCategories.size === 0 || Array.from(selectedCategories).every(c => g.parsedCategories.includes(c));
-        const matchesMech = selectedMechanics.size === 0 || Array.from(selectedMechanics).every(m => g.parsedMechanics.includes(m));
+        if (!matchesPlayers || !matchesWeight || !matchesTime || !matchesBgg || !matchesLuke || !matchesYear || !matchesConflict) return false;
 
-        return matchesPlayers && matchesWeight && matchesTime && matchesBgg && matchesLuke && matchesYear && matchesConflict && matchesCampaign && matchesSolo && matchesStyle && matchesMajorAward && matchesMinorAward && matchesTheme && matchesPub && matchesDes && matchesArt && matchesCat && matchesMech;
+        if (reqCampaign && !g.is_campaign) return false;
+        if (reqSolo && g.min_players > 1) return false;
+
+        if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
+        if (selectedMajorAwards.size > 0 && !g.parsedMajorAwards.some(a => selectedMajorAwards.has(a))) return false;
+        if (selectedMinorAwards.size > 0 && !g.parsedMinorAwards.some(a => selectedMinorAwards.has(a))) return false;
+        if (selectedThemes.size > 0 && !g.parsedThemes.some(t => selectedThemes.has(t))) return false;
+        if (selectedCategories.size > 0 && !g.parsedCategories.some(c => selectedCategories.has(c))) return false;
+        if (selectedMechanics.size > 0 && !g.parsedMechanics.some(m => selectedMechanics.has(m))) return false;
+        if (selectedPublishers.size > 0 && !selectedPublishers.has(g.publisher)) return false;
+        if (selectedDesigners.size > 0 && !g.parsedDesigners.some(d => selectedDesigners.has(d))) return false;
+        if (selectedArtists.size > 0 && !g.parsedArtists.some(a => selectedArtists.has(a))) return false;
+
+        return true;
       });
 
-      const sorted = sortGames(currentlyFilteredGames);
+      const sortedGames = sortGames([...currentlyFilteredGames]);
 
-      if (sorted.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--yellow); text-align: center; font-size: 1.2rem; margin-top: 40px;">No board games match your current filter selection. Try adjusting the filters!</p>`;
+      if (sortedGames.length === 0) {
+        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.1rem; margin-top: 40px;">No games match your filters.</p>`;
         return;
       }
 
-      const isMobile = window.innerWidth <= 600;
-      let itemsPerRow = 2;
-
-      if (!isMobile) {
-        const gridWidth = grid.clientWidth || 1000;
-        const minCardWidth = 220;
-        const gap = 20;
-        itemsPerRow = Math.floor((gridWidth + gap) / (minCardWidth + gap));
-        if (itemsPerRow < 1) itemsPerRow = 1;
-      }
-
-      let rowsHTML = "";
-      
-      for (let i = 0; i < sorted.length; i += itemsPerRow) {
-        const rowGames = sorted.slice(i, i + itemsPerRow);
-        
-        rowsHTML += `
-          <div class="game-row-section">
-            <div class="game-grid-row" style="${isMobile ? 'grid-template-columns: repeat(2, 1fr);' : ''}">
-              ${rowGames.map(g => createGameCardHTML(g)).join('')}
-            </div>
-          </div>
-        `;
-      }
-
-      grid.innerHTML = rowsHTML;
-      attachCardEventListeners();
-    }
-
-    function createGameCardHTML(g) {
-      const hasExpansions = g.parsedExpansions && g.parsedExpansions.length > 0;
-      const isTopRated = g.user_rating !== null && g.user_rating >= 9.0;
-      const hasMajorAward = g.parsedMajorAwards && g.parsedMajorAwards.length > 0;
-      
-      let expansionsHTML = '';
-      if (hasExpansions) {
-        expansionsHTML = `
-          <button class="expansion-icon-btn" title="View Expansions">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="#fee440" stroke="#0d0221" stroke-width="2"/>
-              <path d="M12 7V17M7 12H17" stroke="#0d0221" stroke-width="3.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <div class="expansions-overlay">
-            <div class="expansions-header">
-              <span>Expansions (${g.parsedExpansions.length})</span>
-              <button class="expansion-close-btn">✕</button>
-            </div>
-            ${g.parsedExpansions.map(exp => `
-              <div class="expansion-item">
-                <div class="expansion-title">${exp.title}</div>
-                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.7rem;">
-                  <span>Wt: ${exp.weight ? exp.weight.toFixed(1) : 'N/A'}</span>
-                  <span>⭐ ${exp.user_rating || exp.bgg_rating || 'N/A'}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
-
-      const playerStr = g.min_players === g.max_players ? `${g.min_players}` : `${g.min_players}-${g.max_players}`;
-      const imgUrl = g.thumbnail || g.image || 'https://via.placeholder.com/300x200?text=No+Image';
-
-      const bggHtml = g.bgg_rating ? `<span class="rating-bgg" title="BGG Rating">🎲 ${g.bgg_rating.toFixed(1)}</span>` : '<span></span>';
-      const lukeHtml = g.user_rating !== null ? `<span class="rating-luke" title="Luke's Rating">⭐ ${g.user_rating.toFixed(1)}</span>` : '<span></span>';
-
-      return `
-        <div class="game-card ${isTopRated ? 'top-rated' : ''}" data-id="${g.id}">
-          <div class="card-img-wrapper">
-            <img src="${imgUrl}" alt="${g.cleanTitle}" loading="lazy">
-            ${expansionsHTML}
-            ${hasMajorAward ? `<div class="medal-icon-badge" title="Major Award Winner">🥇</div>` : ''}
-          </div>
-          <div class="card-content">
-            <div class="game-title">${g.cleanTitle}</div>
-            
-            <div>
-              <div class="ratings-row">
-                ${bggHtml}
-                ${lukeHtml}
-              </div>
-              
-              <div class="game-stats">
-                <div class="stat-badge" title="Player Count">👥 ${playerStr}</div>
-                <div class="stat-badge" title="Play Time">⏱️ ${g.playing_time}</div>
-                <div class="stat-badge" title="Complexity Weight">⚖️ ${g.weight ? g.weight.toFixed(1) : 'N/A'}</div>
-                <div class="stat-badge" title="Conflict Level">⚔️ ${conflictMap[g.conflict_level_num] || 'Medium'}</div>
-              </div>
-            </div>
+      grid.innerHTML = `
+        <div class="game-row-section">
+          <div class="game-grid-row">
+            ${sortedGames.map(g => createGameCardHTML(g)).join('')}
           </div>
         </div>
       `;
     }
 
-    function attachCardEventListeners() {
-      document.querySelectorAll('.game-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansion-close-btn') || e.target.closest('.expansions-overlay')) {
-            return;
-          }
-          const gameId = card.getAttribute('data-id');
-          const game = games.find(g => g.id === gameId);
-          if (game) openDetailModal(game);
-        });
-
-        const expBtn = card.querySelector('.expansion-icon-btn');
-        if (expBtn) {
-          expBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            card.classList.add('show-expansions');
-          });
-        }
-
-        const closeExpBtn = card.querySelector('.expansion-close-btn');
-        if (closeExpBtn) {
-          closeExpBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            card.classList.remove('show-expansions');
-          });
-        }
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', loadCollection);
+    loadCollection();
   </script>
 </body>
 </html>
-"""
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
