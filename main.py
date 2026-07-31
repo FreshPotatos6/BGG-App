@@ -2295,61 +2295,145 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         let valB = b[key];
 
         if (key === 'title') {
-          valA = a.cleanTitle;
-          valB = b.cleanTitle;
-          return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+          valA = (a.cleanTitle || '').toLowerCase();
+          valB = (b.cleanTitle || '').toLowerCase();
+          if (valA < valB) return isAscending ? -1 : 1;
+          if (valA > valB) return isAscending ? 1 : -1;
+          return 0;
         }
 
-        if (valA === null || valA === undefined) return 1;
-        if (valB === null || valB === undefined) return -1;
+        if (valA === null || valA === undefined) valA = isAscending ? Infinity : -Infinity;
+        if (valB === null || valB === undefined) valB = isAscending ? Infinity : -Infinity;
 
-        return isAscending ? valA - valB : valB - valA;
+        if (valA < valB) return isAscending ? -1 : 1;
+        if (valA > valB) return isAscending ? 1 : -1;
+        return 0;
       });
     }
 
-    function createGameCardHTML(g) {
-      const playerStr = g.min_players === g.max_players ? `${g.min_players}` : `${g.min_players}-${g.max_players}`;
-      const timeStr = g.playing_time ? `${g.playing_time}'` : 'N/A';
-      const weightStr = g.weight ? g.weight.toFixed(1) : 'N/A';
-      const yearStr = g.year ? `${g.year}` : 'N/A';
+    function renderGames() {
+      const query = (globalSearch.value || "").toLowerCase().trim();
+      const minP = parseInt(pMin.value);
+      const maxP = parseInt(pMax.value);
+      const minW = parseFloat(wMin.value);
+      const maxW = parseFloat(wMax.value);
+      const minT = parseInt(tMin.value);
+      const maxT = parseInt(tMin.value >= 300 ? 99999 : tMax.value);
+      const minB = parseFloat(bMin.value);
+      const maxB = parseFloat(bMax.value);
+      const minL = parseFloat(lMin.value);
+      const maxL = parseFloat(lMax.value);
+      const minYIdx = parseInt(yMin.value);
+      const maxYIdx = parseInt(yMax.value);
+      const targetMinYear = yearFromSliderIndex(minYIdx, false);
+      const targetMaxYear = yearFromSliderIndex(maxYIdx, true);
 
-      const hasExp = g.parsedExpansions && g.parsedExpansions.length > 0;
-      const topRatedClass = (g.user_rating && g.user_rating >= 8.5) || (g.bgg_rating && g.bgg_rating >= 8.0) ? 'top-rated' : '';
-      
-      const bggCircle = g.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${g.bgg_rating.toFixed(1)}</span>` : '';
-      const lukeCircle = g.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${g.user_rating.toFixed(1)}</span>` : '';
+      const wantPlayed = filterPlayed.checked;
+      const wantUnplayed = filterUnplayed.checked;
+      const wantCampaign = filterCampaign.checked;
+      const wantSolo = filterSolo.checked;
+
+      let filtered = games.filter(g => {
+        if (query) {
+          const matchTitle = g.cleanTitle.toLowerCase().includes(query);
+          const matchPub = g.publisher.toLowerCase().includes(query);
+          const matchDes = g.designer.toLowerCase().includes(query);
+          const matchArt = g.artist.toLowerCase().includes(query);
+          if (!matchTitle && !matchPub && !matchDes && !matchArt) return false;
+        }
+
+        if (g.max_players < minP || g.min_players > maxP) return false;
+        if (g.weight < minW || g.weight > maxW) return false;
+        if (g.playing_time < minT || g.playing_time > maxT) return false;
+
+        if (g.bgg_rating !== null && (g.bgg_rating < minB || g.bgg_rating > maxB)) return false;
+        if (g.bgg_rating === null && minB > 1.0) return false;
+
+        if (g.user_rating !== null && (g.user_rating < minL || g.user_rating > maxL)) return false;
+        if (g.user_rating === null && minL > 1.0) return false;
+
+        if (g.year > 0) {
+          if (g.year < targetMinYear || g.year > targetMaxYear) return false;
+        }
+
+        if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
+
+        if (wantPlayed && g.plays_recorded <= 0) return false;
+        if (wantUnplayed && g.plays_recorded > 0) return false;
+        if (wantCampaign && !g.is_campaign) return false;
+        if (wantSolo && g.min_players > 1) return false;
+
+        if (selectedMajorAwards.size > 0 && !g.parsedMajorAwards.some(a => selectedMajorAwards.has(a))) return false;
+        if (selectedMinorAwards.size > 0 && !g.parsedMinorAwards.some(a => selectedMinorAwards.some(a))) return false;
+        if (selectedThemes.size > 0 && !g.parsedThemes.some(t => selectedThemes.has(t))) return false;
+        if (selectedCategories.size > 0 && !g.parsedCategories.some(c => selectedCategories.has(c))) return false;
+        if (selectedMechanics.size > 0 && !g.parsedMechanics.some(m => selectedMechanics.has(m))) return false;
+        if (selectedPublishers.size > 0 && !selectedPublishers.has(g.publisher)) return false;
+        if (selectedDesigners.size > 0 && !g.parsedDesigners.some(d => selectedDesigners.has(d))) return false;
+        if (selectedArtists.size > 0 && !g.parsedArtists.some(a => selectedArtists.has(a))) return false;
+
+        return true;
+      });
+
+      currentlyFilteredGames = sortGames(filtered);
+
+      if (currentlyFilteredGames.length === 0) {
+        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--yellow); text-align: center; font-size: 1.1rem; margin-top: 40px;">No games found matching your filters.</p>`;
+        return;
+      }
+
+      grid.innerHTML = `
+        <div class="game-row-section">
+          <div class="game-grid-row">
+            ${currentlyFilteredGames.map(game => createGameCardHTML(game)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function createGameCardHTML(game) {
+      const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
+      const playerStr = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
+      const isTopRated = (game.user_rating !== null && game.user_rating >= 8) || (game.bgg_rating !== null && game.bgg_rating >= 7.5);
+
+      const bggBadge = game.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${game.bgg_rating.toFixed(1)}</span>` : '';
+      const lukeBadge = game.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${game.user_rating.toFixed(1)}</span>` : '';
+      const medalBadge = (game.user_rating !== null && game.user_rating >= 9) ? `<span class="medal-icon-badge" title="Top Pick">⭐</span>` : '';
 
       return `
-        <div class="game-card ${topRatedClass}" data-id="${g.id}">
-          <div class="card-img-wrapper" onclick="openDetailModal(games.find(x => x.id === '${g.id}'))">
+        <div class="game-card ${isTopRated ? 'top-rated' : ''}" onclick="openDetailModal(games.find(g => g.id === '${game.id}'))">
+          <div class="card-img-wrapper">
             <div class="image-badges-top-left">
-              ${bggCircle}
-              ${lukeCircle}
+              ${bggBadge}
+              ${lukeBadge}
             </div>
-            ${hasExp ? `
-              <button class="expansion-icon-btn" onclick="event.stopPropagation(); toggleCardExpansions('${g.id}')" title="View Expansions">
-                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            ${hasExpansions ? `
+              <button class="expansion-icon-btn" onclick="event.stopPropagation(); toggleCardExpansions(this)" title="View Expansions">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
               </button>
             ` : ''}
-            <img src="${g.thumbnail || g.image}" alt="${g.cleanTitle}" loading="lazy">
+            <img src="${game.thumbnail || game.image || ''}" alt="${game.cleanTitle}" loading="lazy" onerror="this.style.display='none'">
+            ${medalBadge}
           </div>
-          <div class="card-content" onclick="openDetailModal(games.find(x => x.id === '${g.id}'))">
-            <div class="game-title">${g.cleanTitle}</div>
+          <div class="card-content">
+            <div>
+              <div class="game-title">${game.cleanTitle}</div>
+            </div>
             <div class="game-stats">
-              <span class="stat-badge" title="Player Count">👥 ${playerStr}</span>
-              <span class="stat-badge" title="Play Time">⏱️ ${timeStr}</span>
-              <span class="stat-badge" title="Weight">⚖️ ${weightStr}</span>
-              <span class="stat-badge" title="Year Published">📅 ${yearStr}</span>
+              <div class="stat-badge">👥 ${playerStr}</div>
+              <div class="stat-badge">⏱️ ${game.playing_time}m</div>
+              <div class="stat-badge">⚖️ ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
+              <div class="stat-badge">🎲 ${game.plays_recorded}</div>
             </div>
           </div>
-          ${hasExp ? `
-            <div class="expansions-overlay" id="exp-overlay-${g.id}">
+          ${hasExpansions ? `
+            <div class="expansions-overlay" onclick="event.stopPropagation()">
               <div class="expansions-header">
-                <span>Expansions (${g.parsedExpansions.length})</span>
-                <button class="expansion-close-btn" onclick="event.stopPropagation(); toggleCardExpansions('${g.id}')">✕</button>
+                <span>Expansions (${game.parsedExpansions.length})</span>
+                <button class="expansion-close-btn" onclick="toggleCardExpansions(this)">✕ Close</button>
               </div>
-              <div style="flex:1; overflow-y:auto; padding-right:2px;">
-                ${g.parsedExpansions.map(e => `
+              <div style="flex: 1; overflow-y: auto;">
+                ${game.parsedExpansions.map(e => `
                   <div class="expansion-item">
                     <div class="expansion-title">${e.title}</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted);">
@@ -2364,111 +2448,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       `;
     }
 
-    function toggleCardExpansions(id) {
-      const card = document.querySelector(`.game-card[data-id="${id}"]`);
-      if (card) {
-        card.classList.toggle('show-expansions');
-      }
-    }
-
-    function renderGames() {
-      if (!games || games.length === 0) return;
-
-      const minP = parseFloat(pMin.value), maxP = parseFloat(pMax.value);
-      const minW = parseFloat(wMin.value), maxW = parseFloat(wMax.value);
-      const minMinutes = parseFloat(tMin.value);
-      const maxMinutes = parseFloat(tMax.value);
-      const minBgg = parseFloat(bMin.value);
-      const maxBgg = parseFloat(bMax.value);
-      const minLuke = parseFloat(lMin.value);
-      const maxLuke = parseFloat(lMax.value);
-
-      const minYear = yearFromSliderIndex(yMin.value, false);
-      const maxYear = yearFromSliderIndex(yMax.value, true);
-
-      const minConflict = parseInt(cMin.value);
-      const maxConflict = parseInt(cMax.value);
-
-      const reqPlayed = filterPlayed.checked;
-      const reqUnplayed = filterUnplayed.checked;
-      const reqCampaign = filterCampaign.checked;
-      const reqSolo = filterSolo.checked;
-      const globalQuery = (globalSearch ? globalSearch.value.trim().toLowerCase() : '');
-
-      currentlyFilteredGames = games.filter(g => {
-        if (globalQuery) {
-          const matchTitle = g.cleanTitle.toLowerCase().includes(globalQuery);
-          const matchPub = g.publisher.toLowerCase().includes(globalQuery);
-          const matchDes = g.designer.toLowerCase().includes(globalQuery);
-          const matchArt = g.artist.toLowerCase().includes(globalQuery);
-          if (!matchTitle && !matchPub && !matchDes && !matchArt) return false;
-        }
-
-        if (reqPlayed && g.plays_recorded === 0) return false;
-        if (reqUnplayed && g.plays_recorded > 0) return false;
-
-        let matchesPlayers = false;
-        if (selectedPlayerCounts.size > 0) {
-          matchesPlayers = Array.from(selectedPlayerCounts).some(p => g.min_players <= p && g.max_players >= p);
-        } else {
-          matchesPlayers = g.min_players <= maxP && g.max_players >= minP;
-        }
-
-        const matchesWeight = g.weight === 0 || (g.weight >= minW && g.weight <= maxW);
-        const matchesTime = g.playing_time === 0 || (g.playing_time >= minMinutes && g.playing_time <= maxMinutes);
-        
-        let matchesBgg = true;
-        if (g.bgg_rating !== null) {
-          matchesBgg = g.bgg_rating >= minBgg && g.bgg_rating <= maxBgg;
-        } else {
-          matchesBgg = (minBgg <= 1.0);
-        }
-
-        let matchesLuke = true;
-        if (g.user_rating !== null) {
-          matchesLuke = g.user_rating >= minLuke && g.user_rating <= maxLuke;
-        } else {
-          matchesLuke = (minLuke <= 1);
-        }
-
-        const matchesYear = g.year === 0 || (g.year >= minYear && g.year <= maxYear);
-        const matchesConflict = g.conflict_level_num >= minConflict && g.conflict_level_num <= maxConflict;
-
-        if (!matchesPlayers || !matchesWeight || !matchesTime || !matchesBgg || !matchesLuke || !matchesYear || !matchesConflict) return false;
-
-        if (reqCampaign && !g.is_campaign) return false;
-        if (reqSolo && g.min_players > 1) return false;
-
-        if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
-        if (selectedMajorAwards.size > 0 && !g.parsedMajorAwards.some(a => selectedMajorAwards.has(a))) return false;
-        if (selectedMinorAwards.size > 0 && !g.parsedMinorAwards.some(a => selectedMinorAwards.has(a))) return false;
-        if (selectedThemes.size > 0 && !g.parsedThemes.some(t => selectedThemes.has(t))) return false;
-        if (selectedCategories.size > 0 && !g.parsedCategories.some(c => selectedCategories.has(c))) return false;
-        if (selectedMechanics.size > 0 && !g.parsedMechanics.some(m => selectedMechanics.has(m))) return false;
-        if (selectedPublishers.size > 0 && !selectedPublishers.has(g.publisher)) return false;
-        if (selectedDesigners.size > 0 && !g.parsedDesigners.some(d => selectedDesigners.has(d))) return false;
-        if (selectedArtists.size > 0 && !g.parsedArtists.some(a => selectedArtists.has(a))) return false;
-
-        return true;
-      });
-
-      const sortedGames = sortGames([...currentlyFilteredGames]);
-
-      if (sortedGames.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.1rem; margin-top: 40px;">No games match your filters.</p>`;
-        return;
-      }
-
-      grid.innerHTML = `
-        <div class="game-row-section">
-          <div class="game-grid-row">
-            ${sortedGames.map(g => createGameCardHTML(g)).join('')}
-          </div>
-        </div>
-      `;
+    function toggleCardExpansions(btn) {
+      const card = btn.closest('.game-card');
+      card.classList.toggle('show-expansions');
     }
 
     loadCollection();
   </script>
 </body>
 </html>
+"""
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
