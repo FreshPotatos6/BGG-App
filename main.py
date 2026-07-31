@@ -1264,7 +1264,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       
       .app-layout { margin-top: 6px; }
       .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
-      .game-grid-row { gap: 6px; }
+      
+      /* Updated to ensure at least 2 columns on mobile/landscape */
+      .game-grid-row { 
+        grid-template-columns: repeat(2, minmax(0, 1fr)); 
+        gap: 8px; 
+      }
+      @media (min-orientation: landscape) {
+        .game-grid-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
       .game-card { border-width: 1px; }
       .card-img-wrapper { height: 120px; padding: 4px; }
       .card-content { padding: 6px; gap: 4px; }
@@ -2097,7 +2108,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.user_rating > 0) {
         const lukeBadge = document.createElement('div');
         lukeBadge.className = 'score-badge-circle score-badge-luke';
-        lukeBadge.innerText = game.user_rating.toFixed(1);
+        // Display Luke's rating as a whole number
+        lukeBadge.innerText = Math.round(game.user_rating);
         lukeBadge.title = "Luke's Rating";
         badgeTopLeft.appendChild(lukeBadge);
       }
@@ -2119,7 +2131,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.major_awards && game.major_awards.length > 0) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
-        medalBadge.innerHTML = '🏆';
+        // Changed trophy icon to 1st place medal icon
+        medalBadge.innerHTML = '🥇';
         medalBadge.title = game.major_awards.join(', ');
         imgWrapper.appendChild(medalBadge);
       }
@@ -2144,7 +2157,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       statsEl.className = 'game-stats';
 
       const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      const timeText = game.playing_time_raw ? game.playing_time_raw : `${game.playing_time}`;
+      // Drop "min" text from play time display in grid view
+      const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
 
       statsEl.innerHTML = `
         <div class="stat-badge" title="Player Count">👥 ${pCountText}</div>
@@ -2198,7 +2212,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.themes) game.themes.forEach(t => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">#${t}</span>`);
       if (game.categories) game.categories.forEach(c => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('category', '${c.replace(/'/g, "\\'")}')">#${c}</span>`);
       if (game.mechanics) game.mechanics.forEach(m => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('mechanic', '${m.replace(/'/g, "\\'")}')">#${m}</span>`);
-      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🏆 ${a}</span>`);
+      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`);
       if (game.minor_awards) game.minor_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`);
 
       let expModalHtml = '';
@@ -2219,7 +2233,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="detail-section" style="margin-bottom:0;"><strong>Play Time:</strong> ${game.playing_time_raw || game.playing_time + ' min'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating.toFixed(1) : 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? Math.round(game.user_rating) : 'N/A'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Game Mode:</strong> ${game.game_mode}</div>
         </div>
@@ -2316,15 +2330,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <img src="${luckyGame.thumbnail || luckyGame.image || ''}" style="width: 100px; height: 100px; object-fit: contain; background: #000; border-radius: 8px; padding: 4px;" />
           <div>
             <div style="font-size: 1.1rem; font-weight: 900; color: var(--yellow); margin-bottom: 6px;">${luckyGame.title}</div>
-            <div style="font-size: 0.850rem; color: var(--text-muted); margin-bottom: 4px;">Year: ${luckyGame.year || 'N/A'} | Weight: ${luckyGame.weight > 0 ? luckyGame.weight.toFixed(1) : 'N/A'}</div>
-            <div style="font-size: 0.850rem; color: var(--turquoise);">BGG: ${luckyGame.bgg_rating > 0 ? luckyGame.bgg_rating.toFixed(1) : 'N/A'} | Luke: ${luckyGame.user_rating > 0 ? luckyGame.user_rating.toFixed(1) : 'N/A'}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">${luckyGame.year || 'N/A'} • 👥 ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players} Players • ⚖️ ${luckyGame.weight > 0 ? luckyGame.weight.toFixed(1) : 'N/A'}</div>
           </div>
         </div>
       `;
-      modalTryAgainBtn.style.display = 'block';
-      modalChangeFiltersBtn.style.display = 'block';
-      modalCloseBtn.style.display = 'none';
+      modalCloseBtn.style.display = 'inline-block';
     }
+
+    function closeLuckModal() {
+      luckModal.classList.remove('open');
+      luckyGame = null;
+    }
+
+    modalCloseBtn.addEventListener('click', () => {
+      closeLuckModal();
+      if (luckyGame) {
+        openDetailModal(luckyGame);
+      }
+    });
 
     modalTryAgainBtn.addEventListener('click', () => {
       pickRandomGame();
@@ -2336,19 +2359,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         toggleSidebar();
       }
     });
-
-    function closeLuckModal() {
-      luckModal.classList.remove('open');
-    }
-
-    detailModal.addEventListener('click', (e) => {
-      if (e.target === detailModal) closeDetailModal();
-    });
-
-    luckModal.addEventListener('click', (e) => {
-      if (e.target === luckModal) closeLuckModal();
-    });
   </script>
 </body>
 </html>
 """
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
