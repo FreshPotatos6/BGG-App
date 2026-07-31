@@ -46,6 +46,14 @@ def clean_title(raw_title):
         return "Untitled Game"
     return re.sub(r'\s*\(\d{4}\)\s*$', '', str(raw_title)).strip()
 
+def clean_award_name(raw_award):
+    if not raw_award:
+        return ""
+    # Strips out leading/trailing years like "2004 Spiel Des Jahres Winner" -> "Spiel Des Jahres Winner"
+    cleaned = re.sub(r'^\d{4}\s+', '', str(raw_award)).strip()
+    cleaned = re.sub(r'\s+\(\d{4}\)$', '', cleaned).strip()
+    return cleaned
+
 def get_row_value(row, keys, default="Unknown"):
     for k in keys:
         if k in row and row[k] is not None and str(row[k]).strip() != "":
@@ -145,6 +153,9 @@ def generate_json_from_sheet():
                 min_p = clean_int(row.get("Min Players"), 1)
                 max_p = clean_int(row.get("Max Players"), max(min_p, 4))
 
+            major_awards_cleaned = [clean_award_name(a) for a in str(row.get("Major Awards", "")).split(",") if clean_award_name(a)]
+            minor_awards_cleaned = [clean_award_name(a) for a in str(row.get("Minor Awards", "")).split(",") if clean_award_name(a)]
+
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
                 "title": clean_title(row.get("Title", "Unknown")),
@@ -170,8 +181,8 @@ def generate_json_from_sheet():
                 "categories": [c.strip() for c in str(row.get("Categories", "")).split(",") if c.strip()],
                 "mechanics": [m.strip() for m in str(row.get("Mechanics", "")).split(",") if m.strip()],
                 "themes": [t.strip() for t in str(row.get("Themes", "")).split(",") if t.strip()],
-                "major_awards": [a.strip() for a in str(row.get("Major Awards", "")).split(",") if a.strip()],
-                "minor_awards": [a.strip() for a in str(row.get("Minor Awards", "")).split(",") if a.strip()],
+                "major_awards": major_awards_cleaned,
+                "minor_awards": minor_awards_cleaned,
                 "game_mode": game_mode,
                 "conflict_level": str(row.get("Conflict Level", "Medium")).strip(),
                 "campaign_structure": campaign_struct,
@@ -1403,19 +1414,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             </div>
           </div>
 
-          <div class="filter-group" style="display:none;">
-            <div class="filter-label-header">
-              <label>Conflict Level</label>
-              <span id="conflict-val" class="value-display">Low - High</span>
-            </div>
-            <div class="range-slider-container">
-              <div class="range-slider-track"></div>
-              <div id="conflict-track" class="range-slider-highlight"></div>
-              <input type="range" id="conflict-min" min="1" max="3" value="1">
-              <input type="range" id="conflict-max" min="1" max="3" value="3">
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -1635,9 +1633,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     let selectedDesigners = new Set();
     let selectedArtists = new Set();
 
-    const conflictMap = { 1: "Low", 2: "Medium", 3: "High" };
-    const conflictValToNum = { "low": 1, "medium": 2, "med": 2, "high": 3 };
-
     const toolbar = document.getElementById('side-toolbar');
     const toggleBtn = document.getElementById('toggle-filters-btn');
     const resetBtn = document.getElementById('reset-filters-btn');
@@ -1672,229 +1667,351 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const bMin = document.getElementById('bgg-min'), bMax = document.getElementById('bgg-max'), bVal = document.getElementById('bgg-val'), bTrack = document.getElementById('bgg-track');
     const lMin = document.getElementById('luke-min'), lMax = document.getElementById('luke-max'), lVal = document.getElementById('luke-val'), lTrack = document.getElementById('luke-track');
     const yMin = document.getElementById('year-min'), yMax = document.getElementById('year-max'), yVal = document.getElementById('year-val'), yTrack = document.getElementById('year-track');
-    const cMin = document.getElementById('conflict-min'), cMax = document.getElementById('conflict-max'), cVal = document.getElementById('conflict-val'), cTrack = document.getElementById('conflict-track');
 
-    const filterPlayed = document.getElementById('filter-played');
-    const filterUnplayed = document.getElementById('filter-unplayed');
-    const filterCampaign = document.getElementById('filter-campaign');
-    const filterSolo = document.getElementById('filter-solo');
-
-    function updateHeaderHeightVariable() {
-      const headerElem = document.getElementById('main-header');
-      if (headerElem) {
-        const height = headerElem.offsetHeight;
-        document.documentElement.style.setProperty('--header-height', `${height}px`);
-      }
+    function updateTrack(minEl, maxEl, trackEl) {
+      const minVal = parseFloat(minEl.min);
+      const maxVal = parseFloat(minEl.max);
+      const curMin = parseFloat(minEl.value);
+      const curMax = parseFloat(maxEl.value);
+      const leftPercent = ((curMin - minVal) / (maxVal - minVal)) * 100;
+      const rightPercent = ((curMax - minVal) / (maxVal - minVal)) * 100;
+      trackEl.style.left = leftPercent + '%';
+      trackEl.style.width = (rightPercent - leftPercent) + '%';
     }
 
-    window.addEventListener('resize', updateHeaderHeightVariable);
+    function handleRangeInputs(minEl, maxEl, callback) {
+      let v1 = parseFloat(minEl.value);
+      let v2 = parseFloat(maxEl.value);
+      if (v1 > v2) {
+        if (event && event.target === minEl) minEl.value = v2;
+        else maxEl.value = v1;
+      }
+      callback();
+      applyFilters();
+    }
+
+    [pMin, pMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(pMin, pMax, updatePlayerDisplay)));
+    [wMin, wMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(wMin, wMax, updateWeightDisplay)));
+    [tMin, tMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(tMin, tMax, updateTimeDisplay)));
+    [bMin, bMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(bMin, bMax, updateBggDisplay)));
+    [lMin, lMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(lMin, lMax, updateLukeDisplay)));
+    [yMin, yMax].forEach(el => el.addEventListener('input', () => handleRangeInputs(yMin, yMax, updateYearDisplay)));
+
+    function updatePlayerDisplay() {
+      const mn = pMin.value, mx = pMax.value;
+      pVal.innerText = mn === mx ? mn : `${mn} - ${mx}${mx === '10' ? '+' : ''}`;
+      updateTrack(pMin, pMax, pTrack);
+    }
+    function updateWeightDisplay() {
+      wVal.innerText = `${parseFloat(wMin.value).toFixed(1)} - ${parseFloat(wMax.value).toFixed(1)}`;
+      updateTrack(wMin, wMax, wTrack);
+    }
+    function updateTimeDisplay() {
+      const mn = tMin.value, mx = tMax.value;
+      tVal.innerText = `${mn} - ${mx}${mx === '300' ? '+' : ''} min`;
+      updateTrack(tMin, tMax, tTrack);
+    }
+    function updateBggDisplay() {
+      bVal.innerText = `${bMin.value} - ${bMax.value}`;
+      updateTrack(bMin, bMax, bTrack);
+    }
+    function updateLukeDisplay() {
+      lVal.innerText = `${lMin.value} - ${lMax.value}`;
+      updateTrack(lMin, lMax, lTrack);
+    }
+    function getYearFromSliderVal(val) {
+      val = parseInt(val);
+      if (val === 0) return 1990;
+      return 1998 + (val - 1) * 1;
+    }
+    function updateYearDisplay() {
+      const rawMin = parseInt(yMin.value);
+      const rawMax = parseInt(yMax.value);
+      const y1 = rawMin === 0 ? "<1990" : getYearFromSliderVal(rawMin);
+      const y2 = rawMax === 28 ? "2026" : getYearFromSliderVal(rawMax);
+      yVal.innerText = rawMin === rawMax ? y1 : `${y1} - ${y2}`;
+      updateTrack(yMin, yMax, yTrack);
+    }
 
     function toggleSidebar() {
       toolbar.classList.toggle('collapsed');
-      setTimeout(renderGames, 300);
     }
-
     toggleBtn.addEventListener('click', toggleSidebar);
 
     function toggleFilterSection(sectionId) {
       document.getElementById(sectionId).classList.toggle('collapsed');
     }
 
-    sortDirBtn.addEventListener('click', () => {
-      isAscending = !isAscending;
-      sortDirBtn.textContent = isAscending ? "▲" : "▼";
-      renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
+    function setupDropdown(toggleId, menuId, searchId, listId, selectAllId, clearAllId, setCollection, nameKey) {
+      const toggle = document.getElementById(toggleId);
+      const menu = document.getElementById(menuId);
+      const search = document.getElementById(searchId);
+      const list = document.getElementById(listId);
+      const selectAllBtn = document.getElementById(selectAllId);
+      const clearAllBtn = document.getElementById(clearAllId);
+
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown-menu').forEach(m => { if(m !== menu) m.classList.remove('show'); });
+        menu.classList.toggle('show');
+      });
+
+      menu.addEventListener('click', (e) => e.stopPropagation());
+
+      search.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        list.querySelectorAll('.checkbox-item').forEach(item => {
+          const text = item.innerText.toLowerCase();
+          item.style.display = text.includes(query) ? 'flex' : 'none';
+        });
+      });
+
+      selectAllBtn.addEventListener('click', () => {
+        list.querySelectorAll('.checkbox-item input[type="checkbox"]').forEach(cb => {
+          cb.checked = true;
+          setCollection.add(cb.value);
+        });
+        updateDropdownToggleLabel(toggle, setCollection, nameKey);
+        applyFilters();
+      });
+
+      clearAllBtn.addEventListener('click', () => {
+        list.querySelectorAll('.checkbox-item input[type="checkbox"]').forEach(cb => {
+          cb.checked = false;
+          setCollection.delete(cb.value);
+        });
+        updateDropdownToggleLabel(toggle, setCollection, nameKey);
+        applyFilters();
+      });
+    }
+
+    function populateDropdownList(listId, itemsSet, setCollection, toggleId, nameKey) {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      Array.from(itemsSet).sort().forEach(item => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = item;
+        cb.checked = setCollection.has(item);
+        cb.addEventListener('change', () => {
+          if (cb.checked) setCollection.add(item);
+          else setCollection.delete(item);
+          updateDropdownToggleLabel(document.getElementById(toggleId), setCollection, nameKey);
+          applyFilters();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(item));
+        list.appendChild(label);
+      });
+    }
+
+    function updateDropdownToggleLabel(toggleBtn, setCollection, nameKey) {
+      const span = toggleBtn.querySelector('span');
+      if (setCollection.size === 0) {
+        toggleBtn.innerHTML = `All ${nameKey} <span>▼</span>`;
+      } else {
+        toggleBtn.innerHTML = `${setCollection.size} ${nameKey} Selected <span>▼</span>`;
+      }
+    }
+
+    window.addEventListener('click', () => {
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
     });
 
-    sortSelect.addEventListener('change', () => {
-      const val = sortSelect.value;
-      isAscending = (val === 'title' || val === 'year');
-      sortDirBtn.textContent = isAscending ? "▲" : "▼";
-      renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    fetch('/api/collection')
+      .then(res => res.json())
+      .then(data => {
+        rawCollection = data;
+        initApp();
+      })
+      .catch(err => console.error("Error fetching collection:", err));
 
-    luckBtn.addEventListener('click', triggerRandomGamePick);
-    if (modalTryAgainBtn) modalTryAgainBtn.addEventListener('click', triggerRandomGamePick);
-    
-    if (modalChangeFiltersBtn) {
-      modalChangeFiltersBtn.addEventListener('click', () => {
-        luckModal.classList.remove('open');
-        if (toolbar.classList.contains('collapsed')) {
-          toggleSidebar();
+    function initApp() {
+      games = rawCollection.filter(g => !g.is_expansion);
+      
+      const stylesSet = new Set();
+      const majorAwardsSet = new Set();
+      const minorAwardsSet = new Set();
+      const themesSet = new Set();
+      const catsSet = new Set();
+      const mechsSet = new Set();
+      const pubsSet = new Set();
+      const desSet = new Set();
+      const artsSet = new Set();
+
+      rawCollection.forEach(g => {
+        if (g.game_mode) stylesSet.add(g.game_mode);
+        if (g.major_awards) g.major_awards.forEach(a => majorAwardsSet.add(a));
+        if (g.minor_awards) g.minor_awards.forEach(a => minorAwardsSet.add(a));
+        if (g.themes) g.themes.forEach(t => themesSet.add(t));
+        if (g.categories) g.categories.forEach(c => catsSet.add(c));
+        if (g.mechanics) g.mechanics.forEach(m => mechsSet.add(m));
+        if (g.publisher && g.publisher !== "Unknown") pubsSet.add(g.publisher);
+        if (g.designer && g.designer !== "Unknown") desSet.add(g.designer);
+        if (g.artist && g.artist !== "Unknown") artsSet.add(g.artist);
+      });
+
+      const styleListEl = document.getElementById('style-list');
+      styleListEl.innerHTML = '';
+      Array.from(stylesSet).sort().forEach(style => {
+        const lbl = document.createElement('label');
+        lbl.className = 'style-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = style;
+        cb.addEventListener('change', () => {
+          if (cb.checked) selectedStyles.add(style);
+          else selectedStyles.delete(style);
+          applyFilters();
+        });
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(style));
+        styleListEl.appendChild(lbl);
+      });
+
+      populateDropdownList('major-award-list', majorAwardsSet, selectedMajorAwards, 'major-award-toggle', 'Major Awards');
+      populateDropdownList('minor-award-list', minorAwardsSet, selectedMinorAwards, 'minor-award-toggle', 'Minor Awards');
+      populateDropdownList('theme-list', themesSet, selectedThemes, 'theme-toggle', 'Themes');
+      populateDropdownList('cat-list', catsSet, selectedCategories, 'cat-toggle', 'Categories');
+      populateDropdownList('mech-list', mechsSet, selectedMechanics, 'mech-toggle', 'Mechanics');
+      populateDropdownList('pub-list', pubsSet, selectedPublishers, 'pub-toggle', 'Publishers');
+      populateDropdownList('des-list', desSet, selectedDesigners, 'des-toggle', 'Designers');
+      populateDropdownList('art-list', artsSet, selectedArtists, 'art-toggle', 'Artists');
+
+      setupDropdown('major-award-toggle', 'major-award-menu', 'major-award-search', 'major-award-list', 'major-award-select-all', 'major-award-clear-all', selectedMajorAwards, 'Major Awards');
+      setupDropdown('minor-award-toggle', 'minor-award-menu', 'minor-award-search', 'minor-award-list', 'minor-award-select-all', 'minor-award-clear-all', selectedMinorAwards, 'Minor Awards');
+      setupDropdown('theme-toggle', 'theme-menu', 'theme-search', 'theme-list', 'theme-select-all', 'theme-clear-all', selectedThemes, 'Themes');
+      setupDropdown('cat-toggle', 'cat-menu', 'cat-search', 'cat-list', 'cat-select-all', 'cat-clear-all', selectedCategories, 'Categories');
+      setupDropdown('mech-toggle', 'mech-menu', 'mech-search', 'mech-list', 'mech-select-all', 'mech-clear-all', selectedMechanics, 'Mechanics');
+      setupDropdown('pub-toggle', 'pub-menu', 'pub-search', 'pub-list', 'pub-select-all', 'pub-clear-all', selectedPublishers, 'Publishers');
+      setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
+      setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
+
+      updatePlayerDisplay();
+      updateWeightDisplay();
+      updateTimeDisplay();
+      updateBggDisplay();
+      updateLukeDisplay();
+      updateYearDisplay();
+
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const pMinValue = parseInt(pMin.value);
+      const pMaxValue = parseInt(pMax.value);
+      const wMinValue = parseFloat(wMin.value);
+      const wMaxValue = parseFloat(wMax.value);
+      const tMinValue = parseInt(tMin.value);
+      const tMaxValue = parseInt(tMax.value);
+      const bMinValue = parseFloat(bMin.value);
+      const bMaxValue = parseFloat(bMax.value);
+      const lMinValue = parseFloat(lMin.value);
+      const lMaxValue = parseFloat(lMax.value);
+      
+      const yMinSlider = parseInt(yMin.value);
+      const yMaxSlider = parseInt(yMax.value);
+      const targetYearMin = yMinSlider === 0 ? 0 : getYearFromSliderVal(yMinSlider);
+      const targetYearMax = yMaxSlider === 28 ? 9999 : getYearFromSliderVal(yMaxSlider);
+
+      const filterPlayed = document.getElementById('filter-played').checked;
+      const filterUnplayed = document.getElementById('filter-unplayed').checked;
+      const filterCampaign = document.getElementById('filter-campaign').checked;
+      const filterSolo = document.getElementById('filter-solo').checked;
+
+      const searchQuery = (globalSearch.value || "").toLowerCase().trim();
+
+      currentlyFilteredGames = games.filter(g => {
+        if (g.max_players < pMinValue || g.min_players > pMaxValue) return false;
+        if (g.weight < wMinValue || g.weight > wMaxValue) return false;
+        if (tMaxValue < 300 && (g.playing_time < tMinValue || g.playing_time > tMaxValue)) return false;
+        if (tMaxValue === 300 && g.playing_time < tMinValue) return false;
+        if (g.bgg_rating < bMinValue || g.bgg_rating > bMaxValue) return false;
+        if (g.user_rating < lMinValue || g.user_rating > lMaxValue) return false;
+
+        if (g.year > 0) {
+          if (yMinSlider > 0 && g.year < targetYearMin) return false;
+          if (yMaxSlider < 28 && g.year > targetYearMax) return false;
+        }
+
+        if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
+
+        if (filterPlayed && g.plays_recorded === 0) return false;
+        if (filterUnplayed && g.plays_recorded > 0) return false;
+        if (filterCampaign && (!g.campaign_structure || g.campaign_structure === "None")) return false;
+        if (filterSolo && g.min_players > 1) return false;
+
+        if (selectedMajorAwards.size > 0 && !g.major_awards.some(a => selectedMajorAwards.has(a))) return false;
+        if (selectedMinorAwards.size > 0 && !g.minor_awards.some(a => selectedMinorAwards.has(a))) return false;
+        if (selectedThemes.size > 0 && !g.themes.some(t => selectedThemes.has(t))) return false;
+        if (selectedCategories.size > 0 && !g.categories.some(c => selectedCategories.has(c))) return false;
+        if (selectedMechanics.size > 0 && !g.mechanics.some(m => selectedMechanics.has(m))) return false;
+        if (selectedPublishers.size > 0 && !selectedPublishers.has(g.publisher)) return false;
+        if (selectedDesigners.size > 0 && !selectedDesigners.has(g.designer)) return false;
+        if (selectedArtists.size > 0 && !selectedArtists.has(g.artist)) return false;
+
+        if (searchQuery) {
+          const matchTitle = g.title.toLowerCase().includes(searchQuery);
+          const matchPublisher = g.publisher.toLowerCase().includes(searchQuery);
+          const matchDesigner = g.designer.toLowerCase().includes(searchQuery);
+          const matchArtist = g.artist.toLowerCase().includes(searchQuery);
+          const matchCat = g.categories.some(c => c.toLowerCase().includes(searchQuery));
+          const matchMech = g.mechanics.some(m => m.toLowerCase().includes(searchQuery));
+          const matchTheme = g.themes.some(t => t.toLowerCase().includes(searchQuery));
+          if (!matchTitle && !matchPublisher && !matchDesigner && !matchArtist && !matchCat && !matchMech && !matchTheme) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      sortGames();
+      renderGames();
+    }
+
+    function sortGames() {
+      const sortBy = sortSelect.value;
+      currentlyFilteredGames.sort((a, b) => {
+        let valA = a[sortBy];
+        let valB = b[sortBy];
+
+        if (typeof valA === 'string') {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+          if (valA < valB) return isAscending ? -1 : 1;
+          if (valA > valB) return isAscending ? 1 : -1;
+          return 0;
+        } else {
+          if (valA < valB) return isAscending ? -1 : 1;
+          if (valA > valB) return isAscending ? 1 : -1;
+          return 0;
         }
       });
     }
 
-    if (modalCloseBtn) modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
-
-    function closeLuckModal() {
-      luckModal.classList.remove('open');
-    }
-
-    luckModal.addEventListener('click', (e) => {
-      if (e.target === luckModal) {
-        closeLuckModal();
-      }
+    sortSelect.addEventListener('change', () => { applyFilters(); });
+    sortDirBtn.addEventListener('click', () => {
+      isAscending = !isAscending;
+      sortDirBtn.innerText = isAscending ? "▲" : "▼";
+      sortGames();
+      renderGames();
     });
 
-    function triggerRandomGamePick() {
-      if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games available with your current filter selection!</p>`;
-      } else {
-        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const randomGame = currentlyFilteredGames[randomIndex];
-        modalContent.innerHTML = createGameCardHTML(randomGame);
-      }
-      luckModal.classList.add('open');
-    }
+    function resetAllFilters() {
+      pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
+      wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
+      tMin.value = 0; tMax.value = 300; updateTimeDisplay();
+      bMin.value = 1; bMax.value = 10; updateBggDisplay();
+      lMin.value = 1; lMax.value = 10; updateLukeDisplay();
+      yMin.value = 0; yMax.value = 28; updateYearDisplay();
 
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
-      const playerStr = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      
-      const bggHtml = game.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${game.bgg_rating.toFixed(1)}</span>` : '';
-      const lukeHtml = game.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${game.user_rating.toFixed(1)}</span>` : '';
-
-      detailModalContent.innerHTML = `
-        <div class="modal-title">${game.cleanTitle} (${game.year || 'N/A'})</div>
-        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-          ${bggHtml}
-          ${lukeHtml}
-        </div>
-        <div class="meta-tags-grid">
-          <div class="detail-section"><strong>Players:</strong> 👥 ${playerStr}</div>
-          <div class="detail-section"><strong>Playtime:</strong> ⏱️ ${game.playing_time}</div>
-          <div class="detail-section"><strong>Weight:</strong> ⚖️ ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section"><strong>Mode:</strong> ${game.game_mode}</div>
-          <div class="detail-section"><strong>Plays:</strong> 🎲 ${game.plays_recorded}</div>
-        </div>
-
-        ${game.parsedMajorAwards.length > 0 ? `
-          <div class="detail-section">
-            <strong>Major Awards:</strong><br>
-            ${game.parsedMajorAwards.map(a => `<span class="clickable-tag">${a}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${game.parsedMinorAwards.length > 0 ? `
-          <div class="detail-section">
-            <strong>Minor Awards:</strong><br>
-            ${game.parsedMinorAwards.map(a => `<span class="clickable-tag">${a}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        <div class="detail-section">
-          <strong>Publisher:</strong> ${game.publisher}<br>
-          <strong>Designer:</strong> ${game.designer}<br>
-          <strong>Artist:</strong> ${game.artist}
-        </div>
-
-        ${game.parsedThemes.length > 0 ? `
-          <div class="detail-section">
-            <strong>Themes:</strong><br>
-            ${game.parsedThemes.map(t => `<span class="clickable-tag">${t}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${game.parsedCategories.length > 0 ? `
-          <div class="detail-section">
-            <strong>Categories:</strong><br>
-            ${game.parsedCategories.map(c => `<span class="clickable-tag">${c}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${game.parsedMechanics.length > 0 ? `
-          <div class="detail-section">
-            <strong>Mechanics:</strong><br>
-            ${game.parsedMechanics.map(m => `<span class="clickable-tag">${m}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        <div class="detail-section">
-          <strong>Description:</strong>
-          <div id="modal-desc" class="description-text">${game.description}</div>
-          <button id="modal-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
-        </div>
-
-        ${hasExpansions ? `
-          <div class="detail-section" style="margin-top: 14px;">
-            <strong>Expansions (${game.parsedExpansions.length}):</strong>
-            <div style="margin-top: 6px; max-height: 120px; overflow-y: auto;">
-              ${game.parsedExpansions.map(e => `
-                <div class="expansion-item">
-                  <div class="expansion-title">${e.title}</div>
-                  <div style="font-size: 0.7rem; color: var(--text-muted);">
-                    Weight: ${e.weight ? e.weight.toFixed(1) : 'N/A'} | Rating: ${e.user_rating || e.bgg_rating || 'N/A'}
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        ${game.id ? `
-          <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
-            View on BoardGameGeek ↗
-          </a>
-        ` : ''}
-      `;
-
-      detailModal.classList.add('open');
-    }
-
-    function toggleDescription() {
-      const desc = document.getElementById('modal-desc');
-      const btn = document.getElementById('modal-read-more');
-      if (desc.classList.contains('expanded')) {
-        desc.classList.remove('expanded');
-        btn.textContent = 'Read More';
-      } else {
-        desc.classList.add('expanded');
-        btn.textContent = 'Show Less';
-      }
-    }
-
-    function closeDetailModal() {
-      detailModal.classList.remove('open');
-      currentDetailGame = null;
-    }
-
-    detailModal.addEventListener('click', (e) => {
-      if (e.target === detailModal) {
-        closeDetailModal();
-      }
-    });
-
-    window.addEventListener('keydown', (e) => {
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
-
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const scrollDelta = e.key === 'ArrowDown' ? 120 : -120;
-        grid.scrollBy({ top: scrollDelta, behavior: 'smooth' });
-      } else if (e.key === 'Escape') {
-        closeDetailModal();
-        luckModal.classList.remove('open');
-      }
-    });
-
-    function executeResetFilters() {
-      pMin.value = 1; pMax.value = 10;
-      wMin.value = 1.0; wMax.value = 5.0;
-      tMin.value = 0; tMax.value = 300;
-      bMin.value = 1; bMax.value = 10;
-      lMin.value = 1; lMax.value = 10;
-      yMin.value = 0; yMax.value = 28;
-      cMin.value = 1; cMax.value = 3;
-      filterPlayed.checked = false;
-      filterUnplayed.checked = false;
-      filterCampaign.checked = false;
-      filterSolo.checked = false;
-      if (globalSearch) globalSearch.value = '';
-      if (globalSearchMobile) globalSearchMobile.value = '';
+      document.getElementById('filter-played').checked = false;
+      document.getElementById('filter-unplayed').checked = false;
+      document.getElementById('filter-campaign').checked = false;
+      document.getElementById('filter-solo').checked = false;
 
       selectedPlayerCounts.clear();
       selectedStyles.clear();
@@ -1906,558 +2023,331 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       selectedPublishers.clear();
       selectedDesigners.clear();
       selectedArtists.clear();
-      
-      setupMultiSelects();
-      
-      pMin.dispatchEvent(new Event('input'));
-      wMin.dispatchEvent(new Event('input'));
-      tMin.dispatchEvent(new Event('input'));
-      bMin.dispatchEvent(new Event('input'));
-      lMin.dispatchEvent(new Event('input'));
-      yMin.dispatchEvent(new Event('input'));
-      cMin.dispatchEvent(new Event('input'));
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
 
-      if (currentDetailGame) {
-        openDetailModal(currentDetailGame);
-      }
+      document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+
+      updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
+      updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
+      updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
+      updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
+      updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
+      updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
+      updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
+      updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
+
+      if (globalSearch) globalSearch.value = "";
+      if (globalSearchMobile) globalSearchMobile.value = "";
+
+      applyFilters();
     }
 
-    resetBtn.addEventListener('click', executeResetFilters);
-    headerClearBtn.addEventListener('click', executeResetFilters);
+    resetBtn.addEventListener('click', resetAllFilters);
+    headerClearBtn.addEventListener('click', resetAllFilters);
 
-    function parseList(val) {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.map(x => String(x).trim()).filter(Boolean);
-      if (typeof val === 'string') return val.split(',').map(x => x.trim()).filter(Boolean);
-      return [];
-    }
+    function renderGames() {
+      grid.innerHTML = '';
 
-    function cleanTitle(rawTitle) {
-      if (!rawTitle) return "Untitled Game";
-      return String(rawTitle).replace(/\s*\(\d{4}\)\s*$/, "").trim();
-    }
-
-    function yearFromSliderIndex(idx, isMax = false) {
-      idx = parseInt(idx);
-      if (idx === 0) return isMax ? 1989 : 0;
-      if (idx === 1) return isMax ? 1995 : 1990;
-      if (idx === 2) return isMax ? 2000 : 1996;
-      return 1998 + idx;
-    }
-
-    function formatYearLabel(minIdx, maxIdx) {
-      const minStr = minIdx === 0 ? "<1990" : yearFromSliderIndex(minIdx, false);
-      const maxStr = maxIdx >= 28 ? "2026+" : yearFromSliderIndex(maxIdx, true);
-      return `${minStr} - ${maxStr}`;
-    }
-
-    function formatPlaytimeLabel(minM, maxM) {
-      const maxStr = maxM >= 300 ? "300+ min" : `${maxM} min`;
-      return `${minM} - ${maxStr}`;
-    }
-
-    function formatConflictLabel(minVal, maxVal) {
-      return `${conflictMap[minVal]} - ${conflictMap[maxVal]}`;
-    }
-
-    function setupDualSlider(minElem, maxElem, valDisplay, trackElem, formatFn) {
-      function update(e) {
-        let minV = parseFloat(minElem.value);
-        let maxV = parseFloat(maxElem.value);
-
-        if (minV > maxV) {
-          if (e && e.target === minElem) {
-            minElem.value = maxV;
-            minV = maxV;
-          } else {
-            maxElem.value = minV;
-            maxV = minV;
-          }
-        }
-
-        const totalMin = parseFloat(minElem.min);
-        const totalMax = parseFloat(minElem.max);
-        const leftPercent = ((minV - totalMin) / (totalMax - totalMin)) * 100;
-        const rightPercent = 100 - (((maxV - totalMin) / (totalMax - totalMin)) * 100);
-
-        trackElem.style.left = leftPercent + "%";
-        trackElem.style.right = rightPercent + "%";
-
-        valDisplay.textContent = formatFn(minV, maxV);
-        renderGames();
-        grid.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-
-      minElem.addEventListener('input', update);
-      maxElem.addEventListener('input', update);
-      update();
-    }
-
-    async function loadCollection() {
-      updateHeaderHeightVariable();
-      try {
-        const response = await fetch('/api/collection');
-        if (!response.ok) throw new Error("JSON endpoint returned " + response.status);
-        
-        let rawData = await response.json();
-
-        if (!Array.isArray(rawData)) {
-          if (rawData.games && Array.isArray(rawData.games)) rawData = rawData.games;
-          else if (rawData.collection && Array.isArray(rawData.collection)) rawData = rawData.collection;
-          else if (rawData.items && Array.isArray(rawData.items)) rawData = rawData.items;
-          else rawData = Object.values(rawData);
-        }
-
-        rawCollection = rawData.map(g => {
-          const parsedUserRating = parseFloat(g.user_rating);
-          const parsedBggRating = parseFloat(g.bgg_rating);
-          
-          const expCol = String(g.is_expansion ?? "").trim().toLowerCase();
-          const isExpansion = expCol === 'yes' || expCol === 'true' || expCol === '1' || g.is_expansion === true;
-
-          const saCol = String(g.is_standalone ?? "").trim().toLowerCase();
-          const isStandalone = saCol === 'yes' || saCol === 'true' || saCol === '1' || g.is_standalone === true;
-          
-          const parentId = String(g.parent_game_id ?? "").trim();
-
-          let minP = g.min_players ? parseInt(g.min_players) : 1;
-          let maxP = g.max_players ? parseInt(g.max_players) : 4;
-
-          let cStr = String(g.conflict_level ?? "Medium").trim().toLowerCase();
-          let cNum = conflictValToNum[cStr] || 2;
-
-          let cStruct = String(g.campaign_structure ?? "").trim().toLowerCase();
-          let isCampaign = cStruct !== "" && cStruct !== "none" && cStruct !== "n/a";
-
-          return {
-            ...g,
-            id: String(g.id ?? "").trim(),
-            is_expansion: isExpansion,
-            is_standalone: isStandalone,
-            parent_game_id: parentId,
-            cleanTitle: cleanTitle(g.title),
-            parsedCategories: parseList(g.categories),
-            parsedMechanics: parseList(g.mechanics),
-            parsedThemes: parseList(g.themes),
-            parsedMajorAwards: parseList(g.major_awards),
-            parsedMinorAwards: parseList(g.minor_awards),
-            parsedDesigners: parseList(g.designer),
-            parsedArtists: parseList(g.artist),
-            publisher: g.publisher ?? "Unknown",
-            designer: g.designer ?? "Unknown",
-            artist: g.artist ?? "Unknown",
-            description: g.description ?? "No description available.",
-            game_mode: g.game_mode ?? "Competitive",
-            conflict_level_num: cNum,
-            is_campaign: isCampaign,
-            supports_one_off: g.supports_one_off === true,
-            plays_recorded: parseInt(g.plays_recorded ?? 0),
-            popularity_owned: parseInt(g.popularity_owned ?? 0),
-            min_players: minP,
-            max_players: maxP,
-            playing_time_raw: g.playing_time_raw || String(g.playing_time || 0),
-            playing_time: parseInt(g.playing_time ?? 0),
-            weight: parseFloat(g.weight ?? 0) || 0,
-            year: parseInt(g.year ?? 0) || 0,
-            user_rating: (!isNaN(parsedUserRating) && parsedUserRating > 0) ? parsedUserRating : null,
-            bgg_rating: (!isNaN(parsedBggRating) && parsedBggRating > 0) ? parsedBggRating : null
-          };
-        });
-
-        const baseGamesMap = {};
-        const expansionItems = [];
-
-        rawCollection.forEach(item => {
-          if (!item.is_expansion || item.is_standalone) {
-            item.parsedExpansions = [];
-            baseGamesMap[item.id] = item;
-          }
-          
-          if (item.is_expansion) {
-            expansionItems.push(item);
-          }
-        });
-
-        expansionItems.forEach(item => {
-          let parent = baseGamesMap[item.parent_game_id];
-          if (!parent && item.parent_game_id) {
-            parent = Object.values(baseGamesMap).find(bg => 
-              bg.cleanTitle.toLowerCase() === item.parent_game_id.toLowerCase()
-            );
-          }
-
-          if (parent) {
-            parent.parsedExpansions.push({
-              title: item.cleanTitle,
-              weight: item.weight,
-              user_rating: item.user_rating,
-              bgg_rating: item.bgg_rating
-            });
-          }
-        });
-
-        games = Object.values(baseGamesMap);
-
-      } catch (err) {
-        console.error("Could not fetch /api/collection:", err);
-      }
-
-      if (!games || games.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--magenta); text-align: center; font-size: 1.2rem; margin-top: 40px;">⚠️ Could not load games from memory or json.</p>`;
+      if (currentlyFilteredGames.length === 0) {
+        grid.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; font-weight: bold;">No games found matching current filters!</div>`;
         return;
       }
 
-      setupMultiSelects();
-      
-      setupDualSlider(pMin, pMax, pVal, pTrack, (min, max) => `${min} - ${max >= 10 ? '10+' : max}`);
-      setupDualSlider(wMin, wMax, wVal, wTrack, (min, max) => `${min.toFixed(1)} - ${max.toFixed(1)}`);
-      
-      tMin.min = 0; tMin.max = 300; tMin.step = 15; tMin.value = 0;
-      tMax.min = 0; tMax.max = 300; tMax.step = 15; tMax.value = 300;
-      setupDualSlider(tMin, tMax, tVal, tTrack, formatPlaytimeLabel);
+      const chunkSize = 24;
+      for (let i = 0; i < currentlyFilteredGames.length; i += chunkSize) {
+        const chunk = currentlyFilteredGames.slice(i, i + chunkSize);
+        const section = document.createElement('div');
+        section.className = 'game-row-section';
 
-      setupDualSlider(bMin, bMax, bVal, bTrack, (min, max) => `${min.toFixed(1)} - ${max.toFixed(1)}`);
-      setupDualSlider(lMin, lMax, lVal, lTrack, (min, max) => `${Math.round(min)} - ${Math.round(max)}`);
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'game-grid-row';
 
-      yMin.max = 28; yMax.max = 28; yMax.value = 28;
-      setupDualSlider(yMin, yMax, yVal, yTrack, formatYearLabel);
+        chunk.forEach(game => {
+          const card = createGameCard(game);
+          rowDiv.appendChild(card);
+        });
 
-      setupDualSlider(cMin, cMax, cVal, cTrack, formatConflictLabel);
+        section.appendChild(rowDiv);
+        grid.appendChild(section);
+      }
+    }
 
-      filterPlayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
-      filterUnplayed.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
-      filterCampaign.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
-      filterSolo.addEventListener('change', () => { renderGames(); grid.scrollTo({ top: 0, behavior: 'smooth' }); });
+    function createGameCard(game) {
+      const card = document.createElement('div');
+      card.className = 'game-card';
+      if (game.user_rating >= 8.0 || game.bgg_rating >= 8.0) {
+        card.classList.add('top-rated');
+      }
 
-      renderGames();
+      const imgWrapper = document.createElement('div');
+      imgWrapper.className = 'card-img-wrapper';
+
+      const badgeTopLeft = document.createElement('div');
+      badgeTopLeft.className = 'image-badges-top-left';
+
+      if (game.bgg_rating > 0) {
+        const bggBadge = document.createElement('div');
+        bggBadge.className = 'score-badge-circle score-badge-bgg';
+        bggBadge.innerText = game.bgg_rating.toFixed(1);
+        bggBadge.title = "BGG Rating";
+        badgeTopLeft.appendChild(bggBadge);
+      }
+
+      if (game.user_rating > 0) {
+        const lukeBadge = document.createElement('div');
+        lukeBadge.className = 'score-badge-circle score-badge-luke';
+        lukeBadge.innerText = game.user_rating.toFixed(1);
+        lukeBadge.title = "Luke's Rating";
+        badgeTopLeft.appendChild(lukeBadge);
+      }
+      imgWrapper.appendChild(badgeTopLeft);
+
+      const expansionsForGame = rawCollection.filter(item => item.is_expansion && item.parent_game_id === game.id);
+      if (expansionsForGame.length > 0) {
+        const expBtn = document.createElement('button');
+        expBtn.className = 'expansion-icon-btn';
+        expBtn.title = `${expansionsForGame.length} Expansion(s) Available`;
+        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        expBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          card.classList.toggle('show-expansions');
+        });
+        imgWrapper.appendChild(expBtn);
+      }
+
+      if (game.major_awards && game.major_awards.length > 0) {
+        const medalBadge = document.createElement('div');
+        medalBadge.className = 'medal-icon-badge';
+        medalBadge.innerHTML = '🏆';
+        medalBadge.title = game.major_awards.join(', ');
+        imgWrapper.appendChild(medalBadge);
+      }
+
+      const img = document.createElement('img');
+      img.src = game.thumbnail || game.image || '';
+      img.alt = game.title;
+      img.loading = 'lazy';
+      img.onerror = () => { img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237209b7'%3E%3Cpath d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E"; };
+      imgWrapper.appendChild(img);
+      card.appendChild(imgWrapper);
+
+      const cardContent = document.createElement('div');
+      cardContent.className = 'card-content';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'game-title';
+      titleEl.innerText = game.title;
+      cardContent.appendChild(titleEl);
+
+      const statsEl = document.createElement('div');
+      statsEl.className = 'game-stats';
+
+      const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
+      const timeText = game.playing_time_raw ? game.playing_time_raw : `${game.playing_time}`;
+
+      statsEl.innerHTML = `
+        <div class="stat-badge" title="Player Count">👥 ${pCountText}</div>
+        <div class="stat-badge" title="Play Time">⏱️ ${timeText}</div>
+        <div class="stat-badge" title="Weight / Complexity">⚖️ ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
+        <div class="stat-badge" title="Year Published">📅 ${game.year > 0 ? game.year : 'N/A'}</div>
+      `;
+      cardContent.appendChild(statsEl);
+      card.appendChild(cardContent);
+
+      if (expansionsForGame.length > 0) {
+        const overlay = document.createElement('div');
+        overlay.className = 'expansions-overlay';
+
+        const expHeader = document.createElement('div');
+        expHeader.className = 'expansions-header';
+        expHeader.innerHTML = `<span>Expansions (${expansionsForGame.length})</span>`;
+        
+        const closeExpBtn = document.createElement('button');
+        closeExpBtn.className = 'expansion-close-btn';
+        closeExpBtn.innerText = '✕ Close';
+        closeExpBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          card.classList.remove('show-expansions');
+        });
+        expHeader.appendChild(closeExpBtn);
+        overlay.appendChild(expHeader);
+
+        expansionsForGame.forEach(exp => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'expansion-item';
+          itemDiv.innerHTML = `<div class="expansion-title">${exp.title}</div>`;
+          overlay.appendChild(itemDiv);
+        });
+
+        card.appendChild(overlay);
+      }
+
+      card.addEventListener('click', () => {
+        openDetailModal(game);
+      });
+
+      return card;
+    }
+
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      const expansionsForGame = rawCollection.filter(item => item.is_expansion && item.parent_game_id === game.id);
+
+      let tagsHtml = '';
+      if (game.themes) game.themes.forEach(t => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">#${t}</span>`);
+      if (game.categories) game.categories.forEach(c => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('category', '${c.replace(/'/g, "\\'")}')">#${c}</span>`);
+      if (game.mechanics) game.mechanics.forEach(m => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('mechanic', '${m.replace(/'/g, "\\'")}')">#${m}</span>`);
+      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🏆 ${a}</span>`);
+      if (game.minor_awards) game.minor_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`);
+
+      let expModalHtml = '';
+      if (expansionsForGame.length > 0) {
+        expModalHtml = `<div class="detail-section" style="margin-top: 15px;"><strong>Expansions:</strong><ul style="margin-left: 20px; margin-top: 5px;">`;
+        expansionsForGame.forEach(ex => {
+          expModalHtml += `<li>${ex.title} (${ex.year || 'N/A'})</li>`;
+        });
+        expModalHtml += `</ul></div>`;
+      }
+
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${game.title}</div>
+        
+        <div class="meta-tags-grid">
+          <div class="detail-section" style="margin-bottom:0;"><strong>Year:</strong> ${game.year || 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Players:</strong> ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Play Time:</strong> ${game.playing_time_raw || game.playing_time + ' min'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating.toFixed(1) : 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Game Mode:</strong> ${game.game_mode}</div>
+        </div>
+
+        <div class="detail-section"><strong>Designer:</strong> ${game.designer}</div>
+        <div class="detail-section"><strong>Artist:</strong> ${game.artist}</div>
+        <div class="detail-section"><strong>Publisher:</strong> ${game.publisher}</div>
+
+        <div class="detail-section" style="margin-top: 10px;">
+          <strong>Description:</strong>
+          <div id="modal-desc" class="description-text">${game.description}</div>
+          <button id="read-more-trigger" class="read-more-btn" onclick="toggleModalDescription()" style="display:none;">Read More</button>
+        </div>
+
+        <div class="detail-section" style="margin-top: 12px;">
+          <strong>Tags & Attributes:</strong><br>
+          <div style="margin-top: 4px;">${tagsHtml || 'None'}</div>
+        </div>
+
+        ${expModalHtml}
+
+        <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
+          View on BoardGameGeek ↗
+        </a>
+      `;
+
+      detailModal.classList.add('open');
       
       setTimeout(() => {
-        grid.scrollTo({ top: 0 });
+        const descEl = document.getElementById('modal-desc');
+        const readMoreBtn = document.getElementById('read-more-trigger');
+        if (descEl && descEl.scrollHeight > descEl.clientHeight) {
+          readMoreBtn.style.display = 'inline-block';
+        }
       }, 50);
     }
 
-    function setupMultiSelects() {
-      const styles = new Set();
-      const majorAwards = new Set();
-      const minorAwards = new Set();
-      const themes = new Set();
-      const categories = new Set();
-      const mechanics = new Set();
-      const publishers = new Set();
-      const designers = new Set();
-      const artists = new Set();
-
-      games.forEach(g => {
-        if (g.game_mode) styles.add(g.game_mode);
-        g.parsedMajorAwards.forEach(a => majorAwards.add(a));
-        g.parsedMinorAwards.forEach(a => minorAwards.add(a));
-        g.parsedThemes.forEach(t => themes.add(t));
-        g.parsedCategories.forEach(c => categories.add(c));
-        g.parsedMechanics.forEach(m => mechanics.add(m));
-        if (g.publisher && g.publisher !== "Unknown") publishers.add(g.publisher);
-        g.parsedDesigners.forEach(d => { if (d !== "Unknown") designers.add(d); });
-        g.parsedArtists.forEach(a => { if (a !== "Unknown") artists.add(a); });
-      });
-
-      renderStyleCheckboxes(styles);
-      renderCheckboxList('major-award-list', majorAwards, selectedMajorAwards, 'major-award');
-      renderCheckboxList('minor-award-list', minorAwards, selectedMinorAwards, 'minor-award');
-      renderCheckboxList('theme-list', themes, selectedThemes, 'theme');
-      renderCheckboxList('cat-list', categories, selectedCategories, 'cat');
-      renderCheckboxList('mech-list', mechanics, selectedMechanics, 'mech');
-      renderCheckboxList('pub-list', publishers, selectedPublishers, 'pub');
-      renderCheckboxList('des-list', designers, selectedDesigners, 'des');
-      renderCheckboxList('art-list', artists, selectedArtists, 'art');
-
-      setupDropdownToggle('major-award-toggle', 'major-award-menu');
-      setupDropdownToggle('minor-award-toggle', 'minor-award-menu');
-      setupDropdownToggle('theme-toggle', 'theme-menu');
-      setupDropdownToggle('cat-toggle', 'cat-menu');
-      setupDropdownToggle('mech-toggle', 'mech-menu');
-      setupDropdownToggle('pub-toggle', 'pub-menu');
-      setupDropdownToggle('des-toggle', 'des-menu');
-      setupDropdownToggle('art-toggle', 'art-menu');
-
-      setupDropdownSearch('major-award-search', 'major-award-list');
-      setupDropdownSearch('minor-award-search', 'minor-award-list');
-      setupDropdownSearch('theme-search', 'theme-list');
-      setupDropdownSearch('cat-search', 'cat-list');
-      setupDropdownSearch('mech-search', 'mech-list');
-      setupDropdownSearch('pub-search', 'pub-list');
-      setupDropdownSearch('des-search', 'des-list');
-      setupDropdownSearch('art-search', 'art-list');
-
-      document.getElementById('major-award-select-all').onclick = () => { toggleAll('major-award', majorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('major-award-clear-all').onclick = () => { toggleAll('major-award', majorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('minor-award-select-all').onclick = () => { toggleAll('minor-award', minorAwards, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('minor-award-clear-all').onclick = () => { toggleAll('minor-award', minorAwards, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('theme-select-all').onclick = () => { toggleAll('theme', themes, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('theme-clear-all').onclick = () => { toggleAll('theme', themes, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('cat-select-all').onclick = () => { toggleAll('cat', categories, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('cat-clear-all').onclick = () => { toggleAll('cat', categories, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('mech-select-all').onclick = () => { toggleAll('mech', mechanics, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('mech-clear-all').onclick = () => { toggleAll('mech', mechanics, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('pub-select-all').onclick = () => { toggleAll('pub', publishers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('pub-clear-all').onclick = () => { toggleAll('pub', publishers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('des-select-all').onclick = () => { toggleAll('des', designers, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('des-clear-all').onclick = () => { toggleAll('des', designers, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('art-select-all').onclick = () => { toggleAll('art', artists, true); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
-      document.getElementById('art-clear-all').onclick = () => { toggleAll('art', artists, false); grid.scrollTo({ top: 0, behavior: 'smooth' }); };
+    function closeDetailModal() {
+      detailModal.classList.remove('open');
+      currentDetailGame = null;
     }
 
-    function renderStyleCheckboxes(stylesSet) {
-      const container = document.getElementById('style-list');
-      container.innerHTML = Array.from(stylesSet).sort().map(style => `
-        <label class="style-item">
-          <input type="checkbox" value="${style}" data-style="${style}" ${selectedStyles.has(style) ? 'checked' : ''}>
-          ${style}
-        </label>
-      `).join('');
-
-      container.querySelectorAll('input').forEach(cb => {
-        cb.onchange = (e) => {
-          if (e.target.checked) selectedStyles.add(e.target.value);
-          else selectedStyles.delete(e.target.value);
-          renderGames();
-          grid.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-      });
+    function toggleModalDescription() {
+      const descEl = document.getElementById('modal-desc');
+      const btn = document.getElementById('read-more-trigger');
+      descEl.classList.toggle('expanded');
+      btn.innerText = descEl.classList.contains('expanded') ? 'Show Less' : 'Read More';
     }
 
-    function setupDropdownToggle(btnId, menuId) {
-      const btn = document.getElementById(btnId);
-      const menu = document.getElementById(menuId);
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        menu.classList.toggle('show');
-      };
-      document.addEventListener('click', (e) => {
-        if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('show');
-      });
-    }
+    function filterByTag(type, val) {
+      resetAllFilters();
+      closeDetailModal();
 
-    function setupDropdownSearch(searchId, listId) {
-      const searchInput = document.getElementById(searchId);
-      searchInput.addEventListener('click', (e) => e.stopPropagation());
-      searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        const listContainer = document.getElementById(listId);
-        const labels = listContainer.querySelectorAll('.checkbox-item');
-        labels.forEach(label => {
-          const text = label.textContent.toLowerCase();
-          label.style.display = text.includes(query) ? 'flex' : 'none';
-        });
-      });
-    }
-
-    function renderCheckboxList(containerId, itemsSet, targetSet, prefix) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = Array.from(itemsSet).sort().map(item => `
-        <label class="checkbox-item">
-          <input type="checkbox" data-prefix="${prefix}" value="${item}" ${targetSet.has(item) ? 'checked' : ''}>
-          ${item}
-        </label>
-      `).join('');
-
-      container.querySelectorAll('input').forEach(input => {
-        input.onchange = (e) => {
-          if (e.target.checked) targetSet.add(e.target.value);
-          else targetSet.delete(e.target.value);
-          renderGames();
-          grid.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-      });
-    }
-
-    function toggleAll(prefix, fullSet, check) {
-      let targetSet;
-      if (prefix === 'major-award') targetSet = selectedMajorAwards;
-      else if (prefix === 'minor-award') targetSet = selectedMinorAwards;
-      else if (prefix === 'theme') targetSet = selectedThemes;
-      else if (prefix === 'cat') targetSet = selectedCategories;
-      else if (prefix === 'mech') targetSet = selectedMechanics;
-      else if (prefix === 'pub') targetSet = selectedPublishers;
-      else if (prefix === 'des') targetSet = selectedDesigners;
-      else if (prefix === 'art') targetSet = selectedArtists;
-
-      targetSet.clear();
-      if (check) fullSet.forEach(item => targetSet.add(item));
-
-      document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(cb => cb.checked = check);
-      renderGames();
-    }
-
-    function sortGames(gameList) {
-      const key = sortSelect.value;
-      return gameList.sort((a, b) => {
-        let valA = a[key];
-        let valB = b[key];
-
-        if (key === 'title') {
-          valA = (a.cleanTitle || '').toLowerCase();
-          valB = (b.cleanTitle || '').toLowerCase();
-          if (valA < valB) return isAscending ? -1 : 1;
-          if (valA > valB) return isAscending ? 1 : -1;
-          return 0;
-        }
-
-        if (valA === null || valA === undefined) valA = isAscending ? Infinity : -Infinity;
-        if (valB === null || valB === undefined) valB = isAscending ? Infinity : -Infinity;
-
-        if (valA < valB) return isAscending ? -1 : 1;
-        if (valA > valB) return isAscending ? 1 : -1;
-        return 0;
-      });
-    }
-
-    function renderGames() {
-      const query = (globalSearch.value || "").toLowerCase().trim();
-      const minP = parseInt(pMin.value);
-      const maxP = parseInt(pMax.value);
-      const minW = parseFloat(wMin.value);
-      const maxW = parseFloat(wMax.value);
-      const minT = parseInt(tMin.value);
-      const maxT = parseInt(tMin.value >= 300 ? 99999 : tMax.value);
-      const minB = parseFloat(bMin.value);
-      const maxB = parseFloat(bMax.value);
-      const minL = parseFloat(lMin.value);
-      const maxL = parseFloat(lMax.value);
-      const minYIdx = parseInt(yMin.value);
-      const maxYIdx = parseInt(yMax.value);
-      const targetMinYear = yearFromSliderIndex(minYIdx, false);
-      const targetMaxYear = yearFromSliderIndex(maxYIdx, true);
-
-      const wantPlayed = filterPlayed.checked;
-      const wantUnplayed = filterUnplayed.checked;
-      const wantCampaign = filterCampaign.checked;
-      const wantSolo = filterSolo.checked;
-
-      let filtered = games.filter(g => {
-        if (query) {
-          const matchTitle = g.cleanTitle.toLowerCase().includes(query);
-          const matchPub = g.publisher.toLowerCase().includes(query);
-          const matchDes = g.designer.toLowerCase().includes(query);
-          const matchArt = g.artist.toLowerCase().includes(query);
-          if (!matchTitle && !matchPub && !matchDes && !matchArt) return false;
-        }
-
-        if (g.max_players < minP || g.min_players > maxP) return false;
-        if (g.weight < minW || g.weight > maxW) return false;
-        if (g.playing_time < minT || g.playing_time > maxT) return false;
-
-        if (g.bgg_rating !== null && (g.bgg_rating < minB || g.bgg_rating > maxB)) return false;
-        if (g.bgg_rating === null && minB > 1.0) return false;
-
-        if (g.user_rating !== null && (g.user_rating < minL || g.user_rating > maxL)) return false;
-        if (g.user_rating === null && minL > 1.0) return false;
-
-        if (g.year > 0) {
-          if (g.year < targetMinYear || g.year > targetMaxYear) return false;
-        }
-
-        if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
-
-        if (wantPlayed && g.plays_recorded <= 0) return false;
-        if (wantUnplayed && g.plays_recorded > 0) return false;
-        if (wantCampaign && !g.is_campaign) return false;
-        if (wantSolo && g.min_players > 1) return false;
-
-        if (selectedMajorAwards.size > 0 && !g.parsedMajorAwards.some(a => selectedMajorAwards.has(a))) return false;
-        if (selectedMinorAwards.size > 0 && !g.parsedMinorAwards.some(a => selectedMinorAwards.some(a))) return false;
-        if (selectedThemes.size > 0 && !g.parsedThemes.some(t => selectedThemes.has(t))) return false;
-        if (selectedCategories.size > 0 && !g.parsedCategories.some(c => selectedCategories.has(c))) return false;
-        if (selectedMechanics.size > 0 && !g.parsedMechanics.some(m => selectedMechanics.has(m))) return false;
-        if (selectedPublishers.size > 0 && !selectedPublishers.has(g.publisher)) return false;
-        if (selectedDesigners.size > 0 && !g.parsedDesigners.some(d => selectedDesigners.has(d))) return false;
-        if (selectedArtists.size > 0 && !g.parsedArtists.some(a => selectedArtists.has(a))) return false;
-
-        return true;
-      });
-
-      currentlyFilteredGames = sortGames(filtered);
-
-      if (currentlyFilteredGames.length === 0) {
-        grid.innerHTML = `<p style="grid-column: 1/-1; color: var(--yellow); text-align: center; font-size: 1.1rem; margin-top: 40px;">No games found matching your filters.</p>`;
-        return;
+      if (type === 'theme') {
+        selectedThemes.add(val);
+        updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
+      } else if (type === 'category') {
+        selectedCategories.add(val);
+        updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
+      } else if (type === 'mechanic') {
+        selectedMechanics.add(val);
+        updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
+      } else if (type === 'major_award') {
+        selectedMajorAwards.add(val);
+        updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
+      } else if (type === 'minor_award') {
+        selectedMinorAwards.add(val);
+        updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
       }
 
-      grid.innerHTML = `
-        <div class="game-row-section">
-          <div class="game-grid-row">
-            ${currentlyFilteredGames.map(game => createGameCardHTML(game)).join('')}
+      applyFilters();
+      if (!toolbar.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+    }
+
+    let luckyGame = null;
+
+    luckBtn.addEventListener('click', () => {
+      if (currentlyFilteredGames.length === 0) {
+        alert("No games available with current filters to pick from!");
+        return;
+      }
+      pickRandomGame();
+      luckModal.classList.add('open');
+    });
+
+    function pickRandomGame() {
+      const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+      luckyGame = currentlyFilteredGames[randomIndex];
+      
+      modalContent.innerHTML = `
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <img src="${luckyGame.thumbnail || luckyGame.image || ''}" style="width: 100px; height: 100px; object-fit: contain; background: #000; border-radius: 8px; padding: 4px;" />
+          <div>
+            <div style="font-size: 1.1rem; font-weight: 900; color: var(--yellow); margin-bottom: 6px;">${luckyGame.title}</div>
+            <div style="font-size: 0.850rem; color: var(--text-muted); margin-bottom: 4px;">Year: ${luckyGame.year || 'N/A'} | Weight: ${luckyGame.weight > 0 ? luckyGame.weight.toFixed(1) : 'N/A'}</div>
+            <div style="font-size: 0.850rem; color: var(--turquoise);">BGG: ${luckyGame.bgg_rating > 0 ? luckyGame.bgg_rating.toFixed(1) : 'N/A'} | Luke: ${luckyGame.user_rating > 0 ? luckyGame.user_rating.toFixed(1) : 'N/A'}</div>
           </div>
         </div>
       `;
+      modalTryAgainBtn.style.display = 'block';
+      modalChangeFiltersBtn.style.display = 'block';
+      modalCloseBtn.style.display = 'none';
     }
 
-    function createGameCardHTML(game) {
-      const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
-      const playerStr = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      const isTopRated = (game.user_rating !== null && game.user_rating >= 8) || (game.bgg_rating !== null && game.bgg_rating >= 7.5);
+    modalTryAgainBtn.addEventListener('click', () => {
+      pickRandomGame();
+    });
 
-      const bggBadge = game.bgg_rating ? `<span class="score-badge-circle score-badge-bgg" title="BGG Rating">${game.bgg_rating.toFixed(1)}</span>` : '';
-      const lukeBadge = game.user_rating !== null ? `<span class="score-badge-circle score-badge-luke" title="Luke's Rating">${game.user_rating.toFixed(1)}</span>` : '';
-      const medalBadge = (game.user_rating !== null && game.user_rating >= 9) ? `<span class="medal-icon-badge" title="Top Pick">⭐</span>` : '';
+    modalChangeFiltersBtn.addEventListener('click', () => {
+      closeLuckModal();
+      if (toolbar.classList.contains('collapsed')) {
+        toggleSidebar();
+      }
+    });
 
-      return `
-        <div class="game-card ${isTopRated ? 'top-rated' : ''}" onclick="openDetailModal(games.find(g => g.id === '${game.id}'))">
-          <div class="card-img-wrapper">
-            <div class="image-badges-top-left">
-              ${bggBadge}
-              ${lukeBadge}
-            </div>
-            ${hasExpansions ? `
-              <button class="expansion-icon-btn" onclick="event.stopPropagation(); toggleCardExpansions(this)" title="View Expansions">
-                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-              </button>
-            ` : ''}
-            <img src="${game.thumbnail || game.image || ''}" alt="${game.cleanTitle}" loading="lazy" onerror="this.style.display='none'">
-            ${medalBadge}
-          </div>
-          <div class="card-content">
-            <div>
-              <div class="game-title">${game.cleanTitle}</div>
-            </div>
-            <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}</div>
-              <div class="stat-badge">⏱️ ${game.playing_time}m</div>
-              <div class="stat-badge">⚖️ ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
-              <div class="stat-badge">🎲 ${game.plays_recorded}</div>
-            </div>
-          </div>
-          ${hasExpansions ? `
-            <div class="expansions-overlay" onclick="event.stopPropagation()">
-              <div class="expansions-header">
-                <span>Expansions (${game.parsedExpansions.length})</span>
-                <button class="expansion-close-btn" onclick="toggleCardExpansions(this)">✕ Close</button>
-              </div>
-              <div style="flex: 1; overflow-y: auto;">
-                ${game.parsedExpansions.map(e => `
-                  <div class="expansion-item">
-                    <div class="expansion-title">${e.title}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted);">
-                      Weight: ${e.weight ? e.weight.toFixed(1) : 'N/A'} | Rating: ${e.user_rating || e.bgg_rating || 'N/A'}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `;
+    function closeLuckModal() {
+      luckModal.classList.remove('open');
     }
 
-    function toggleCardExpansions(btn) {
-      const card = btn.closest('.game-card');
-      card.classList.toggle('show-expansions');
-    }
+    detailModal.addEventListener('click', (e) => {
+      if (e.target === detailModal) closeDetailModal();
+    });
 
-    loadCollection();
+    luckModal.addEventListener('click', (e) => {
+      if (e.target === luckModal) closeLuckModal();
+    });
   </script>
 </body>
 </html>
-"""
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
