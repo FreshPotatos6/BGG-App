@@ -320,6 +320,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       width: 100%;
     }
 
+    .mobile-search-slot {
+      display: none;
+    }
+
     .global-search-input {
       width: 100%;
       background: var(--panel-bg);
@@ -842,7 +846,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       justify-content: center;
       border: none;
       box-shadow: none;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       z-index: 10;
       pointer-events: none;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
@@ -891,11 +895,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.8rem;
-      color: var(--magenta);
+      font-size: 0.82rem;
       font-weight: 700;
       min-height: 20px;
       margin-bottom: 4px;
+    }
+
+    .rating-bgg {
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .rating-luke {
+      color: var(--yellow);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .expansions-overlay {
@@ -1258,7 +1275,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </svg>
         <h1>Rengaw's Meeples</h1>
       </div>
-      <div class="global-search-container mobile-search-slot" style="display: none;">
+      <div class="global-search-container mobile-search-slot">
         <span class="global-search-icon">🔍</span>
         <input type="text" id="global-search-mobile" class="global-search-input" placeholder="Search collection...">
       </div>
@@ -1722,6 +1739,114 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         modalContent.innerHTML = createGameCardHTML(randomGame);
       }
       luckModal.classList.add('open');
+    }
+
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      const hasExpansions = game.parsedExpansions && game.parsedExpansions.length > 0;
+      const playerStr = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
+      
+      const bggHtml = game.bgg_rating ? `<span class="rating-bgg" title="BGG Rating">🎲 ${game.bgg_rating.toFixed(1)}</span>` : '<span></span>';
+      const lukeHtml = game.user_rating !== null ? `<span class="rating-luke" title="Luke's Rating">⭐ ${game.user_rating.toFixed(1)}</span>` : '<span></span>';
+
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${game.cleanTitle} (${game.year || 'N/A'})</div>
+        <div class="ratings-row" style="font-size: 1rem; margin-bottom: 12px;">
+          ${bggHtml}
+          ${lukeHtml}
+        </div>
+        <div class="meta-tags-grid">
+          <div class="detail-section"><strong>Players:</strong> 👥 ${playerStr}</div>
+          <div class="detail-section"><strong>Playtime:</strong> ⏱️ ${game.playing_time}</div>
+          <div class="detail-section"><strong>Weight:</strong> ⚖️ ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
+          <div class="detail-section"><strong>Conflict:</strong> ⚔️ ${conflictMap[game.conflict_level_num] || 'Medium'}</div>
+          <div class="detail-section"><strong>Mode:</strong> ${game.game_mode}</div>
+          <div class="detail-section"><strong>Plays:</strong> 🎲 ${game.plays_recorded}</div>
+        </div>
+
+        ${game.parsedMajorAwards.length > 0 ? `
+          <div class="detail-section">
+            <strong>Major Awards:</strong><br>
+            ${game.parsedMajorAwards.map(a => `<span class="clickable-tag">${a}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        ${game.parsedMinorAwards.length > 0 ? `
+          <div class="detail-section">
+            <strong>Minor Awards:</strong><br>
+            ${game.parsedMinorAwards.map(a => `<span class="clickable-tag">${a}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        <div class="detail-section">
+          <strong>Publisher:</strong> ${game.publisher}<br>
+          <strong>Designer:</strong> ${game.designer}<br>
+          <strong>Artist:</strong> ${game.artist}
+        </div>
+
+        ${game.parsedThemes.length > 0 ? `
+          <div class="detail-section">
+            <strong>Themes:</strong><br>
+            ${game.parsedThemes.map(t => `<span class="clickable-tag">${t}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        ${game.parsedCategories.length > 0 ? `
+          <div class="detail-section">
+            <strong>Categories:</strong><br>
+            ${game.parsedCategories.map(c => `<span class="clickable-tag">${c}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        ${game.parsedMechanics.length > 0 ? `
+          <div class="detail-section">
+            <strong>Mechanics:</strong><br>
+            ${game.parsedMechanics.map(m => `<span class="clickable-tag">${m}</span>`).join('')}
+          </div>
+        ` : ''}
+
+        <div class="detail-section">
+          <strong>Description:</strong>
+          <div id="modal-desc" class="description-text">${game.description}</div>
+          <button id="modal-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
+        </div>
+
+        ${hasExpansions ? `
+          <div class="detail-section" style="margin-top: 14px;">
+            <strong>Expansions (${game.parsedExpansions.length}):</strong>
+            <div style="margin-top: 6px; max-height: 120px; overflow-y: auto;">
+              ${game.parsedExpansions.map(e => `
+                <div class="expansion-item">
+                  <div class="expansion-title">${e.title}</div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">
+                    Weight: ${e.weight ? e.weight.toFixed(1) : 'N/A'} | Rating: ${e.user_rating || e.bgg_rating || 'N/A'}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${game.id ? `
+          <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
+            View on BoardGameGeek ↗
+          </a>
+        ` : ''}
+      `;
+
+      detailModal.classList.add('open');
+    }
+
+    function toggleDescription() {
+      const desc = document.getElementById('modal-desc');
+      const btn = document.getElementById('modal-read-more');
+      if (desc.classList.contains('expanded')) {
+        desc.classList.remove('expanded');
+        btn.textContent = 'Read More';
+      } else {
+        desc.classList.add('expanded');
+        btn.textContent = 'Show Less';
+      }
     }
 
     function closeDetailModal() {
@@ -2318,6 +2443,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function createGameCardHTML(g) {
       const hasExpansions = g.parsedExpansions && g.parsedExpansions.length > 0;
       const isTopRated = g.user_rating !== null && g.user_rating >= 9.0;
+      const hasMajorAward = g.parsedMajorAwards && g.parsedMajorAwards.length > 0;
       
       let expansionsHTML = '';
       if (hasExpansions) {
@@ -2338,7 +2464,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                 <div class="expansion-title">${exp.title}</div>
                 <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.7rem;">
                   <span>Wt: ${exp.weight ? exp.weight.toFixed(1) : 'N/A'}</span>
-                  <span>Rating: ${exp.user_rating ? exp.user_rating.toFixed(1) : 'N/A'}</span>
+                  <span>⭐ ${exp.user_rating || exp.bgg_rating || 'N/A'}</span>
                 </div>
               </div>
             `).join('')}
@@ -2346,34 +2472,34 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         `;
       }
 
-      const playerStr = (g.min_players === g.max_players) ? `${g.min_players}p` : `${g.min_players}-${g.max_players}p`;
-      const timeStr = g.playing_time ? `${g.playing_time}m` : 'N/A';
-      const weightStr = g.weight ? g.weight.toFixed(1) : 'N/A';
-      const yearStr = g.year ? String(g.year) : 'N/A';
-      
-      const lukeRatingStr = g.user_rating !== null ? `★ ${g.user_rating.toFixed(1)}` : '★ --';
-      const bggRatingStr = g.bgg_rating !== null ? `BGG ${g.bgg_rating.toFixed(1)}` : 'BGG --';
+      const playerStr = g.min_players === g.max_players ? `${g.min_players}` : `${g.min_players}-${g.max_players}`;
+      const imgUrl = g.thumbnail || g.image || 'https://via.placeholder.com/300x200?text=No+Image';
+
+      const bggHtml = g.bgg_rating ? `<span class="rating-bgg" title="BGG Rating">🎲 ${g.bgg_rating.toFixed(1)}</span>` : '<span></span>';
+      const lukeHtml = g.user_rating !== null ? `<span class="rating-luke" title="Luke's Rating">⭐ ${g.user_rating.toFixed(1)}</span>` : '<span></span>';
 
       return `
         <div class="game-card ${isTopRated ? 'top-rated' : ''}" data-id="${g.id}">
           <div class="card-img-wrapper">
-            <img src="${g.image || g.thumbnail}" alt="${g.cleanTitle}" loading="lazy">
+            <img src="${imgUrl}" alt="${g.cleanTitle}" loading="lazy">
             ${expansionsHTML}
-            ${isTopRated ? '<div class="medal-icon-badge" title="Top Rated">🥇</div>' : ''}
+            ${hasMajorAward ? `<div class="medal-icon-badge" title="Major Award Winner">🥇</div>` : ''}
           </div>
           <div class="card-content">
             <div class="game-title">${g.cleanTitle}</div>
             
-            <div class="ratings-row">
-              <span>${lukeRatingStr}</span>
-              <span style="color: var(--turquoise);">${bggRatingStr}</span>
-            </div>
-
-            <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}</div>
-              <div class="stat-badge">⏱️ ${timeStr}</div>
-              <div class="stat-badge">🧠 ${weightStr}</div>
-              <div class="stat-badge">📅 ${yearStr}</div>
+            <div>
+              <div class="ratings-row">
+                ${bggHtml}
+                ${lukeHtml}
+              </div>
+              
+              <div class="game-stats">
+                <div class="stat-badge" title="Player Count">👥 ${playerStr}</div>
+                <div class="stat-badge" title="Play Time">⏱️ ${g.playing_time}</div>
+                <div class="stat-badge" title="Complexity Weight">⚖️ ${g.weight ? g.weight.toFixed(1) : 'N/A'}</div>
+                <div class="stat-badge" title="Conflict Level">⚔️ ${conflictMap[g.conflict_level_num] || 'Medium'}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -2381,149 +2507,32 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     function attachCardEventListeners() {
-      document.querySelectorAll('.expansion-icon-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const card = btn.closest('.game-card');
-          card.classList.add('show-expansions');
-        });
-      });
-
-      document.querySelectorAll('.expansions-overlay').forEach(overlay => {
-        overlay.addEventListener('click', (e) => {
-          if (e.target === overlay) {
-            overlay.closest('.game-card').classList.remove('show-expansions');
-          }
-        });
-      });
-
-      document.querySelectorAll('.expansion-close-btn').forEach(closeBtn => {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const card = closeBtn.closest('.game-card');
-          card.classList.remove('show-expansions');
-        });
-      });
-
       document.querySelectorAll('.game-card').forEach(card => {
         card.addEventListener('click', (e) => {
-          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
+          if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansion-close-btn') || e.target.closest('.expansions-overlay')) {
+            return;
+          }
           const gameId = card.getAttribute('data-id');
           const game = games.find(g => g.id === gameId);
-          if (game) {
-            openDetailModal(game);
-          }
+          if (game) openDetailModal(game);
         });
-      });
-    }
 
-    function toggleTagFilter(categorySet, value) {
-      if (categorySet.has(value)) {
-        categorySet.delete(value);
-      } else {
-        categorySet.add(value);
-      }
-      renderGames();
-      if (currentDetailGame) {
-        openDetailModal(currentDetailGame);
-      }
-    }
-
-    function openDetailModal(g) {
-      currentDetailGame = g;
-      const playerStr = (g.min_players === g.max_players) ? `${g.min_players} Players` : `${g.min_players} - ${g.max_players} Players`;
-      const lukeRatingStr = g.user_rating !== null ? g.user_rating.toFixed(1) : 'N/A';
-      const bggRatingStr = g.bgg_rating !== null ? g.bgg_rating.toFixed(1) : 'N/A';
-
-      const renderTags = (items, selectedSet, setRef) => {
-        if (!items || items.length === 0) return '<em>None</em>';
-        return items.map(item => {
-          const isSelected = selectedSet.has(item);
-          return `<span class="clickable-tag ${isSelected ? 'active-tag' : ''}" data-type="${setRef}" data-val="${item}">${item}</span>`;
-        }).join(' ');
-      };
-
-      const categoriesTags = renderTags(g.parsedCategories, selectedCategories, 'cat');
-      const mechanicsTags = renderTags(g.parsedMechanics, selectedMechanics, 'mech');
-      const themesTags = renderTags(g.parsedThemes, selectedThemes, 'theme');
-      const majorAwardsTags = renderTags(g.parsedMajorAwards, selectedMajorAwards, 'major');
-      const minorAwardsTags = renderTags(g.parsedMinorAwards, selectedMinorAwards, 'minor');
-
-      detailModalContent.innerHTML = `
-        <div class="modal-title">${g.cleanTitle}</div>
-        
-        <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
-          <img src="${g.image || g.thumbnail}" alt="${g.cleanTitle}" style="max-width: 140px; max-height: 180px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);">
-          
-          <div style="flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
-            <div><strong>Luke's Rating:</strong> <span style="color: var(--yellow); font-weight: bold;">★ ${lukeRatingStr}</span></div>
-            <div><strong>BGG Rating:</strong> <span style="color: var(--turquoise); font-weight: bold;">${bggRatingStr}</span></div>
-            <div><strong>Players:</strong> ${playerStr}</div>
-            <div><strong>Playtime:</strong> ${g.playing_time ? g.playing_time + ' mins' : 'N/A'}</div>
-            <div><strong>Weight:</strong> ${g.weight ? g.weight.toFixed(1) + ' / 5' : 'N/A'}</div>
-            <div><strong>Year:</strong> ${g.year || 'N/A'}</div>
-            <div><strong>Publisher:</strong> ${g.publisher}</div>
-          </div>
-        </div>
-
-        <div class="meta-tags-grid">
-          <div class="detail-section">
-            <strong>Categories:</strong><br>${categoriesTags}
-          </div>
-          <div class="detail-section">
-            <strong>Mechanics:</strong><br>${mechanicsTags}
-          </div>
-          <div class="detail-section">
-            <strong>Themes:</strong><br>${themesTags}
-          </div>
-          <div class="detail-section">
-            <strong>Game Mode:</strong><br><span class="clickable-tag ${selectedStyles.has(g.game_mode) ? 'active-tag' : ''}" data-type="style" data-val="${g.game_mode}">${g.game_mode}</span>
-          </div>
-          ${g.parsedMajorAwards.length ? `<div class="detail-section"><strong>Major Awards:</strong><br>${majorAwardsTags}</div>` : ''}
-          ${g.parsedMinorAwards.length ? `<div class="detail-section"><strong>Minor Awards:</strong><br>${minorAwardsTags}</div>` : ''}
-        </div>
-
-        <div class="detail-section">
-          <strong>Description:</strong>
-          <div id="modal-description-text" class="description-text">${g.description}</div>
-          <button id="modal-read-more-btn" class="read-more-btn">Read More</button>
-        </div>
-
-        <a href="https://boardgamegeek.com/bggsearch?q=${encodeURIComponent(g.cleanTitle)}" target="_blank" class="bgg-link-btn">
-          View on BoardGameGeek ↗
-        </a>
-      `;
-
-      const descText = document.getElementById('modal-description-text');
-      const readMoreBtn = document.getElementById('modal-read-more-btn');
-      
-      if (descText && readMoreBtn) {
-        if (descText.scrollHeight <= descText.clientHeight) {
-          readMoreBtn.style.display = 'none';
-        } else {
-          readMoreBtn.addEventListener('click', () => {
-            const isExpanded = descText.classList.toggle('expanded');
-            readMoreBtn.textContent = isExpanded ? 'Show Less' : 'Read More';
+        const expBtn = card.querySelector('.expansion-icon-btn');
+        if (expBtn) {
+          expBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.classList.add('show-expansions');
           });
         }
-      }
 
-      detailModalContent.querySelectorAll('.clickable-tag').forEach(tag => {
-        tag.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const type = tag.getAttribute('data-type');
-          const val = tag.getAttribute('data-val');
-
-          if (type === 'cat') toggleTagFilter(selectedCategories, val);
-          else if (type === 'mech') toggleTagFilter(selectedMechanics, val);
-          else if (type === 'theme') toggleTagFilter(selectedThemes, val);
-          else if (type === 'major') toggleTagFilter(selectedMajorAwards, val);
-          else if (type === 'minor') toggleTagFilter(selectedMinorAwards, val);
-          else if (type === 'style') toggleTagFilter(selectedStyles, val);
-        });
+        const closeExpBtn = card.querySelector('.expansion-close-btn');
+        if (closeExpBtn) {
+          closeExpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.classList.remove('show-expansions');
+          });
+        }
       });
-
-      detailModal.classList.add('open');
     }
 
     document.addEventListener('DOMContentLoaded', loadCollection);
@@ -2533,4 +2542,5 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
