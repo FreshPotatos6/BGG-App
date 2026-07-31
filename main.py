@@ -41,6 +41,11 @@ def clean_float(val, default=0.0):
         pass
     return default
 
+def clean_title(raw_title):
+    if not raw_title:
+        return "Untitled Game"
+    return re.sub(r'\s*\(\d{4}\)\s*$', '', str(raw_title)).strip()
+
 def get_row_value(row, keys, default="Unknown"):
     for k in keys:
         if k in row and row[k] is not None and str(row[k]).strip() != "":
@@ -53,7 +58,6 @@ def get_row_value(row, keys, default="Unknown"):
     return default
 
 def parse_player_count_string(val, default_min=1, default_max=4):
-    """Parses player count strings (e.g., '1-4', '2', '3-5 players') into min and max integers."""
     if not val:
         return default_min, default_max
     
@@ -69,7 +73,6 @@ def parse_player_count_string(val, default_min=1, default_max=4):
     return default_min, default_max
 
 def get_google_creds():
-    """Retrieve Google credentials from Environment Variable or local credentials.json."""
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/spreadsheets",
@@ -144,7 +147,7 @@ def generate_json_from_sheet():
 
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
-                "title": row.get("Title", "Unknown"),
+                "title": clean_title(row.get("Title", "Unknown")),
                 "year": clean_int(row.get("Year Published"), 0),
                 "playing_time_raw": raw_play_time if raw_play_time else "0",
                 "playing_time": clean_int(row.get("Play Time"), 0),
@@ -806,33 +809,23 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       top: 8px;
       right: 8px;
-      background: var(--yellow);
-      color: #0d0221;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.2s ease;
+      padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--bg);
-      box-shadow: 0 0 8px rgba(254, 228, 64, 0.8);
-      cursor: pointer;
-      z-index: 10;
-      transition: transform 0.2s ease, background 0.2s ease;
     }
     .expansion-icon-btn svg {
-      width: 18px;
-      height: 18px;
-      stroke: #0d0221;
-      stroke-width: 5;
-      stroke-linecap: round;
+      width: 26px;
+      height: 26px;
+      filter: drop-shadow(0 0 4px rgba(254, 228, 64, 0.8));
     }
     .expansion-icon-btn:hover {
-      transform: scale(1.15);
-      background: #fff;
-    }
-    .expansion-icon-btn:hover svg {
-      stroke: var(--magenta);
+      transform: scale(1.2);
     }
 
     .medal-icon-badge {
@@ -902,7 +895,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: var(--magenta);
       font-weight: 700;
       min-height: 20px;
-      margin-top: auto;
+      margin-bottom: 4px;
     }
 
     .expansions-overlay {
@@ -1160,6 +1153,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .btn-text-play-mobile { display: none; }
     .btn-text-clear-desktop { display: inline; }
     .btn-text-clear-mobile { display: none; }
+    .btn-icon { display: inline; }
 
 @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
       body { padding: 0 6px 6px 6px; }
@@ -1167,14 +1161,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       header { 
         padding: 8px 10px; 
         gap: 8px; 
-        flex-direction: column; /* Stacks controls UNDER the title */
+        flex-direction: column;
         align-items: stretch; 
         justify-content: flex-start;
       }
 
       .header-left { 
         width: 100%; 
-        justify-content: center; /* Centers title and logo on top row */
+        justify-content: center;
       }
       .header-left .meeple-logo { width: 28px; height: 28px; }
       h1 { font-size: 1.1rem; letter-spacing: 0.5px; }
@@ -1206,6 +1200,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         font-size: 0.75rem;
       }
 
+      .btn-icon { display: none; }
       .btn-text-play-desktop { display: none; }
       .btn-text-play-mobile { display: inline; }
       .btn-text-clear-desktop { display: none; }
@@ -1243,7 +1238,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .card-img-wrapper { height: 120px; padding: 4px; }
       .card-content { padding: 6px; gap: 4px; }
       .game-title { font-size: 0.78rem; }
-      .ratings-row { font-size: 0.65rem; min-height: 14px; }
+      .ratings-row { font-size: 0.65rem; min-height: 14px; margin-bottom: 2px; }
       .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
       .stat-badge { padding: 2px; }
       .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.7rem; top: 4px; right: 4px; }
@@ -1271,8 +1266,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="luck-btn" class="btn-luck" title="Play Game">🎲 <span class="btn-text-play-desktop">Play Game</span><span class="btn-text-play-mobile">Play</span></button>
-        <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="filter-icon">⚙️ </span>Filters</button>
+        <button id="luck-btn" class="btn-luck" title="Play Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Play Game</span><span class="btn-text-play-mobile">Play</span></button>
+        <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="btn-icon">⚙️ </span>Filters</button>
         <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
@@ -1714,6 +1709,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
 
+    function closeLuckModal() {
+      luckModal.classList.remove('open');
+    }
+
     function triggerRandomGamePick() {
       if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
         modalContent.innerHTML = `<p style="color: var(--yellow); text-align: center;">No games available with your current filter selection!</p>`;
@@ -1725,8 +1724,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       luckModal.classList.add('open');
     }
 
-    modalCloseBtn.addEventListener('click', () => luckModal.classList.remove('open'));
-    
     function closeDetailModal() {
       detailModal.classList.remove('open');
       currentDetailGame = null;
@@ -2318,6 +2315,71 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       attachCardEventListeners();
     }
 
+    function createGameCardHTML(g) {
+      const hasExpansions = g.parsedExpansions && g.parsedExpansions.length > 0;
+      const isTopRated = g.user_rating !== null && g.user_rating >= 9.0;
+      
+      let expansionsHTML = '';
+      if (hasExpansions) {
+        expansionsHTML = `
+          <button class="expansion-icon-btn" title="View Expansions">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" fill="#fee440" stroke="#0d0221" stroke-width="2"/>
+              <path d="M12 7V17M7 12H17" stroke="#0d0221" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="expansions-overlay">
+            <div class="expansions-header">
+              <span>Expansions (${g.parsedExpansions.length})</span>
+              <button class="expansion-close-btn">✕</button>
+            </div>
+            ${g.parsedExpansions.map(exp => `
+              <div class="expansion-item">
+                <div class="expansion-title">${exp.title}</div>
+                <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.7rem;">
+                  <span>Wt: ${exp.weight ? exp.weight.toFixed(1) : 'N/A'}</span>
+                  <span>Rating: ${exp.user_rating ? exp.user_rating.toFixed(1) : 'N/A'}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      const playerStr = (g.min_players === g.max_players) ? `${g.min_players}p` : `${g.min_players}-${g.max_players}p`;
+      const timeStr = g.playing_time ? `${g.playing_time}m` : 'N/A';
+      const weightStr = g.weight ? g.weight.toFixed(1) : 'N/A';
+      const yearStr = g.year ? String(g.year) : 'N/A';
+      
+      const lukeRatingStr = g.user_rating !== null ? `★ ${g.user_rating.toFixed(1)}` : '★ --';
+      const bggRatingStr = g.bgg_rating !== null ? `BGG ${g.bgg_rating.toFixed(1)}` : 'BGG --';
+
+      return `
+        <div class="game-card ${isTopRated ? 'top-rated' : ''}" data-id="${g.id}">
+          <div class="card-img-wrapper">
+            <img src="${g.image || g.thumbnail}" alt="${g.cleanTitle}" loading="lazy">
+            ${expansionsHTML}
+            ${isTopRated ? '<div class="medal-icon-badge" title="Top Rated">🥇</div>' : ''}
+          </div>
+          <div class="card-content">
+            <div class="game-title">${g.cleanTitle}</div>
+            
+            <div class="ratings-row">
+              <span>${lukeRatingStr}</span>
+              <span style="color: var(--turquoise);">${bggRatingStr}</span>
+            </div>
+
+            <div class="game-stats">
+              <div class="stat-badge">👥 ${playerStr}</div>
+              <div class="stat-badge">⏱️ ${timeStr}</div>
+              <div class="stat-badge">🧠 ${weightStr}</div>
+              <div class="stat-badge">📅 ${yearStr}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function attachCardEventListeners() {
       document.querySelectorAll('.expansion-icon-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -2348,360 +2410,127 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           if (e.target.closest('.expansion-icon-btn') || e.target.closest('.expansions-overlay')) return;
           const gameId = card.getAttribute('data-id');
           const game = games.find(g => g.id === gameId);
-          if (game) openDetailModal(game);
+          if (game) {
+            openDetailModal(game);
+          }
         });
       });
     }
 
-    function createGameCardHTML(g) {
-      const title = g.cleanTitle;
-      const year = g.year > 0 ? g.year : "N/A";
-
-      const userRatingVal = g.user_rating ? Math.round(g.user_rating) : null;
-      const userRating = userRatingVal ? `⭐ Luke: ${userRatingVal}` : '';
-      const bggRating = g.bgg_rating ? `🌐 BGG: ${g.bgg_rating.toFixed(1)}` : '🌐 BGG: N/A';
-
-      const isTopRated = userRatingVal !== null && [8, 9, 10].includes(userRatingVal);
-      const cardClass = isTopRated ? "game-card top-rated" : "game-card";
-
-      const minP = g.min_players;
-      const maxP = g.max_players;
-      const playerStr = minP === maxP ? `${minP}` : `${minP}-${maxP}`;
-      
-      const timeStr = g.playing_time_raw ? `${g.playing_time_raw}` : `${g.playing_time}`;
-      const timeDisplay = timeStr.toLowerCase().replace(/min/g, '').trim();
-
-      const weight = g.weight > 0 ? g.weight.toFixed(1) : 'N/A';
-
-      const hasExpansions = g.parsedExpansions && g.parsedExpansions.length > 0;
-      
-      const allAwards = [...g.parsedMajorAwards, ...g.parsedMinorAwards].map(a => a.toLowerCase());
-      const hasMedalAward = allAwards.some(a => a.includes("spiel des jahres") || a.includes("kennerspiel des jahres"));
-
-      return `
-        <div class="${cardClass}" data-id="${g.id}">
-          <div class="card-img-wrapper">
-            ${g.image ? `<img src="${g.image}" alt="${title}" loading="lazy">` : `<div style="color:var(--text-muted);font-size:0.8rem;">No Image</div>`}
-            
-            ${hasExpansions ? `
-              <button class="expansion-icon-btn" title="View Expansions">
-                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            ` : ''}
-
-            ${hasMedalAward ? `
-              <div class="medal-icon-badge" title="Spiel / Kennerspiel des Jahres Winner">
-                🎖️
-              </div>
-            ` : ''}
-
-            <div class="expansions-overlay">
-              <div class="expansions-header">
-                <span>Expansions (${g.parsedExpansions.length})</span>
-                <button class="expansion-close-btn">✕ Close</button>
-              </div>
-              ${g.parsedExpansions.map(exp => `
-                <div class="expansion-item">
-                  <div class="expansion-title">${exp.title}</div>
-                  <div style="color: var(--text-muted); font-size: 0.7rem;">
-                    ${exp.user_rating ? `⭐ Luke: ${Math.round(exp.user_rating)} | ` : ''}
-                    ${exp.bgg_rating ? `🌐 BGG: ${exp.bgg_rating.toFixed(1)} | ` : ''}
-                    Weight: ${exp.weight > 0 ? exp.weight.toFixed(1) : 'N/A'}
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="card-content">
-            <div class="game-title">${title} (${year})</div>
-            
-            <div class="game-stats">
-              <div class="stat-badge">👥 ${playerStr}</div>
-              <div class="stat-badge">⏱️ ${timeDisplay}m</div>
-              <div class="stat-badge">⚖️ ${weight}</div>
-              <div class="stat-badge">⚔️ ${g.conflict_level_num === 1 ? 'Low' : g.conflict_level_num === 3 ? 'High' : 'Med'}</div>
-            </div>
-
-            <div class="ratings-row">
-              <span>${userRating}</span>
-              <span>${bggRating}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-function openDetailModal(g) {
-    currentDetailGame = g;
-    detailModal.classList.add('open');
-
-    const isPlayed = g.plays_recorded > 0;
-    const playStateTag = isPlayed 
-      ? `<span class="clickable-tag ${filterPlayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('played')">Played</span>`
-      : `<span class="clickable-tag ${filterUnplayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('unplayed')">Unplayed</span>`;
-
-    const bggUrl = g.id ? `https://boardgamegeek.com/boardgame/${g.id}` : '#';
-
-    // 1. Play on BGA button HTML
-    const bgaHTML = (g.bga && g.bga.trim() !== '')
-      ? `<a href="${g.bga}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn" style="background-color: #1b2838; margin-bottom: 12px; display: block; text-align: center;">🎲 Play on BGA</a>`
-      : '';
-
-    // 2. Awards tags HTML
-    const awardsHTML = (g.parsedAwards && g.parsedAwards.length > 0)
-      ? g.parsedAwards.map(award => `<span class="clickable-tag">${award}</span>`).join(' ')
-      : '';
-
-    // 3. Player tags with Community Rec Warning Icon (⚠️)
-    let playerTagsHTML = '';
-    const minP = g.min_players || 1;
-    const maxP = g.max_players || minP;
-
-    for (let p = minP; p <= maxP; p++) {
-      let label = p >= 10 ? '10+' : String(p);
-      const isActive = selectedPlayerCounts.has(p);
-      
-      let isNotRecommended = false;
-      if (g.community_rec_players) {
-        isNotRecommended = !String(g.community_rec_players).includes(String(p));
+    function toggleTagFilter(categorySet, value) {
+      if (categorySet.has(value)) {
+        categorySet.delete(value);
+      } else {
+        categorySet.add(value);
       }
-      let warningIcon = isNotRecommended ? ' ⚠️' : '';
-      
-      playerTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="filterByPlayerCount(${p})">${label}${warningIcon}</span>`;
-    }
-    if (!playerTagsHTML) playerTagsHTML = '<span>N/A</span>';
-
-    // 4. BGG Geek Rating Tag (+/- 1 point filter)
-    const geekRating = g.geek_rating || g.bgg_rating || 0;
-    const geekRatingTagHTML = geekRating > 0 
-      ? `<span class="clickable-tag" onclick="filterByGeekRatingRange(${geekRating})">${Number(geekRating).toFixed(1)}</span>`
-      : '<span>N/A</span>';
-
-    let weightTagText = 'Medium';
-    if (g.weight > 0) {
-      if (g.weight < 2.0) weightTagText = 'Light';
-      else if (g.weight < 3.5) weightTagText = 'Medium';
-      else weightTagText = 'Heavy';
-    }
-    const curWMin = parseFloat(wMin.value);
-    const curWMax = parseFloat(wMax.value);
-    let isWeightActive = false;
-    if (weightTagText === 'Light' && curWMin === 1.0 && curWMax === 2.0) isWeightActive = true;
-    if (weightTagText === 'Medium' && curWMin === 2.0 && curWMax === 3.5) isWeightActive = true;
-    if (weightTagText === 'Heavy' && curWMin === 3.5 && curWMax === 5.0) isWeightActive = true;
-
-    const weightTagHTML = `<span class="clickable-tag ${isWeightActive ? 'active-tag' : ''}" onclick="filterByWeightTier('${weightTagText}')">${weightTagText}</span>`;
-
-    let avgMinutes = g.playing_time;
-    if (!avgMinutes && g.playing_time_raw) {
-      const numbers = g.playing_time_raw.match(/\d+/g);
-      if (numbers && numbers.length > 0) {
-        const nums = numbers.map(Number);
-        avgMinutes = nums.reduce((a, b) => a + b, 0) / nums.length;
+      renderGames();
+      if (currentDetailGame) {
+        openDetailModal(currentDetailGame);
       }
     }
 
-    let playTimeTagText = 'Medium';
-    if (avgMinutes > 0) {
-      if (avgMinutes <= 30) playTimeTagText = 'Short';
-      else if (avgMinutes <= 90) playTimeTagText = 'Medium';
-      else playTimeTagText = 'Long';
-    }
+    function openDetailModal(g) {
+      currentDetailGame = g;
+      const playerStr = (g.min_players === g.max_players) ? `${g.min_players} Players` : `${g.min_players} - ${g.max_players} Players`;
+      const lukeRatingStr = g.user_rating !== null ? g.user_rating.toFixed(1) : 'N/A';
+      const bggRatingStr = g.bgg_rating !== null ? g.bgg_rating.toFixed(1) : 'N/A';
 
-    const curTMin = parseFloat(tMin.value);
-    const curTMax = parseFloat(tMax.value);
-    let isPlayTimeActive = false;
-    if (playTimeTagText === 'Short' && curTMin === 0 && curTMax === 30) isPlayTimeActive = true;
-    if (playTimeTagText === 'Medium' && curTMin === 30 && curTMax === 90) isPlayTimeActive = true;
-    if (playTimeTagText === 'Long' && curTMin === 90 && curTMax === 300) isPlayTimeActive = true;
+      const renderTags = (items, selectedSet, setRef) => {
+        if (!items || items.length === 0) return '<em>None</em>';
+        return items.map(item => {
+          const isSelected = selectedSet.has(item);
+          return `<span class="clickable-tag ${isSelected ? 'active-tag' : ''}" data-type="${setRef}" data-val="${item}">${item}</span>`;
+        }).join(' ');
+      };
 
-    const playTimeTagHTML = `<span class="clickable-tag ${isPlayTimeActive ? 'active-tag' : ''}" onclick="filterByPlaytimeTier('${playTimeTagText}')">${playTimeTagText}</span>`;
+      const categoriesTags = renderTags(g.parsedCategories, selectedCategories, 'cat');
+      const mechanicsTags = renderTags(g.parsedMechanics, selectedMechanics, 'mech');
+      const themesTags = renderTags(g.parsedThemes, selectedThemes, 'theme');
+      const majorAwardsTags = renderTags(g.parsedMajorAwards, selectedMajorAwards, 'major');
+      const minorAwardsTags = renderTags(g.parsedMinorAwards, selectedMinorAwards, 'minor');
 
-    const curCMin = parseInt(cMin.value);
-    const curCMax = parseInt(cMax.value);
-    const confNum = g.conflict_level_num || 2;
-    const isConflictActive = (curCMin === curCMax && curCMin === confNum);
-    const conflictTagHTML = `<span class="clickable-tag ${isConflictActive ? 'active-tag' : ''}" onclick="filterByConflictLevel('${g.conflict_level}')">${g.conflict_level || 'Medium'}</span>`;
-
-    const isModeActive = selectedStyles.has(g.game_mode);
-    const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
-
-    const curYMinIdx = parseInt(yMin.value);
-    const curYMaxIdx = parseInt(yMax.value);
-    const gameYrIdx = sliderIndexFromYear(g.year);
-    const isYearActive = (curYMinIdx === curYMaxIdx && curYMinIdx === gameYrIdx);
-    const yearTagHTML = g.year > 0 
-      ? `<span class="clickable-tag ${isYearActive ? 'active-tag' : ''}" onclick="filterByYear(${g.year})">${g.year}</span>`
-      : '<span>Unknown</span>';
-
-    const publisherTagHTML = (g.publisher && g.publisher !== 'Unknown')
-      ? `<span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>`
-      : '<span>Unknown</span>';
-
-    const designersHTML = g.parsedDesigners.length > 0
-      ? g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
-      : '<span>Unknown</span>';
-
-    const artistsHTML = g.parsedArtists.length > 0
-      ? g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
-      : '<span>Unknown</span>';
-
-    const themesHTML = g.parsedThemes.length > 0
-      ? g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
-      : '<span>None</span>';
-
-    const categoriesHTML = g.parsedCategories.length > 0
-      ? g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
-      : '<span>None</span>';
-
-    const mechanicsHTML = g.parsedMechanics.length > 0
-      ? g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
-      : '<span>None</span>';
-
-    detailModalContent.innerHTML = `
-      <div class="modal-title">${g.cleanTitle}</div>
-      
-      <div class="detail-section" style="margin-bottom: 16px;">
-        <div class="description-text">${g.description}</div>
-        <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
-      </div>
-
-      ${bgaHTML}
-
-      <div class="meta-tags-grid">
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Players:</strong>
-          <div>${playerTagsHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Weight:</strong>
-          <div>${weightTagHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Play Time:</strong>
-          <div>${playTimeTagHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Geek Rating:</strong>
-          <div>${geekRatingTagHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Conflict:</strong>
-          <div>${conflictTagHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Game Mode:</strong>
-          <div>${gameModeTagHTML}</div>
-        </div>
-        <div>
-          <strong style="display:block; margin-bottom:4px;">Year:</strong>
-          <div>${yearTagHTML}</div>
-        </div>
-      </div>
-
-      <div class="detail-section">
-          <strong>Major Awards:</strong><br>
-          ${renderTagsWithActive(g.parsedMajorAwards, 'major-award')}
-        </div>
-
-      <div class="detail-section">
-          <strong>Minor Awards:</strong><br>
-          ${renderTagsWithActive(g.parsedMinorAwards, 'minor-award')}
-        </div>  
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${g.cleanTitle}</div>
         
-      <div class="detail-section">
-        <strong>Publisher:</strong> <div>${publisherTagHTML}</div>
-      </div>
+        <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+          <img src="${g.image || g.thumbnail}" alt="${g.cleanTitle}" style="max-width: 140px; max-height: 180px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);">
+          
+          <div style="flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
+            <div><strong>Luke's Rating:</strong> <span style="color: var(--yellow); font-weight: bold;">★ ${lukeRatingStr}</span></div>
+            <div><strong>BGG Rating:</strong> <span style="color: var(--turquoise); font-weight: bold;">${bggRatingStr}</span></div>
+            <div><strong>Players:</strong> ${playerStr}</div>
+            <div><strong>Playtime:</strong> ${g.playing_time ? g.playing_time + ' mins' : 'N/A'}</div>
+            <div><strong>Weight:</strong> ${g.weight ? g.weight.toFixed(1) + ' / 5' : 'N/A'}</div>
+            <div><strong>Year:</strong> ${g.year || 'N/A'}</div>
+            <div><strong>Publisher:</strong> ${g.publisher}</div>
+          </div>
+        </div>
 
-      <div class="detail-section">
-        <strong>Designers:</strong> <div>${designersHTML}</div>
-      </div>
+        <div class="meta-tags-grid">
+          <div class="detail-section">
+            <strong>Categories:</strong><br>${categoriesTags}
+          </div>
+          <div class="detail-section">
+            <strong>Mechanics:</strong><br>${mechanicsTags}
+          </div>
+          <div class="detail-section">
+            <strong>Themes:</strong><br>${themesTags}
+          </div>
+          <div class="detail-section">
+            <strong>Game Mode:</strong><br><span class="clickable-tag ${selectedStyles.has(g.game_mode) ? 'active-tag' : ''}" data-type="style" data-val="${g.game_mode}">${g.game_mode}</span>
+          </div>
+          ${g.parsedMajorAwards.length ? `<div class="detail-section"><strong>Major Awards:</strong><br>${majorAwardsTags}</div>` : ''}
+          ${g.parsedMinorAwards.length ? `<div class="detail-section"><strong>Minor Awards:</strong><br>${minorAwardsTags}</div>` : ''}
+        </div>
 
-      <div class="detail-section">
-        <strong>Artists:</strong> <div>${artistsHTML}</div>
-      </div>
+        <div class="detail-section">
+          <strong>Description:</strong>
+          <div id="modal-description-text" class="description-text">${g.description}</div>
+          <button id="modal-read-more-btn" class="read-more-btn">Read More</button>
+        </div>
 
-      <div class="detail-section">
-        <strong>Themes:</strong> <div>${themesHTML}</div>
-      </div>
-
-      <div class="detail-section">
-        <strong>Categories:</strong> <div>${categoriesHTML}</div>
-      </div>
-
-      <div class="detail-section">
-        <strong>Mechanics:</strong> <div>${mechanicsHTML}</div>
-      </div>
-
-      <div class="detail-section">
-        <strong>Play Status:</strong> <div>${playStateTag}</div>
-      </div>
-
-      <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
-        🌐 View on BGG
-      </a>
+        <a href="https://boardgamegeek.com/bggsearch?q=${encodeURIComponent(g.cleanTitle)}" target="_blank" class="bgg-link-btn">
+          View on BoardGameGeek ↗
+        </a>
       `;
+
+      const descText = document.getElementById('modal-description-text');
+      const readMoreBtn = document.getElementById('modal-read-more-btn');
+      
+      if (descText && readMoreBtn) {
+        if (descText.scrollHeight <= descText.clientHeight) {
+          readMoreBtn.style.display = 'none';
+        } else {
+          readMoreBtn.addEventListener('click', () => {
+            const isExpanded = descText.classList.toggle('expanded');
+            readMoreBtn.textContent = isExpanded ? 'Show Less' : 'Read More';
+          });
+        }
+      }
+
+      detailModalContent.querySelectorAll('.clickable-tag').forEach(tag => {
+        tag.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const type = tag.getAttribute('data-type');
+          const val = tag.getAttribute('data-val');
+
+          if (type === 'cat') toggleTagFilter(selectedCategories, val);
+          else if (type === 'mech') toggleTagFilter(selectedMechanics, val);
+          else if (type === 'theme') toggleTagFilter(selectedThemes, val);
+          else if (type === 'major') toggleTagFilter(selectedMajorAwards, val);
+          else if (type === 'minor') toggleTagFilter(selectedMinorAwards, val);
+          else if (type === 'style') toggleTagFilter(selectedStyles, val);
+        });
+      });
 
       detailModal.classList.add('open');
-
-      setTimeout(() => {
-        const descEl = document.getElementById('modal-desc-text');
-        const btnEl = document.getElementById('modal-read-more-btn');
-        if (descEl && btnEl) {
-          if (descEl.scrollHeight > descEl.clientHeight) {
-            btnEl.style.display = 'inline-block';
-          }
-        }
-      }, 50);
     }
 
-    function toggleModalDescription() {
-      const descEl = document.getElementById('modal-desc-text');
-      const btnEl = document.getElementById('modal-read-more-btn');
-      if (descEl.classList.contains('expanded')) {
-        descEl.classList.remove('expanded');
-        btnEl.textContent = 'Read More';
-      } else {
-        descEl.classList.add('expanded');
-        btnEl.textContent = 'Show Less';
-      }
-    }
-
-    function filterByTag(type, value) {
-      closeDetailModal();
-      if (toolbar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
-
-      if (type === 'theme') {
-        selectedThemes.clear();
-        selectedThemes.add(value);
-        document.querySelectorAll('input[data-prefix="theme"]').forEach(cb => cb.checked = (cb.value === value));
-      } else if (type === 'cat') {
-        selectedCategories.clear();
-        selectedCategories.add(value);
-        document.querySelectorAll('input[data-prefix="cat"]').forEach(cb => cb.checked = (cb.value === value));
-      } else if (type === 'mech') {
-        selectedMechanics.clear();
-        selectedMechanics.add(value);
-        document.querySelectorAll('input[data-prefix="mech"]').forEach(cb => cb.checked = (cb.value === value));
-      } else if (type === 'major-award') {
-        selectedMajorAwards.clear();
-        selectedMajorAwards.add(value);
-        document.querySelectorAll('input[data-prefix="major-award"]').forEach(cb => cb.checked = (cb.value === value));
-      } else if (type === 'minor-award') {
-        selectedMinorAwards.clear();
-        selectedMinorAwards.add(value);
-        document.querySelectorAll('input[data-prefix="minor-award"]').forEach(cb => cb.checked = (cb.value === value));
-      }
-
-      renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    window.onload = loadCollection;
+    document.addEventListener('DOMContentLoaded', loadCollection);
   </script>
 </body>
 </html>
 """
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
