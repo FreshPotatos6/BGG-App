@@ -49,10 +49,22 @@ def clean_title(raw_title):
 def clean_award_name(raw_award):
     if not raw_award:
         return ""
-    # Strips out leading/trailing years like "2004 Spiel Des Jahres Winner" -> "Spiel Des Jahres Winner"
-    cleaned = re.sub(r'^\d{4}\s+', '', str(raw_award)).strip()
+    # Strips leading 4-digit years and spaces/punctuation from individual award chunks
+    cleaned = re.sub(r'^\d{4}[\s–-]+', '', str(raw_award)).strip()
     cleaned = re.sub(r'\s+\(\d{4}\)$', '', cleaned).strip()
     return cleaned
+
+def parse_awards_string(raw_awards_str):
+    if not raw_awards_str:
+        return []
+    # Split by comma first, clean each award individually to catch embedded dates after commas
+    split_parts = str(raw_awards_str).split(",")
+    cleaned_list = []
+    for part in split_parts:
+        c = clean_award_name(part)
+        if c:
+            cleaned_list.append(c)
+    return cleaned_list
 
 def get_row_value(row, keys, default="Unknown"):
     for k in keys:
@@ -153,8 +165,8 @@ def generate_json_from_sheet():
                 min_p = clean_int(row.get("Min Players"), 1)
                 max_p = clean_int(row.get("Max Players"), max(min_p, 4))
 
-            major_awards_cleaned = [clean_award_name(a) for a in str(row.get("Major Awards", "")).split(",") if clean_award_name(a)]
-            minor_awards_cleaned = [clean_award_name(a) for a in str(row.get("Minor Awards", "")).split(",") if clean_award_name(a)]
+            major_awards_cleaned = parse_awards_string(row.get("Major Awards", ""))
+            minor_awards_cleaned = parse_awards_string(row.get("Minor Awards", ""))
 
             games_list.append({
                 "id": str(row.get("Game ID", "")).strip(),
@@ -1264,18 +1276,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       
       .app-layout { margin-top: 6px; }
       .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
-      
-      /* Updated to ensure at least 2 columns on mobile/landscape */
-      .game-grid-row { 
-        grid-template-columns: repeat(2, minmax(0, 1fr)); 
-        gap: 8px; 
-      }
-      @media (min-orientation: landscape) {
-        .game-grid-row {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-      }
-
+      .game-grid-row { gap: 6px; }
       .game-card { border-width: 1px; }
       .card-img-wrapper { height: 120px; padding: 4px; }
       .card-content { padding: 6px; gap: 4px; }
@@ -2108,8 +2109,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.user_rating > 0) {
         const lukeBadge = document.createElement('div');
         lukeBadge.className = 'score-badge-circle score-badge-luke';
-        // Display Luke's rating as a whole number
-        lukeBadge.innerText = Math.round(game.user_rating);
+        lukeBadge.innerText = game.user_rating.toFixed(1);
         lukeBadge.title = "Luke's Rating";
         badgeTopLeft.appendChild(lukeBadge);
       }
@@ -2131,8 +2131,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.major_awards && game.major_awards.length > 0) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
-        // Changed trophy icon to 1st place medal icon
-        medalBadge.innerHTML = '🥇';
+        medalBadge.innerHTML = '🏆';
         medalBadge.title = game.major_awards.join(', ');
         imgWrapper.appendChild(medalBadge);
       }
@@ -2157,8 +2156,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       statsEl.className = 'game-stats';
 
       const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      // Drop "min" text from play time display in grid view
-      const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
+      const timeText = game.playing_time_raw ? game.playing_time_raw : `${game.playing_time}`;
 
       statsEl.innerHTML = `
         <div class="stat-badge" title="Player Count">👥 ${pCountText}</div>
@@ -2212,7 +2210,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.themes) game.themes.forEach(t => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">#${t}</span>`);
       if (game.categories) game.categories.forEach(c => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('category', '${c.replace(/'/g, "\\'")}')">#${c}</span>`);
       if (game.mechanics) game.mechanics.forEach(m => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('mechanic', '${m.replace(/'/g, "\\'")}')">#${m}</span>`);
-      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`);
+      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🏆 ${a}</span>`);
       if (game.minor_awards) game.minor_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`);
 
       let expModalHtml = '';
@@ -2233,7 +2231,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="detail-section" style="margin-bottom:0;"><strong>Play Time:</strong> ${game.playing_time_raw || game.playing_time + ' min'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? Math.round(game.user_rating) : 'N/A'}</div>
+          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating.toFixed(1) : 'N/A'}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
           <div class="detail-section" style="margin-bottom:0;"><strong>Game Mode:</strong> ${game.game_mode}</div>
         </div>
@@ -2330,7 +2328,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <img src="${luckyGame.thumbnail || luckyGame.image || ''}" style="width: 100px; height: 100px; object-fit: contain; background: #000; border-radius: 8px; padding: 4px;" />
           <div>
             <div style="font-size: 1.1rem; font-weight: 900; color: var(--yellow); margin-bottom: 6px;">${luckyGame.title}</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">${luckyGame.year || 'N/A'} • 👥 ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players} Players • ⚖️ ${luckyGame.weight > 0 ? luckyGame.weight.toFixed(1) : 'N/A'}</div>
+            <div style="font-size: 0.850rem; color: var(--text-muted); margin-bottom: 4px;"><strong>Players:</strong> ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players}</div>
+            <div style="font-size: 0.850rem; color: var(--text-muted); margin-bottom: 4px;"><strong>Time:</strong> ${luckyGame.playing_time_raw || luckyGame.playing_time + ' min'}</div>
+            <div style="font-size: 0.850rem; color: var(--text-muted);"><strong>Rating:</strong> ⭐ ${luckyGame.user_rating > 0 ? luckyGame.user_rating.toFixed(1) : (luckyGame.bgg_rating > 0 ? luckyGame.bgg_rating.toFixed(1) : 'N/A')}</div>
           </div>
         </div>
       `;
@@ -2339,24 +2339,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function closeLuckModal() {
       luckModal.classList.remove('open');
-      luckyGame = null;
     }
 
-    modalCloseBtn.addEventListener('click', () => {
-      closeLuckModal();
-      if (luckyGame) {
-        openDetailModal(luckyGame);
-      }
-    });
-
-    modalTryAgainBtn.addEventListener('click', () => {
-      pickRandomGame();
-    });
-
+    modalTryAgainBtn.addEventListener('click', () => { pickRandomGame(); });
     modalChangeFiltersBtn.addEventListener('click', () => {
       closeLuckModal();
       if (toolbar.classList.contains('collapsed')) {
         toggleSidebar();
+      }
+    });
+    modalCloseBtn.addEventListener('click', () => {
+      closeLuckModal();
+      if (luckyGame) {
+        openDetailModal(luckyGame);
       }
     });
   </script>
@@ -2365,5 +2360,4 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
