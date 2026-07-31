@@ -821,10 +821,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       transition: transform 0.2s ease, background 0.2s ease;
     }
     .expansion-icon-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       stroke: #0d0221;
-      stroke-width: 4;
+      stroke-width: 5;
       stroke-linecap: round;
     }
     .expansion-icon-btn:hover {
@@ -1161,45 +1161,66 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .btn-text-clear-desktop { display: inline; }
     .btn-text-clear-mobile { display: none; }
 
-    @media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
+@media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
       body { padding: 0 6px 6px 6px; }
+      
       header { 
-        padding: 6px 10px; 
+        padding: 8px 10px; 
+        gap: 8px; 
+        flex-direction: column; /* Stacks controls UNDER the title */
+        align-items: stretch; 
+        justify-content: flex-start;
+      }
+
+      .header-left { 
+        width: 100%; 
+        justify-content: center; /* Centers title and logo on top row */
+      }
+      .header-left .meeple-logo { width: 28px; height: 28px; }
+      h1 { font-size: 1.1rem; letter-spacing: 0.5px; }
+
+      .header-right-column { 
+        width: 100%;
+        max-width: none; 
         gap: 6px; 
-        flex-direction: row; 
-        flex-wrap: nowrap; 
         align-items: center; 
+        flex-direction: row;
         justify-content: space-between;
       }
-      .header-left { width: auto; justify-content: flex-start; }
-      .header-left .meeple-logo { width: 28px; height: 28px; }
-      h1 { font-size: 0.95rem; letter-spacing: 0.5px; }
-      #toggle-filters-btn .filter-icon { display: none; }
-      .header-right-column { max-width: none; gap: 4px; align-items: center; flex: initial; }
+
       .header-actions-top {
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 4px;
+        gap: 6px;
         align-items: center;
-        justify-content: flex-end;
+        width: 100%;
+        justify-content: space-between;
       }
+
       .header-actions-top button,
       .header-actions-top select {
-        width: auto;
+        flex: 1;
         text-align: center;
-        padding: 4px 6px;
-        font-size: 0.7rem;
+        padding: 6px 4px;
+        font-size: 0.75rem;
       }
+
       .btn-text-play-desktop { display: none; }
       .btn-text-play-mobile { display: inline; }
       .btn-text-clear-desktop { display: none; }
       .btn-text-clear-mobile { display: inline; }
       .desktop-search-slot { display: none; }
-      .mobile-search-slot { display: block; width: 100%; max-width: 150px; }
-      .global-search-input { padding: 4px 8px 4px 28px; font-size: 0.8rem; }
+      
+      .mobile-search-slot { 
+        display: block; 
+        width: 100%; 
+        margin-top: 2px;
+      }
+
+      .global-search-input { padding: 5px 8px 5px 28px; font-size: 0.8rem; }
       .global-search-icon { font-size: 0.75rem; left: 8px; }
-      .btn-clear-filters { display: inline-block; padding: 4px 6px; font-size: 0.7rem; }
+
       .side-toolbar {
         position: fixed;
         top: 0;
@@ -1214,6 +1235,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       .sidebar-toggle-tab { display: none; }
       .range-slider-container input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; }
+      
       .app-layout { margin-top: 6px; }
       .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
       .game-grid-row { gap: 6px; }
@@ -2578,11 +2600,16 @@ function openDetailModal(g) {
         </div>
       </div>
 
-      ${awardsHTML ? `
       <div class="detail-section">
-        <strong>Awards:</strong> <div>${awardsHTML}</div>
-      </div>` : ''}
+          <strong>Major Awards:</strong><br>
+          ${renderTagsWithActive(g.parsedMajorAwards, 'major-award')}
+        </div>
 
+      <div class="detail-section">
+          <strong>Minor Awards:</strong><br>
+          ${renderTagsWithActive(g.parsedMinorAwards, 'minor-award')}
+        </div>  
+        
       <div class="detail-section">
         <strong>Publisher:</strong> <div>${publisherTagHTML}</div>
       </div>
