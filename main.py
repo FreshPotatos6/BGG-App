@@ -49,6 +49,7 @@ def clean_title(raw_title):
 def clean_award_name(raw_award):
     if not raw_award:
         return ""
+    # Strips out leading/trailing years like "2004 Spiel Des Jahres Winner" -> "Spiel Des Jahres Winner"
     cleaned = re.sub(r'^\d{4}\s+', '', str(raw_award)).strip()
     cleaned = re.sub(r'\s+\(\d{4}\)$', '', cleaned).strip()
     return cleaned
@@ -854,24 +855,27 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       top: 8px;
       right: 8px;
-      background: transparent;
-      border: none;
+      background: rgba(13, 2, 33, 0.85);
+      border: 2px solid var(--turquoise);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
       cursor: pointer;
-      z-index: 10;
-      transition: transform 0.2s ease;
+      z-index: 15;
+      transition: transform 0.2s ease, background-color 0.2s ease;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    .expansion-icon-btn svg {
-      width: 28px;
-      height: 28px;
-      fill: var(--turquoise);
-      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
+      color: var(--turquoise);
+      font-weight: 900;
+      font-size: 1.1rem;
+      box-shadow: 0 0 8px rgba(0, 245, 212, 0.5);
     }
     .expansion-icon-btn:hover {
-      transform: scale(1.2);
+      transform: scale(1.15);
+      background: var(--turquoise);
+      color: #0d0221;
     }
 
     .medal-icon-badge {
@@ -1281,7 +1285,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
       .stat-badge { padding: 2px; }
       .score-badge-circle { width: 24px; height: 24px; font-size: 0.6rem; }
-      .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.7rem; top: 4px; right: 4px; }
+      .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.75rem; top: 4px; right: 4px; }
       .medal-icon-badge { bottom: 4px; right: 4px; top: auto; }
       .expansion-close-btn, .sidebar-close-btn { padding: 4px 6px; font-size: 0.7rem; }
       .meta-tags-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
@@ -1418,8 +1422,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <div class="range-slider-container">
               <div class="range-slider-track"></div>
               <div id="year-track" class="range-slider-highlight"></div>
-              <input type="range" id="year-min" min="0" max="29" value="0">
-              <input type="range" id="year-max" min="0" max="29" value="29">
+              <input type="range" id="year-min" min="0" max="28" value="0">
+              <input type="range" id="year-max" min="0" max="28" value="28">
             </div>
           </div>
 
@@ -1731,13 +1735,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function getYearFromSliderVal(val) {
       val = parseInt(val);
       if (val === 0) return 1990;
-      return 1997 + val;
+      return 1998 + (val - 1) * 1;
     }
     function updateYearDisplay() {
       const rawMin = parseInt(yMin.value);
       const rawMax = parseInt(yMax.value);
       const y1 = rawMin === 0 ? "<1990" : getYearFromSliderVal(rawMin);
-      const y2 = rawMax === 29 ? "2026" : getYearFromSliderVal(rawMax);
+      const y2 = rawMax === 28 ? "2026" : getYearFromSliderVal(rawMax);
       yVal.innerText = rawMin === rawMax ? y1 : `${y1} - ${y2}`;
       updateTrack(yMin, yMax, yTrack);
     }
@@ -1922,6 +1926,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       
       const yMinSlider = parseInt(yMin.value);
       const yMaxSlider = parseInt(yMax.value);
+      const targetYearMin = yMinSlider === 0 ? 0 : getYearFromSliderVal(yMinSlider);
+      const targetYearMax = yMaxSlider === 28 ? 9999 : getYearFromSliderVal(yMaxSlider);
 
       const filterPlayed = document.getElementById('filter-played').checked;
       const filterUnplayed = document.getElementById('filter-unplayed').checked;
@@ -1939,8 +1945,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (g.user_rating < lMinValue || g.user_rating > lMaxValue) return false;
 
         if (g.year > 0) {
-          if (yMinSlider > 0 && g.year < getYearFromSliderVal(yMinSlider)) return false;
-          if (yMaxSlider < 29 && g.year > getYearFromSliderVal(yMaxSlider)) return false;
+          if (yMinSlider > 0 && g.year < targetYearMin) return false;
+          if (yMaxSlider < 28 && g.year > targetYearMax) return false;
         }
 
         if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
@@ -2013,7 +2019,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       tMin.value = 0; tMax.value = 300; updateTimeDisplay();
       bMin.value = 1; bMax.value = 10; updateBggDisplay();
       lMin.value = 1; lMax.value = 10; updateLukeDisplay();
-      yMin.value = 0; yMax.value = 29; updateYearDisplay();
+      yMin.value = 0; yMax.value = 28; updateYearDisplay();
 
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
@@ -2115,7 +2121,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
         expBtn.title = `${expansionsForGame.length} Expansion(s) Available`;
-        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        expBtn.innerText = '+';
         expBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           card.classList.toggle('show-expansions');
@@ -2355,8 +2361,3 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </script>
 </body>
 </html>
-"""
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
