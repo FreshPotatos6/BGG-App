@@ -1741,7 +1741,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       let v1 = parseFloat(minEl.value);
       let v2 = parseFloat(maxEl.value);
       if (v1 > v2) {
-        if (event && event.target === minEl) minEl.value = v2;
+        if (window.event && window.event.target === minEl) minEl.value = v2;
         else maxEl.value = v1;
       }
       callback();
@@ -1781,6 +1781,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       val = parseInt(val);
       if (val === 0) return 1990;
       return 1998 + (val - 1) * 1;
+    }
+    function sliderIndexFromYear(yr) {
+      if (!yr || yr < 1990) return 0;
+      if (yr > 2026) return 28;
+      return Math.min(28, Math.max(0, yr - 1997));
     }
     function updateYearDisplay() {
       const rawMin = parseInt(yMin.value);
@@ -1866,7 +1871,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     function updateDropdownToggleLabel(toggleBtn, setCollection, nameKey) {
-      const span = toggleBtn.querySelector('span');
       if (setCollection.size === 0) {
         toggleBtn.innerHTML = `All ${nameKey} <span>▼</span>`;
       } else {
@@ -2241,9 +2245,106 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return card;
     }
 
+    function closeDetailModal() {
+      detailModal.classList.remove('open');
+      currentDetailGame = null;
+    }
+
+    function closeLuckModal() {
+      luckModal.classList.remove('open');
+    }
+
+    function togglePlayStateFilter(state) {
+      const filterPlayed = document.getElementById('filter-played');
+      const filterUnplayed = document.getElementById('filter-unplayed');
+      if (state === 'played') {
+        filterPlayed.checked = !filterPlayed.checked;
+        filterUnplayed.checked = false;
+      } else {
+        filterUnplayed.checked = !filterUnplayed.checked;
+        filterPlayed.checked = false;
+      }
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByPlayerCount(count) {
+      if (selectedPlayerCounts.has(count)) {
+        selectedPlayerCounts.delete(count);
+      } else {
+        selectedPlayerCounts.clear();
+        selectedPlayerCounts.add(count);
+        pMin.value = count;
+        pMax.value = count;
+        updatePlayerDisplay();
+      }
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByWeightTier(tier) {
+      if (tier === 'Light') { wMin.value = 1.0; wMax.value = 2.0; }
+      else if (tier === 'Medium') { wMin.value = 2.0; wMax.value = 3.0; }
+      else if (tier === 'Heavy') { wMin.value = 3.0; wMax.value = 5.0; }
+      updateWeightDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByPlaytimeTier(tier) {
+      if (tier === 'Short') { tMin.value = 0; tMax.value = 30; }
+      else if (tier === 'Medium') { tMin.value = 30; tMax.value = 90; }
+      else if (tier === 'Long') { tMin.value = 90; tMax.value = 300; }
+      updateTimeDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByGameMode(mode) {
+      if (selectedStyles.has(mode)) selectedStyles.delete(mode);
+      else selectedStyles.add(mode);
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByYear(yr) {
+      const idx = sliderIndexFromYear(yr);
+      yMin.value = idx;
+      yMax.value = idx;
+      updateYearDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function toggleTagFilter(type, val) {
+      let setRef = null;
+      let toggleId = '';
+      let nameKey = '';
+
+      if (type === 'major_award') { setRef = selectedMajorAwards; toggleId = 'major-award-toggle'; nameKey = 'Major Awards'; }
+      else if (type === 'minor_award') { setRef = selectedMinorAwards; toggleId = 'minor-award-toggle'; nameKey = 'Minor Awards'; }
+      else if (type === 'theme') { setRef = selectedThemes; toggleId = 'theme-toggle'; nameKey = 'Themes'; }
+      else if (type === 'cat') { setRef = selectedCategories; toggleId = 'cat-toggle'; nameKey = 'Categories'; }
+      else if (type === 'mech') { setRef = selectedMechanics; toggleId = 'mech-toggle'; nameKey = 'Mechanics'; }
+      else if (type === 'pub') { setRef = selectedPublishers; toggleId = 'pub-toggle'; nameKey = 'Publishers'; }
+      else if (type === 'des') { setRef = selectedDesigners; toggleId = 'des-toggle'; nameKey = 'Designers'; }
+      else if (type === 'art') { setRef = selectedArtists; toggleId = 'art-toggle'; nameKey = 'Artists'; }
+
+      if (setRef) {
+        if (setRef.has(val)) setRef.delete(val);
+        else setRef.add(val);
+        updateDropdownToggleLabel(document.getElementById(toggleId), setRef, nameKey);
+        applyFilters();
+        if (currentDetailGame) openDetailModal(currentDetailGame);
+      }
+    }
+
     function openDetailModal(g) {
       currentDetailGame = g;
       detailModal.classList.add('open');
+
+      const filterPlayed = document.getElementById('filter-played');
+      const filterUnplayed = document.getElementById('filter-unplayed');
 
       const isPlayed = g.plays_recorded > 0;
       const playStateTag = isPlayed 
@@ -2303,12 +2404,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const playTimeTagHTML = `<span class="clickable-tag ${isPlayTimeActive ? 'active-tag' : ''}" onclick="filterByPlaytimeTier('${playTimeTagText}')">${playTimeTagText}</span>`;
 
-      const curCMin = parseInt(cMin.value);
-      const curCMax = parseInt(cMax.value);
-      const confNum = g.conflict_level_num || 2;
-      const isConflictActive = (curCMin === curCMax && curCMin === confNum);
-      const conflictTagHTML = `<span class="clickable-tag ${isConflictActive ? 'active-tag' : ''}" onclick="filterByConflictLevel('${g.conflict_level}')">${g.conflict_level || 'Medium'}</span>`;
-
       const isModeActive = selectedStyles.has(g.game_mode);
       const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
 
@@ -2320,146 +2415,97 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         ? `<span class="clickable-tag ${isYearActive ? 'active-tag' : ''}" onclick="filterByYear(${g.year})">${g.year}</span>`
         : '<span>Unknown</span>';
 
-      const majorAwardsHTML = (g.parsedMajorAwards && g.parsedMajorAwards.length > 0)
-          ? g.parsedMajorAwards.map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`).join(' ')
+      const majorAwardsList = g.major_awards || [];
+      const majorAwardsHTML = majorAwardsList.length > 0
+          ? majorAwardsList.map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`).join(' ')
           : '<span>None</span>';
           
       const publisherTagHTML = (g.publisher && g.publisher !== 'Unknown')
         ? `<span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>`
         : '<span>Unknown</span>';
 
-      const designersHTML = g.parsedDesigners.length > 0
-        ? g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
+      const designers = g.designer && g.designer !== "Unknown" ? g.designer.split(',').map(d => d.strip ? d.strip() : d.trim()) : [];
+      const designersHTML = designers.length > 0
+        ? designers.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
         : '<span>Unknown</span>';
 
-      const artistsHTML = g.parsedArtists.length > 0
-        ? g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
+      const artists = g.artist && g.artist !== "Unknown" ? g.artist.split(',').map(a => a.strip ? a.strip() : a.trim()) : [];
+      const artistsHTML = artists.length > 0
+        ? artists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
         : '<span>Unknown</span>';
 
-      const themesHTML = g.parsedThemes.length > 0
-        ? g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
+      const themesHTML = (g.themes && g.themes.length > 0)
+        ? g.themes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
         : '<span>None</span>';
 
-      const categoriesHTML = g.parsedCategories.length > 0
-        ? g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
+      const categoriesHTML = (g.categories && g.categories.length > 0)
+        ? g.categories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
         : '<span>None</span>';
 
-      const mechanicsHTML = g.parsedMechanics.length > 0
-        ? g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
+      const mechanicsHTML = (g.mechanics && g.mechanics.length > 0)
+        ? g.mechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
         : '<span>None</span>';
-
-      const minorAwardsHTML = (g.parsedMinorAwards && g.parsedMinorAwards.length > 0)
-          ? g.parsedMinorAwards.map(a => `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`).join(' ')
-          : '<span>None</span>';  
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${g.cleanTitle}</div>
+        <div class="modal-title">${g.title}</div>
         
-        <div class="detail-section" style="margin-bottom: 16px;">
-          <div class="description-text">${g.description}</div>
-          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
-        </div>
-
         <div class="meta-tags-grid">
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Players:</strong>
-            <div>${playerTagsHTML}</div>
-          </div>
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Weight:</strong>
-            <div>${weightTagHTML}</div>
-          </div>
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Play Time:</strong>
-            <div>${playTimeTagHTML}</div>
-          </div>
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Conflict:</strong>
-            <div>${conflictTagHTML}</div>
-          </div>
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Game Mode:</strong>
-            <div>${gameModeTagHTML}</div>
-          </div>
-          <div>
-            <strong style="display:block; margin-bottom:4px;">Year:</strong>
-            <div>${yearTagHTML}</div>
-          </div>
+          <div><strong>Status:</strong> ${playStateTag}</div>
+          <div><strong>Players:</strong> ${playerTagsHTML}</div>
+          <div><strong>Weight:</strong> ${weightTagHTML} (${g.weight > 0 ? g.weight.toFixed(1) : 'N/A'})</div>
+          <div><strong>Length:</strong> ${playTimeTagHTML} (${g.playing_time_raw || g.playing_time || 'N/A'})</div>
+          <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
+          <div><strong>Year:</strong> ${yearTagHTML}</div>
         </div>
 
-        <div class="detail-section">
-          <strong>Major Awards:</strong> <div>${major_awardTagHTML}</div>
-        </div>
-        
-        <div class="detail-section">
-          <strong>Publisher:</strong> <div>${publisherTagHTML}</div>
+        <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
+        <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
+        <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
+        <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
+        <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
+        <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
+        <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
+
+        <div class="detail-section" style="margin-top: 15px;">
+          <strong>Description:</strong>
+          <div id="modal-desc" class="description-text">${g.description || 'No description available.'}</div>
+          <button id="desc-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
         </div>
 
-        <div class="detail-section">
-          <strong>Designers:</strong> <div>${designersHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Artists:</strong> <div>${artistsHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Themes:</strong> <div>${themesHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Categories:</strong> <div>${categoriesHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Mechanics:</strong> <div>${mechanicsHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Minor Awards/Nominations:</strong> <div>${minor_awardTagHTML}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Play Status:</strong> <div>${playStateTag}</div>
-        </div>
-
-        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
-          🌐 View on BGG
-        </a>
+        <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
     }
-    let luckyGame = null;
+
+    function toggleDescription() {
+      const desc = document.getElementById('modal-desc');
+      const btn = document.getElementById('desc-read-more');
+      if (desc.classList.contains('expanded')) {
+        desc.classList.remove('expanded');
+        btn.innerText = 'Read More';
+      } else {
+        desc.classList.add('expanded');
+        btn.innerText = 'Show Less';
+      }
+    }
 
     luckBtn.addEventListener('click', () => {
       if (currentlyFilteredGames.length === 0) {
-        alert("No games available with current filters to pick from!");
-        return;
+        modalContent.innerHTML = `<div style="text-align: center; padding: 20px;">No games available under current filters!</div>`;
+      } else {
+        const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 200px; max-width: 100%; border-radius: 8px; margin-bottom: 12px;">
+            <h2 style="color: var(--yellow); margin-bottom: 8px;">${randomGame.title}</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">👥 ${randomGame.min_players}-${randomGame.max_players} Players | ⏱️ ${randomGame.playing_time} min | ⚖️ ${randomGame.weight.toFixed(1)}</p>
+          </div>
+        `;
       }
-      pickRandomGame();
       luckModal.classList.add('open');
     });
 
-    function pickRandomGame() {
-      const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-      luckyGame = currentlyFilteredGames[randomIndex];
-      
-      modalContent.innerHTML = `
-        <div style="display: flex; gap: 15px; align-items: center;">
-          <img src="${luckyGame.thumbnail || luckyGame.image || ''}" style="width: 100px; height: 100px; object-fit: contain; background: #000; border-radius: 8px; padding: 4px;" />
-          <div>
-            <div style="font-size: 1.1rem; font-weight: 900; color: var(--yellow); margin-bottom: 6px;">${luckyGame.title}</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">${luckyGame.year || 'N/A'} • 👥 ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players}</div>
-          </div>
-        </div>
-      `;
-    }
-
-    function closeLuckModal() {
-      luckModal.classList.remove('open');
-    }
-
     modalTryAgainBtn.addEventListener('click', () => {
-      pickRandomGame();
+      luckBtn.click();
     });
 
     modalChangeFiltersBtn.addEventListener('click', () => {
