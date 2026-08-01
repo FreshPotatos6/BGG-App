@@ -49,7 +49,6 @@ def clean_title(raw_title):
 def clean_award_name(raw_award):
     if not raw_award:
         return ""
-    # Strips out leading/trailing years like "2004 Spiel Des Jahres Winner" -> "Spiel Des Jahres Winner"
     cleaned = re.sub(r'^\d{4}\s+', '', str(raw_award)).strip()
     cleaned = re.sub(r'\s+\(\d{4}\)$', '', cleaned).strip()
     return cleaned
@@ -360,7 +359,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       pointer-events: none;
     }
 
-    button, select, input[type="number"] {
+    button, select {
       background: var(--panel-bg);
       color: var(--turquoise);
       border: 2px solid var(--purple-border);
@@ -370,10 +369,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       font-size: 0.85rem;
       font-weight: 700;
       transition: all 0.2s ease;
-    }
-
-    input[type="number"] {
-      cursor: text;
     }
 
     button:hover, select:hover { 
@@ -859,24 +854,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       top: 8px;
       right: 8px;
-      background: transparent;
-      border: none;
+      background: rgba(13, 2, 33, 0.85);
+      color: var(--turquoise);
+      border: 2px solid var(--turquoise);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 1.2rem;
+      font-weight: 900;
+      line-height: 1;
       cursor: pointer;
       z-index: 10;
-      transition: transform 0.2s ease;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    .expansion-icon-btn svg {
-      width: 28px;
-      height: 28px;
-      fill: var(--turquoise);
-      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
+      box-shadow: 0 0 6px rgba(0, 245, 212, 0.5);
     }
     .expansion-icon-btn:hover {
-      transform: scale(1.2);
+      transform: scale(1.15);
+      background: var(--turquoise);
+      color: #0d0221;
+      box-shadow: 0 0 10px rgba(0, 245, 212, 0.8);
     }
 
     .medal-icon-badge {
@@ -1269,7 +1269,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .app-layout { margin-top: 6px; }
       .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
       
-      /* Updated to ensure at least 2 columns on mobile/landscape */
       .game-grid-row { 
         grid-template-columns: repeat(2, minmax(0, 1fr)); 
         gap: 8px; 
@@ -1340,23 +1339,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <button class="sidebar-toggle-tab" onclick="toggleSidebar()" title="Toggle Sidebar">☰</button>
       
       <div class="sidebar-header-row">
-        <span class="sidebar-header-title">⚙️ Filters & Settings</span>
+        <span class="sidebar-header-title">⚙️ Filters</span>
         <button class="sidebar-close-btn" onclick="toggleSidebar()">✕ Collapse</button>
-      </div>
-
-      <div class="filter-section" id="section-settings">
-        <div class="filter-section-header" onclick="toggleFilterSection('section-settings')">
-          <span class="filter-section-title">⏱️ Sync / Offset Settings</span>
-          <span class="collapse-icon">▼</span>
-        </div>
-        <div class="filter-section-content">
-          <div class="filter-group">
-            <div class="filter-label-header">
-              <label for="sync-offset-input">Sync / Offset (ms)</label>
-            </div>
-            <input type="number" id="sync-offset-input" value="0" step="10" placeholder="0" style="width: 100%;">
-          </div>
-        </div>
       </div>
 
       <div class="filter-section" id="section-sliders">
@@ -1680,15 +1664,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const detailModalContent = document.getElementById('detail-modal-content');
     const globalSearch = document.getElementById('global-search');
     const globalSearchMobile = document.getElementById('global-search-mobile');
-    const syncOffsetInput = document.getElementById('sync-offset-input');
-
-    if (syncOffsetInput) {
-      const savedOffset = localStorage.getItem('sync_offset') || 0;
-      syncOffsetInput.value = savedOffset;
-      syncOffsetInput.addEventListener('input', (e) => {
-        localStorage.setItem('sync_offset', e.target.value);
-      });
-    }
 
     if (globalSearch && globalSearchMobile) {
       globalSearch.addEventListener('input', (e) => { globalSearchMobile.value = e.target.value; handleSearch(); });
@@ -2136,7 +2111,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.user_rating > 0) {
         const lukeBadge = document.createElement('div');
         lukeBadge.className = 'score-badge-circle score-badge-luke';
-        // Display Luke's rating as a whole number
         lukeBadge.innerText = Math.round(game.user_rating);
         lukeBadge.title = "Luke's Rating";
         badgeTopLeft.appendChild(lukeBadge);
@@ -2148,7 +2122,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
         expBtn.title = `${expansionsForGame.length} Expansion(s) Available`;
-        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        expBtn.innerText = '+';
         expBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           card.classList.toggle('show-expansions');
@@ -2159,7 +2133,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.major_awards && game.major_awards.length > 0) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
-        // Changed trophy icon to 1st place medal icon
         medalBadge.innerHTML = '🥇';
         medalBadge.title = game.major_awards.join(', ');
         imgWrapper.appendChild(medalBadge);
@@ -2185,7 +2158,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       statsEl.className = 'game-stats';
 
       const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      // Drop "min" text from play time display in grid view
       const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
 
       statsEl.innerHTML = `
@@ -2394,4 +2366,4 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
