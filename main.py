@@ -854,29 +854,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       top: 8px;
       right: 8px;
-      background: rgba(13, 2, 33, 0.85);
-      color: var(--turquoise);
-      border: 2px solid var(--turquoise);
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      font-size: 1.2rem;
-      font-weight: 900;
-      line-height: 1;
+      background: transparent;
+      border: none;
       cursor: pointer;
       z-index: 10;
-      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+      transition: transform 0.2s ease;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 6px rgba(0, 245, 212, 0.5);
+    }
+    .expansion-icon-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--turquoise);
+      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
     }
     .expansion-icon-btn:hover {
-      transform: scale(1.15);
-      background: var(--turquoise);
-      color: #0d0221;
-      box-shadow: 0 0 10px rgba(0, 245, 212, 0.8);
+      transform: scale(1.2);
     }
 
     .medal-icon-badge {
@@ -1423,8 +1418,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <div class="range-slider-container">
               <div class="range-slider-track"></div>
               <div id="year-track" class="range-slider-highlight"></div>
-              <input type="range" id="year-min" min="0" max="28" value="0">
-              <input type="range" id="year-max" min="0" max="28" value="28">
+              <input type="range" id="year-min" min="0" max="29" value="0">
+              <input type="range" id="year-max" min="0" max="29" value="29">
             </div>
           </div>
 
@@ -1736,13 +1731,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function getYearFromSliderVal(val) {
       val = parseInt(val);
       if (val === 0) return 1990;
-      return 1998 + (val - 1) * 1;
+      return 1997 + val;
     }
     function updateYearDisplay() {
       const rawMin = parseInt(yMin.value);
       const rawMax = parseInt(yMax.value);
       const y1 = rawMin === 0 ? "<1990" : getYearFromSliderVal(rawMin);
-      const y2 = rawMax === 28 ? "2026" : getYearFromSliderVal(rawMax);
+      const y2 = rawMax === 29 ? "2026" : getYearFromSliderVal(rawMax);
       yVal.innerText = rawMin === rawMax ? y1 : `${y1} - ${y2}`;
       updateTrack(yMin, yMax, yTrack);
     }
@@ -1927,8 +1922,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       
       const yMinSlider = parseInt(yMin.value);
       const yMaxSlider = parseInt(yMax.value);
-      const targetYearMin = yMinSlider === 0 ? 0 : getYearFromSliderVal(yMinSlider);
-      const targetYearMax = yMaxSlider === 28 ? 9999 : getYearFromSliderVal(yMaxSlider);
 
       const filterPlayed = document.getElementById('filter-played').checked;
       const filterUnplayed = document.getElementById('filter-unplayed').checked;
@@ -1946,8 +1939,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (g.user_rating < lMinValue || g.user_rating > lMaxValue) return false;
 
         if (g.year > 0) {
-          if (yMinSlider > 0 && g.year < targetYearMin) return false;
-          if (yMaxSlider < 28 && g.year > targetYearMax) return false;
+          if (yMinSlider > 0 && g.year < getYearFromSliderVal(yMinSlider)) return false;
+          if (yMaxSlider < 29 && g.year > getYearFromSliderVal(yMaxSlider)) return false;
         }
 
         if (selectedStyles.size > 0 && !selectedStyles.has(g.game_mode)) return false;
@@ -2020,7 +2013,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       tMin.value = 0; tMax.value = 300; updateTimeDisplay();
       bMin.value = 1; bMax.value = 10; updateBggDisplay();
       lMin.value = 1; lMax.value = 10; updateLukeDisplay();
-      yMin.value = 0; yMax.value = 28; updateYearDisplay();
+      yMin.value = 0; yMax.value = 29; updateYearDisplay();
 
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
@@ -2122,7 +2115,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
         expBtn.title = `${expansionsForGame.length} Expansion(s) Available`;
-        expBtn.innerText = '+';
+        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
         expBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           card.classList.toggle('show-expansions');
