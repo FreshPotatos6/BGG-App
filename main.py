@@ -1660,7 +1660,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const globalSearch = document.getElementById('global-search');
     const globalSearchMobile = document.getElementById('global-search-mobile');
 
-    // Close modals on clicking backdrop outside of card
     detailModal.addEventListener('click', (e) => {
       if (e.target === detailModal) {
         closeDetailModal();
@@ -2125,7 +2124,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
       imgWrapper.appendChild(badgeTopLeft);
 
-      const expansionsForGame = rawCollection.filter(item => item.is_expansion && item.parent_game_id === game.id);
+      const expansionsForGame = rawCollection.filter(item => {
+        if (!item.is_expansion) return false;
+        const parentRef = String(item.parent_game_id || '').toLowerCase().trim();
+        const gId = String(game.id || '').toLowerCase().trim();
+        const gTitle = String(game.title || '').toLowerCase().trim();
+        return parentRef !== '' && (parentRef === gId || parentRef === gTitle);
+      });
+
       if (expansionsForGame.length > 0) {
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
@@ -2214,7 +2220,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function openDetailModal(game) {
       currentDetailGame = game;
-      const expansionsForGame = rawCollection.filter(item => item.is_expansion && item.parent_game_id === game.id);
+      const expansionsForGame = rawCollection.filter(item => {
+        if (!item.is_expansion) return false;
+        const parentRef = String(item.parent_game_id || '').toLowerCase().trim();
+        const gId = String(game.id || '').toLowerCase().trim();
+        const gTitle = String(game.title || '').toLowerCase().trim();
+        return parentRef !== '' && (parentRef === gId || parentRef === gTitle);
+      });
 
       let tagsHtml = '';
       if (game.themes) game.themes.forEach(t => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">#${t}</span>`);
