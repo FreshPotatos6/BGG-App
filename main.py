@@ -2241,118 +2241,193 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return card;
     }
 
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      const expansionsForGame = rawCollection.filter(item => {
-        if (!item.is_expansion) return false;
-        const parentRef = String(item.parent_game_id || '').toLowerCase().trim();
-        const gId = String(game.id || '').toLowerCase().trim();
-        const gTitle = String(game.title || '').toLowerCase().trim();
-        return parentRef !== '' && (parentRef === gId || parentRef === gTitle);
-      });
+    function openDetailModal(g) {
+      currentDetailGame = g;
+      detailModal.classList.add('open');
 
-      let tagsHtml = '';
-      if (game.themes) game.themes.forEach(t => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">#${t}</span>`);
-      if (game.categories) game.categories.forEach(c => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('category', '${c.replace(/'/g, "\\'")}')">#${c}</span>`);
-      if (game.mechanics) game.mechanics.forEach(m => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('mechanic', '${m.replace(/'/g, "\\'")}')">#${m}</span>`);
-      if (game.major_awards) game.major_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`);
-      if (game.minor_awards) game.minor_awards.forEach(a => tagsHtml += `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`);
+      const isPlayed = g.plays_recorded > 0;
+      const playStateTag = isPlayed 
+        ? `<span class="clickable-tag ${filterPlayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('played')">Played</span>`
+        : `<span class="clickable-tag ${filterUnplayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('unplayed')">Unplayed</span>`;
 
-      let expModalHtml = '';
-      if (expansionsForGame.length > 0) {
-        expModalHtml = `<div class="detail-section" style="margin-top: 15px;"><strong>Expansions:</strong><ul style="margin-left: 20px; margin-top: 5px;">`;
-        expansionsForGame.forEach(ex => {
-          expModalHtml += `<li>${ex.title} (${ex.year || 'N/A'})</li>`;
-        });
-        expModalHtml += `</ul></div>`;
+      const bggUrl = g.id ? `https://boardgamegeek.com/boardgame/${g.id}` : '#';
+
+      let playerTagsHTML = '';
+      const minP = g.min_players || 1;
+      const maxP = g.max_players || minP;
+
+      for (let p = minP; p <= maxP; p++) {
+        let label = p >= 10 ? '10+' : String(p);
+        const isActive = selectedPlayerCounts.has(p);
+        playerTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="filterByPlayerCount(${p})">${label}</span>`;
       }
+      if (!playerTagsHTML) playerTagsHTML = '<span>N/A</span>';
+
+      let weightTagText = 'Medium';
+      if (g.weight > 0) {
+        if (g.weight < 2.0) weightTagText = 'Light';
+        else if (g.weight < 3.0001) weightTagText = 'Medium';
+        else weightTagText = 'Heavy';
+      }
+      const curWMin = parseFloat(wMin.value);
+      const curWMax = parseFloat(wMax.value);
+      let isWeightActive = false;
+      if (weightTagText === 'Light' && curWMin === 1.0 && curWMax === 2.0) isWeightActive = true;
+      if (weightTagText === 'Medium' && curWMin === 2.0 && curWMax === 3.0) isWeightActive = true;
+      if (weightTagText === 'Heavy' && curWMin === 3.0 && curWMax === 5.0) isWeightActive = true;
+
+      const weightTagHTML = `<span class="clickable-tag ${isWeightActive ? 'active-tag' : ''}" onclick="filterByWeightTier('${weightTagText}')">${weightTagText}</span>`;
+
+      let avgMinutes = g.playing_time;
+      if (!avgMinutes && g.playing_time_raw) {
+        const numbers = g.playing_time_raw.match(/\d+/g);
+        if (numbers && numbers.length > 0) {
+          const nums = numbers.map(Number);
+          avgMinutes = nums.reduce((a, b) => a + b, 0) / nums.length;
+        }
+      }
+
+      let playTimeTagText = 'Medium';
+      if (avgMinutes > 0) {
+        if (avgMinutes <= 30) playTimeTagText = 'Short';
+        else if (avgMinutes <= 90) playTimeTagText = 'Medium';
+        else playTimeTagText = 'Long';
+      }
+
+      const curTMin = parseFloat(tMin.value);
+      const curTMax = parseFloat(tMax.value);
+      let isPlayTimeActive = false;
+      if (playTimeTagText === 'Short' && curTMin === 0 && curTMax === 30) isPlayTimeActive = true;
+      if (playTimeTagText === 'Medium' && curTMin === 30 && curTMax === 90) isPlayTimeActive = true;
+      if (playTimeTagText === 'Long' && curTMin === 90 && curTMax === 300) isPlayTimeActive = true;
+
+      const playTimeTagHTML = `<span class="clickable-tag ${isPlayTimeActive ? 'active-tag' : ''}" onclick="filterByPlaytimeTier('${playTimeTagText}')">${playTimeTagText}</span>`;
+
+      const curCMin = parseInt(cMin.value);
+      const curCMax = parseInt(cMax.value);
+      const confNum = g.conflict_level_num || 2;
+      const isConflictActive = (curCMin === curCMax && curCMin === confNum);
+      const conflictTagHTML = `<span class="clickable-tag ${isConflictActive ? 'active-tag' : ''}" onclick="filterByConflictLevel('${g.conflict_level}')">${g.conflict_level || 'Medium'}</span>`;
+
+      const isModeActive = selectedStyles.has(g.game_mode);
+      const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
+
+      const curYMinIdx = parseInt(yMin.value);
+      const curYMaxIdx = parseInt(yMax.value);
+      const gameYrIdx = sliderIndexFromYear(g.year);
+      const isYearActive = (curYMinIdx === curYMaxIdx && curYMinIdx === gameYrIdx);
+      const yearTagHTML = g.year > 0 
+        ? `<span class="clickable-tag ${isYearActive ? 'active-tag' : ''}" onclick="filterByYear(${g.year})">${g.year}</span>`
+        : '<span>Unknown</span>';
+
+      const majorAwardsHTML = (g.parsedMajorAwards && g.parsedMajorAwards.length > 0)
+          ? g.parsedMajorAwards.map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`).join(' ')
+          : '<span>None</span>';
+          
+      const publisherTagHTML = (g.publisher && g.publisher !== 'Unknown')
+        ? `<span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>`
+        : '<span>Unknown</span>';
+
+      const designersHTML = g.parsedDesigners.length > 0
+        ? g.parsedDesigners.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
+        : '<span>Unknown</span>';
+
+      const artistsHTML = g.parsedArtists.length > 0
+        ? g.parsedArtists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
+        : '<span>Unknown</span>';
+
+      const themesHTML = g.parsedThemes.length > 0
+        ? g.parsedThemes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
+        : '<span>None</span>';
+
+      const categoriesHTML = g.parsedCategories.length > 0
+        ? g.parsedCategories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
+        : '<span>None</span>';
+
+      const mechanicsHTML = g.parsedMechanics.length > 0
+        ? g.parsedMechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
+        : '<span>None</span>';
+
+      const minorAwardsHTML = (g.parsedMinorAwards && g.parsedMinorAwards.length > 0)
+          ? g.parsedMinorAwards.map(a => `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🏅 ${a}</span>`).join(' ')
+          : '<span>None</span>';  
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.title}</div>
+        <div class="modal-title">${g.cleanTitle}</div>
         
+        <div class="detail-section" style="margin-bottom: 16px;">
+          <div class="description-text">${g.description}</div>
+          <button class="read-more-btn" onclick="toggleDescription(this)">Read More</button>
+        </div>
+
         <div class="meta-tags-grid">
-          <div class="detail-section" style="margin-bottom:0;"><strong>Year:</strong> ${game.year || 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Players:</strong> ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Play Time:</strong> ${game.playing_time_raw || game.playing_time + ' min'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? Math.round(game.user_rating) : 'N/A'}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
-          <div class="detail-section" style="margin-bottom:0;"><strong>Game Mode:</strong> ${game.game_mode}</div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Players:</strong>
+            <div>${playerTagsHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Weight:</strong>
+            <div>${weightTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Play Time:</strong>
+            <div>${playTimeTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Conflict:</strong>
+            <div>${conflictTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Game Mode:</strong>
+            <div>${gameModeTagHTML}</div>
+          </div>
+          <div>
+            <strong style="display:block; margin-bottom:4px;">Year:</strong>
+            <div>${yearTagHTML}</div>
+          </div>
         </div>
 
-        <div class="detail-section"><strong>Designer:</strong> ${game.designer}</div>
-        <div class="detail-section"><strong>Artist:</strong> ${game.artist}</div>
-        <div class="detail-section"><strong>Publisher:</strong> ${game.publisher}</div>
-
-        <div class="detail-section" style="margin-top: 10px;">
-          <strong>Description:</strong>
-          <div id="modal-desc" class="description-text">${game.description}</div>
-          <button id="read-more-trigger" class="read-more-btn" onclick="toggleModalDescription()" style="display:none;">Read More</button>
+        <div class="detail-section">
+          <strong>Major Awards:</strong> <div>${major_awardTagHTML}</div>
+        </div>
+        
+        <div class="detail-section">
+          <strong>Publisher:</strong> <div>${publisherTagHTML}</div>
         </div>
 
-        <div class="detail-section" style="margin-top: 12px;">
-          <strong>Tags & Attributes:</strong><br>
-          <div style="margin-top: 4px;">${tagsHtml || 'None'}</div>
+        <div class="detail-section">
+          <strong>Designers:</strong> <div>${designersHTML}</div>
         </div>
 
-        ${expModalHtml}
+        <div class="detail-section">
+          <strong>Artists:</strong> <div>${artistsHTML}</div>
+        </div>
 
-        <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
-          View on BoardGameGeek ↗
+        <div class="detail-section">
+          <strong>Themes:</strong> <div>${themesHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Categories:</strong> <div>${categoriesHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Mechanics:</strong> <div>${mechanicsHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Minor Awards/Nominations:</strong> <div>${minor_awardTagHTML}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Play Status:</strong> <div>${playStateTag}</div>
+        </div>
+
+        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">
+          🌐 View on BGG
         </a>
       `;
-
-      detailModal.classList.add('open');
-      
-      setTimeout(() => {
-        const descEl = document.getElementById('modal-desc');
-        const readMoreBtn = document.getElementById('read-more-trigger');
-        if (descEl && descEl.scrollHeight > descEl.clientHeight) {
-          readMoreBtn.style.display = 'inline-block';
-        }
-      }, 50);
     }
-
-    function closeDetailModal() {
-      detailModal.classList.remove('open');
-      currentDetailGame = null;
-    }
-
-    function toggleModalDescription() {
-      const descEl = document.getElementById('modal-desc');
-      const btn = document.getElementById('read-more-trigger');
-      descEl.classList.toggle('expanded');
-      btn.innerText = descEl.classList.contains('expanded') ? 'Show Less' : 'Read More';
-    }
-
-    function filterByTag(type, val) {
-      resetAllFilters();
-      closeDetailModal();
-
-      if (type === 'theme') {
-        selectedThemes.add(val);
-        updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
-      } else if (type === 'category') {
-        selectedCategories.add(val);
-        updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
-      } else if (type === 'mechanic') {
-        selectedMechanics.add(val);
-        updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
-      } else if (type === 'major_award') {
-        selectedMajorAwards.add(val);
-        updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
-      } else if (type === 'minor_award') {
-        selectedMinorAwards.add(val);
-        updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
-      }
-
-      applyFilters();
-      if (!toolbar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
-    }
-
     let luckyGame = null;
 
     luckBtn.addEventListener('click', () => {
