@@ -259,7 +259,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: var(--text); 
       padding: 0 20px 20px 20px; 
       min-height: 100vh; 
-      overflow: hidden;
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -305,6 +304,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       text-transform: uppercase; 
       letter-spacing: 2px;
       text-shadow: 2px 2px 0px var(--magenta);
+      white-space: nowrap;
     }
 
     .header-right-column {
@@ -325,13 +325,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex-wrap: wrap;
     }
 
+    .header-search-and-sort-mobile {
+      display: none;
+    }
+
     .global-search-container {
       position: relative;
       width: 100%;
-    }
-
-    .mobile-search-slot {
-      display: none;
     }
 
     .global-search-input {
@@ -525,14 +525,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .main-content {
       flex: 1;
       min-width: 0;
-      height: calc(100vh - var(--header-height) - 60px);
-      overflow-y: auto;
-      scroll-snap-type: y mandatory;
-      scroll-padding-top: 10px;
       padding-top: 10px;
       padding-right: 10px;
-      overscroll-behavior-y: contain;
-      -webkit-overflow-scrolling: touch;
     }
 
     .filter-section {
@@ -756,20 +750,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .checkbox-item:hover { background: var(--purple-border); }
     .checkbox-item input[type="checkbox"] { accent-color: var(--magenta); }
 
-    .game-row-section {
-      scroll-snap-align: start;
-      scroll-snap-stop: normal;
-      scroll-margin-top: 10px;
-      margin-bottom: 25px;
-      display: flex;
-      flex-direction: column;
-    }
-
     .game-grid-row {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 20px;
       align-items: stretch;
+      margin-bottom: 25px;
     }
 
     .game-card {
@@ -1201,15 +1187,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         justify-content: center;
       }
       .header-left .meeple-logo { width: 28px; height: 28px; }
-      h1 { font-size: 1.1rem; letter-spacing: 0.5px; }
+      h1 { font-size: 1.2rem; letter-spacing: 0.5px; text-shadow: 1px 1px 0px var(--magenta); }
 
       .header-right-column { 
         width: 100%;
         max-width: none; 
         gap: 6px; 
         align-items: center; 
-        flex-direction: row;
-        justify-content: space-between;
+        flex-direction: column;
       }
 
       .header-actions-top {
@@ -1222,11 +1207,32 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         justify-content: space-between;
       }
 
-      .header-actions-top button,
-      .header-actions-top select {
+      .header-actions-top button {
         flex: 1;
         text-align: center;
         padding: 6px 4px;
+        font-size: 0.75rem;
+      }
+
+      .header-actions-top select,
+      .header-actions-top .sort-direction-btn {
+        display: none;
+      }
+
+      .header-search-and-sort-mobile {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        width: 100%;
+      }
+
+      .header-search-and-sort-mobile .global-search-container {
+        flex: 1;
+      }
+
+      .header-search-and-sort-mobile select {
+        width: auto;
+        padding: 5px 6px;
         font-size: 0.75rem;
       }
 
@@ -1236,12 +1242,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .btn-text-clear-desktop { display: none; }
       .btn-text-clear-mobile { display: inline; }
       .desktop-search-slot { display: none; }
-      
-      .mobile-search-slot { 
-        display: block; 
-        width: 100%; 
-        margin-top: 2px;
-      }
 
       .global-search-input { padding: 5px 8px 5px 28px; font-size: 0.8rem; }
       .global-search-icon { font-size: 0.75rem; left: 8px; }
@@ -1261,8 +1261,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .sidebar-toggle-tab { display: none; }
       .range-slider-container input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; }
       
-      .app-layout { margin-top: 6px; }
-      .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
+      .app-layout { margin-top: 10px; }
+      .main-content { padding-top: 5px; padding-right: 0; }
       
       .game-grid-row { 
         grid-template-columns: repeat(2, minmax(0, 1fr)); 
@@ -1298,10 +1298,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </svg>
         <h1>Rengaw's Meeples</h1>
       </div>
-      <div class="global-search-container mobile-search-slot">
-        <span class="global-search-icon">🔍</span>
-        <input type="text" id="global-search-mobile" class="global-search-input" placeholder="Search collection...">
-      </div>
     </div>
 
     <div class="header-right-column">
@@ -1319,6 +1315,23 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <option value="year">Year Published</option>
         </select>
         <button id="sort-dir-btn" class="sort-direction-btn" title="Toggle Sort Direction">▼</button>
+      </div>
+
+      <div class="header-search-and-sort-mobile">
+        <div class="global-search-container">
+          <span class="global-search-icon">🔍</span>
+          <input type="text" id="global-search-mobile" class="global-search-input" placeholder="Search collection...">
+        </div>
+        <select id="sort-select-mobile">
+          <option value="popularity_owned" selected>Popularity</option>
+          <option value="title">Title</option>
+          <option value="user_rating">Luke's Rating</option>
+          <option value="bgg_rating">BGG Rating</option>
+          <option value="weight">Weight</option>
+          <option value="playing_time">Playtime</option>
+          <option value="year">Year Published</option>
+        </select>
+        <button id="sort-dir-btn-mobile" class="sort-direction-btn" title="Toggle Sort Direction">▼</button>
       </div>
 
       <div class="global-search-container desktop-search-slot">
@@ -1400,13 +1413,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="filter-group">
             <div class="filter-label-header">
               <label>Luke's Rating</label>
-              <span id="luke-val" class="value-display">1 - 10</span>
+              <span id="luke-val" class="value-display">0 - 10</span>
             </div>
             <div class="range-slider-container">
               <div class="range-slider-track"></div>
               <div id="luke-track" class="range-slider-highlight"></div>
-              <input type="range" id="luke-min" min="1" max="10" step="1" value="1">
-              <input type="range" id="luke-max" min="1" max="10" step="1" value="10">
+              <input type="range" id="luke-min" min="0" max="10" step="1" value="0">
+              <input type="range" id="luke-max" min="0" max="10" step="1" value="10">
             </div>
           </div>
 
@@ -1649,6 +1662,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const grid = document.getElementById('game-grid');
     const sortSelect = document.getElementById('sort-select');
     const sortDirBtn = document.getElementById('sort-dir-btn');
+    const sortSelectMobile = document.getElementById('sort-select-mobile');
+    const sortDirBtnMobile = document.getElementById('sort-dir-btn-mobile');
     const luckBtn = document.getElementById('luck-btn');
     const luckModal = document.getElementById('luck-modal');
     const modalContent = document.getElementById('modal-content');
@@ -1677,9 +1692,31 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       globalSearchMobile.addEventListener('input', (e) => { globalSearch.value = e.target.value; handleSearch(); });
     }
 
+    if (sortSelect && sortSelectMobile) {
+      sortSelect.addEventListener('change', () => { sortSelectMobile.value = sortSelect.value; applyFilters(); });
+      sortSelectMobile.addEventListener('change', () => { sortSelect.value = sortSelectMobile.value; applyFilters(); });
+    }
+
+    if (sortDirBtn && sortDirBtnMobile) {
+      sortDirBtn.addEventListener('click', () => {
+        isAscending = !isAscending;
+        sortDirBtn.innerText = isAscending ? "▲" : "▼";
+        sortDirBtnMobile.innerText = isAscending ? "▲" : "▼";
+        sortGames();
+        renderGames();
+      });
+      sortDirBtnMobile.addEventListener('click', () => {
+        isAscending = !isAscending;
+        sortDirBtn.innerText = isAscending ? "▲" : "▼";
+        sortDirBtnMobile.innerText = isAscending ? "▲" : "▼";
+        sortGames();
+        renderGames();
+      });
+    }
+
     function handleSearch() {
       renderGames();
-      grid.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     const pMin = document.getElementById('player-min'), pMax = document.getElementById('player-max'), pVal = document.getElementById('player-val'), pTrack = document.getElementById('player-track');
@@ -1942,7 +1979,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const filterCampaign = document.getElementById('filter-campaign').checked;
       const filterSolo = document.getElementById('filter-solo').checked;
 
-      const searchQuery = (globalSearch.value || "").toLowerCase().trim();
+      const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
       currentlyFilteredGames = games.filter(g => {
         if (g.max_players < pMinValue || g.min_players > pMaxValue) return false;
@@ -1950,7 +1987,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         if (tMaxValue < 300 && (g.playing_time < tMinValue || g.playing_time > tMaxValue)) return false;
         if (tMaxValue === 300 && g.playing_time < tMinValue) return false;
         if (g.bgg_rating < bMinValue || g.bgg_rating > bMaxValue) return false;
-        if (g.user_rating < lMinValue || g.user_rating > lMaxValue) return false;
+        
+        if (lMinValue > 0 && g.user_rating < lMinValue) return false;
+        if (g.user_rating > lMaxValue) return false;
 
         if (g.year > 0) {
           if (yMinSlider > 0 && g.year < targetYearMin) return false;
@@ -2013,20 +2052,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       });
     }
 
-    sortSelect.addEventListener('change', () => { applyFilters(); });
-    sortDirBtn.addEventListener('click', () => {
-      isAscending = !isAscending;
-      sortDirBtn.innerText = isAscending ? "▲" : "▼";
-      sortGames();
-      renderGames();
-    });
-
     function resetAllFilters() {
       pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
       wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
       tMin.value = 0; tMax.value = 300; updateTimeDisplay();
       bMin.value = 1; bMax.value = 10; updateBggDisplay();
-      lMin.value = 1; lMax.value = 10; updateLukeDisplay();
+      lMin.value = 0; lMax.value = 10; updateLukeDisplay();
       yMin.value = 0; yMax.value = 28; updateYearDisplay();
 
       document.getElementById('filter-played').checked = false;
@@ -2075,23 +2106,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         return;
       }
 
-      const chunkSize = 24;
-      for (let i = 0; i < currentlyFilteredGames.length; i += chunkSize) {
-        const chunk = currentlyFilteredGames.slice(i, i + chunkSize);
-        const section = document.createElement('div');
-        section.className = 'game-row-section';
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'game-grid-row';
 
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'game-grid-row';
+      currentlyFilteredGames.forEach(game => {
+        const card = createGameCard(game);
+        rowDiv.appendChild(card);
+      });
 
-        chunk.forEach(game => {
-          const card = createGameCard(game);
-          rowDiv.appendChild(card);
-        });
-
-        section.appendChild(rowDiv);
-        grid.appendChild(section);
-      }
+      grid.appendChild(rowDiv);
     }
 
     function createGameCard(game) {
@@ -2350,24 +2373,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <img src="${luckyGame.thumbnail || luckyGame.image || ''}" style="width: 100px; height: 100px; object-fit: contain; background: #000; border-radius: 8px; padding: 4px;" />
           <div>
             <div style="font-size: 1.1rem; font-weight: 900; color: var(--yellow); margin-bottom: 6px;">${luckyGame.title}</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">${luckyGame.year || 'N/A'} • 👥 ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players} Players • ⚖️ ${luckyGame.weight > 0 ? luckyGame.weight.toFixed(1) : 'N/A'}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">${luckyGame.year || 'N/A'} • 👥 ${luckyGame.min_players === luckyGame.max_players ? luckyGame.min_players : luckyGame.min_players + '-' + luckyGame.max_players}</div>
           </div>
         </div>
       `;
-      modalCloseBtn.style.display = 'inline-block';
     }
 
     function closeLuckModal() {
       luckModal.classList.remove('open');
-      luckyGame = null;
     }
-
-    modalCloseBtn.addEventListener('click', () => {
-      closeLuckModal();
-      if (luckyGame) {
-        openDetailModal(luckyGame);
-      }
-    });
 
     modalTryAgainBtn.addEventListener('click', () => {
       pickRandomGame();
@@ -2385,5 +2399,4 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)
