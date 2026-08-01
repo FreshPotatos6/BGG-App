@@ -2339,7 +2339,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
-    function openDetailModal(g) {
+function openDetailModal(g) {
       currentDetailGame = g;
       detailModal.classList.add('open');
 
@@ -2407,6 +2407,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const isModeActive = selectedStyles.has(g.game_mode);
       const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
 
+      const conflictVal = g.conflict_level || g.conflict || 'Medium';
+      const conflictTagHTML = `<span class="clickable-tag">${conflictVal}</span>`;
+
       const curYMinIdx = parseInt(yMin.value);
       const curYMaxIdx = parseInt(yMax.value);
       const gameYrIdx = sliderIndexFromYear(g.year);
@@ -2449,28 +2452,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       detailModalContent.innerHTML = `
         <div class="modal-title">${g.title}</div>
         
-        <div class="meta-tags-grid">
-          <div><strong>Status:</strong> ${playStateTag}</div>
-          <div><strong>Players:</strong> ${playerTagsHTML}</div>
-          <div><strong>Weight:</strong> ${weightTagHTML} (${g.weight > 0 ? g.weight.toFixed(1) : 'N/A'})</div>
-          <div><strong>Length:</strong> ${playTimeTagHTML} (${g.playing_time_raw || g.playing_time || 'N/A'})</div>
-          <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
-          <div><strong>Year:</strong> ${yearTagHTML}</div>
-        </div>
-
-        <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
-        <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
-        <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
-        <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
-        <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
-        <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
-        <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
-
-        <div class="detail-section" style="margin-top: 15px;">
+        <div class="detail-section" style="margin-bottom: 15px;">
           <strong>Description:</strong>
           <div id="modal-desc" class="description-text">${g.description || 'No description available.'}</div>
           <button id="desc-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
         </div>
+
+        <div class="meta-tags-grid">
+          <div><strong>Players:</strong> ${playerTagsHTML}</div>
+          <div><strong>Length:</strong> ${playTimeTagHTML}</div>
+          <div><strong>Weight:</strong> ${weightTagHTML}</div>
+          <div><strong>Year:</strong> ${yearTagHTML}</div>
+          <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
+          <div><strong>Conflict:</strong> ${conflictTagHTML}</div>
+        </div>
+
+        <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
+        <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
+        <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
+        <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
+        <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
+        <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
+        <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
+
+        <div class="detail-section"><strong>Status:</strong> ${playStateTag}</div>
 
         <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
