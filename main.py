@@ -855,27 +855,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       position: absolute;
       top: 8px;
       right: 8px;
-      background: rgba(13, 2, 33, 0.85);
-      border: 2px solid var(--turquoise);
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      background: transparent;
+      border: none;
       cursor: pointer;
-      z-index: 15;
-      transition: transform 0.2s ease, background-color 0.2s ease;
+      z-index: 10;
+      transition: transform 0.2s ease;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--turquoise);
-      font-weight: 900;
-      font-size: 1.1rem;
-      box-shadow: 0 0 8px rgba(0, 245, 212, 0.5);
+    }
+    .expansion-icon-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--turquoise);
+      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
     }
     .expansion-icon-btn:hover {
-      transform: scale(1.15);
-      background: var(--turquoise);
-      color: #0d0221;
+      transform: scale(1.2);
     }
 
     .medal-icon-badge {
@@ -1268,6 +1265,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .app-layout { margin-top: 6px; }
       .main-content { height: calc(100vh - var(--header-height) - 12px); padding-right: 0; }
       
+      /* Updated to ensure at least 2 columns on mobile/landscape */
       .game-grid-row { 
         grid-template-columns: repeat(2, minmax(0, 1fr)); 
         gap: 8px; 
@@ -1285,7 +1283,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
       .stat-badge { padding: 2px; }
       .score-badge-circle { width: 24px; height: 24px; font-size: 0.6rem; }
-      .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.75rem; top: 4px; right: 4px; }
+      .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.7rem; top: 4px; right: 4px; }
       .medal-icon-badge { bottom: 4px; right: 4px; top: auto; }
       .expansion-close-btn, .sidebar-close-btn { padding: 4px 6px; font-size: 0.7rem; }
       .meta-tags-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
@@ -2110,6 +2108,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.user_rating > 0) {
         const lukeBadge = document.createElement('div');
         lukeBadge.className = 'score-badge-circle score-badge-luke';
+        // Display Luke's rating as a whole number
         lukeBadge.innerText = Math.round(game.user_rating);
         lukeBadge.title = "Luke's Rating";
         badgeTopLeft.appendChild(lukeBadge);
@@ -2121,7 +2120,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
         expBtn.title = `${expansionsForGame.length} Expansion(s) Available`;
-        expBtn.innerText = '+';
+        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
         expBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           card.classList.toggle('show-expansions');
@@ -2132,6 +2131,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (game.major_awards && game.major_awards.length > 0) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
+        // Changed trophy icon to 1st place medal icon
         medalBadge.innerHTML = '🥇';
         medalBadge.title = game.major_awards.join(', ');
         imgWrapper.appendChild(medalBadge);
@@ -2157,6 +2157,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       statsEl.className = 'game-stats';
 
       const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
+      // Drop "min" text from play time display in grid view
       const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
 
       statsEl.innerHTML = `
@@ -2362,3 +2363,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </body>
 </html>
 """
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
