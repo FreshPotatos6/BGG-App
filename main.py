@@ -2449,35 +2449,40 @@ function openDetailModal(g) {
         ? g.mechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
         : '<span>None</span>';
 
-      detailModalContent.innerHTML = `
-        <div class="modal-title">${g.title}</div>
-        
-        <div class="detail-section" style="margin-bottom: 15px;">
-          <strong>Description:</strong>
-          <div id="modal-desc" class="description-text">${g.description || 'No description available.'}</div>
-          <button id="desc-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
+detailModalContent.innerHTML = `
+        <div class="modal-header" style="position: sticky; top: 0; background: var(--modal-bg, #fff); z-index: 10; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;">
+          <div class="modal-title" style="margin: 0; font-size: 1.25rem;">${g.title}</div>
+          <button class="modal-close-btn" onclick="closeDetailModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
 
-        <div class="meta-tags-grid">
-          <div><strong>Players:</strong> ${playerTagsHTML}</div>
-          <div><strong>Length:</strong> ${playTimeTagHTML}</div>
-          <div><strong>Weight:</strong> ${weightTagHTML}</div>
-          <div><strong>Year:</strong> ${yearTagHTML}</div>
-          <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
-          <div><strong>Conflict:</strong> ${conflictTagHTML}</div>
+        <div class="modal-scrollable-body" style="overflow-y: auto; max-height: 70vh; padding-top: 10px;">
+          <div class="detail-section" style="margin-bottom: 15px;">
+            <strong>Description:</strong>
+            <div id="modal-desc" class="description-text">${g.description || 'No description available.'}</div>
+            <button id="desc-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
+          </div>
+
+          <div class="meta-tags-grid">
+            <div><strong>Players:</strong> ${playerTagsHTML}</div>
+            <div><strong>Length:</strong> ${playTimeTagHTML}</div>
+            <div><strong>Weight:</strong> ${weightTagHTML}</div>
+            <div><strong>Year:</strong> ${yearTagHTML}</div>
+            <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
+            <div><strong>Conflict:</strong> ${conflictTagHTML}</div>
+          </div>
+
+          <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
+          <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
+          <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
+          <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
+          <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
+          <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
+          <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
+
+          <div class="detail-section"><strong>Status:</strong> ${playStateTag}</div>
+
+          <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
         </div>
-
-        <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
-        <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
-        <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
-        <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
-        <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
-        <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
-        <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
-
-        <div class="detail-section"><strong>Status:</strong> ${playStateTag}</div>
-
-        <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
     }
 
