@@ -2450,9 +2450,8 @@ function openDetailModal(g) {
         : '<span>None</span>';
 
 detailModalContent.innerHTML = `
-        <div class="modal-header" style="position: sticky; top: 0; background: var(--modal-bg, #fff); z-index: 10; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;">
+        <div class="modal-header" style="position: sticky; top: 0; background: inherit; z-index: 10; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;">
           <div class="modal-title" style="margin: 0; font-size: 1.25rem;">${g.title}</div>
-          <button class="modal-close-btn" onclick="closeDetailModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
 
         <div class="modal-scrollable-body" style="overflow-y: auto; max-height: 70vh; padding-top: 10px;">
