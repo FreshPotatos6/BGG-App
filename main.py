@@ -1958,6 +1958,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateLukeDisplay();
       updateYearDisplay();
 
+          // --- AUTO-SEARCH INTEGRATION ---
+    [globalSearch, globalSearchMobile].forEach(input => {
+      if (input) {
+        input.addEventListener('input', () => {
+          applyFilters();
+        });
+      }
+    });  
       applyFilters();
     }
 
