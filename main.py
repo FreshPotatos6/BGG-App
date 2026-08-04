@@ -2346,198 +2346,141 @@ function initApp() {
       else if (type === 'art') { setRef = selectedArtists; toggleId = 'art-toggle'; nameKey = 'Artists'; }
 
       if (setRef) {
-        if (setRef.has(val)) setRef.delete(val);
-        else setRef.add(val);
+        if (setRef.has(val)) {
+          setRef.delete(val);
+        } else {
+          setRef.add(val);
+        }
         updateDropdownToggleLabel(document.getElementById(toggleId), setRef, nameKey);
         applyFilters();
         if (currentDetailGame) openDetailModal(currentDetailGame);
       }
     }
 
-function openDetailModal(g) {
-      currentDetailGame = g;
-      detailModal.classList.add('open');
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+      const isPlayed = game.plays_recorded > 0;
 
-      const filterPlayed = document.getElementById('filter-played');
-      const filterUnplayed = document.getElementById('filter-unplayed');
+      let weightTier = 'Light';
+      if (game.weight >= 3.0) weightTier = 'Heavy';
+      else if (game.weight >= 2.0) weightTier = 'Medium';
 
-      const isPlayed = g.plays_recorded > 0;
-      const playStateTag = isPlayed 
-        ? `<span class="clickable-tag ${filterPlayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('played')">Played</span>`
-        : `<span class="clickable-tag ${filterUnplayed.checked ? 'active-tag' : ''}" onclick="togglePlayStateFilter('unplayed')">Unplayed</span>`;
+      let timeTier = 'Short';
+      if (game.playing_time >= 90) timeTier = 'Long';
+      else if (game.playing_time >= 30) timeTier = 'Medium';
 
-      const bggUrl = g.id ? `https://boardgamegeek.com/boardgame/${g.id}` : '#';
+      const majorAwardsTags = (game.major_awards || []).map(a => 
+        `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`
+      ).join('');
 
-      let playerTagsHTML = '';
-      const minP = g.min_players || 1;
-      const maxP = g.max_players || minP;
+      const minorAwardsTags = (game.minor_awards || []).map(a => 
+        `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🎖️ ${a}</span>`
+      ).join('');
 
-      for (let p = minP; p <= maxP; p++) {
-        let label = p >= 10 ? '10+' : String(p);
-        const isActive = selectedPlayerCounts.has(p);
-        playerTagsHTML += `<span class="clickable-tag ${isActive ? 'active-tag' : ''}" onclick="filterByPlayerCount(${p})">${label}</span>`;
-      }
-      if (!playerTagsHTML) playerTagsHTML = '<span>N/A</span>';
+      const themeTags = (game.themes || []).map(t => 
+        `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`
+      ).join('');
 
-      let weightTagText = 'Medium';
-      if (g.weight > 0) {
-        if (g.weight < 2.0) weightTagText = 'Light';
-        else if (g.weight < 3.0001) weightTagText = 'Medium';
-        else weightTagText = 'Heavy';
-      }
-      const curWMin = parseFloat(wMin.value);
-      const curWMax = parseFloat(wMax.value);
-      let isWeightActive = false;
-      if (weightTagText === 'Light' && curWMin === 1.0 && curWMax === 2.0) isWeightActive = true;
-      if (weightTagText === 'Medium' && curWMin === 2.0 && curWMax === 3.0) isWeightActive = true;
-      if (weightTagText === 'Heavy' && curWMin === 3.0 && curWMax === 5.0) isWeightActive = true;
+      const catTags = (game.categories || []).map(c => 
+        `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`
+      ).join('');
 
-      const weightTagHTML = `<span class="clickable-tag ${isWeightActive ? 'active-tag' : ''}" onclick="filterByWeightTier('${weightTagText}')">${weightTagText}</span>`;
+      const mechTags = (game.mechanics || []).map(m => 
+        `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`
+      ).join('');
 
-      let avgMinutes = g.playing_time;
-      if (!avgMinutes && g.playing_time_raw) {
-        const numbers = g.playing_time_raw.match(/\d+/g);
-        if (numbers && numbers.length > 0) {
-          const nums = numbers.map(Number);
-          avgMinutes = nums.reduce((a, b) => a + b, 0) / nums.length;
-        }
-      }
-
-      let playTimeTagText = 'Medium';
-      if (avgMinutes > 0) {
-        if (avgMinutes <= 30) playTimeTagText = 'Short';
-        else if (avgMinutes <= 90) playTimeTagText = 'Medium';
-        else playTimeTagText = 'Long';
-      }
-
-      const curTMin = parseFloat(tMin.value);
-      const curTMax = parseFloat(tMax.value);
-      let isPlayTimeActive = false;
-      if (playTimeTagText === 'Short' && curTMin === 0 && curTMax === 30) isPlayTimeActive = true;
-      if (playTimeTagText === 'Medium' && curTMin === 30 && curTMax === 90) isPlayTimeActive = true;
-      if (playTimeTagText === 'Long' && curTMin === 90 && curTMax === 300) isPlayTimeActive = true;
-
-      const playTimeTagHTML = `<span class="clickable-tag ${isPlayTimeActive ? 'active-tag' : ''}" onclick="filterByPlaytimeTier('${playTimeTagText}')">${playTimeTagText}</span>`;
-
-      const isModeActive = selectedStyles.has(g.game_mode);
-      const gameModeTagHTML = `<span class="clickable-tag ${isModeActive ? 'active-tag' : ''}" onclick="filterByGameMode('${g.game_mode}')">${g.game_mode || 'Competitive'}</span>`;
-
-      const conflictVal = g.conflict_level || g.conflict || 'Medium';
-      const conflictTagHTML = `<span class="clickable-tag">${conflictVal}</span>`;
-
-      const curYMinIdx = parseInt(yMin.value);
-      const curYMaxIdx = parseInt(yMax.value);
-      const gameYrIdx = sliderIndexFromYear(g.year);
-      const isYearActive = (curYMinIdx === curYMaxIdx && curYMinIdx === gameYrIdx);
-      const yearTagHTML = g.year > 0 
-        ? `<span class="clickable-tag ${isYearActive ? 'active-tag' : ''}" onclick="filterByYear(${g.year})">${g.year}</span>`
-        : '<span>Unknown</span>';
-
-      const majorAwardsList = g.major_awards || [];
-      const majorAwardsHTML = majorAwardsList.length > 0
-          ? majorAwardsList.map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`).join(' ')
-          : '<span>None</span>';
-          
-      const publisherTagHTML = (g.publisher && g.publisher !== 'Unknown')
-        ? `<span class="clickable-tag ${selectedPublishers.has(g.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${g.publisher.replace(/'/g, "\\'")}')">${g.publisher}</span>`
-        : '<span>Unknown</span>';
-
-      const designers = g.designer && g.designer !== "Unknown" ? g.designer.split(',').map(d => d.strip ? d.strip() : d.trim()) : [];
-      const designersHTML = designers.length > 0
-        ? designers.map(d => `<span class="clickable-tag ${selectedDesigners.has(d) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${d.replace(/'/g, "\\'")}')">${d}</span>`).join(' ')
-        : '<span>Unknown</span>';
-
-      const artists = g.artist && g.artist !== "Unknown" ? g.artist.split(',').map(a => a.strip ? a.strip() : a.trim()) : [];
-      const artistsHTML = artists.length > 0
-        ? artists.map(a => `<span class="clickable-tag ${selectedArtists.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
-        : '<span>Unknown</span>';
-
-      const themesHTML = (g.themes && g.themes.length > 0)
-        ? g.themes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
-        : '<span>None</span>';
-
-      const categoriesHTML = (g.categories && g.categories.length > 0)
-        ? g.categories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
-        : '<span>None</span>';
-
-      const mechanicsHTML = (g.mechanics && g.mechanics.length > 0)
-        ? g.mechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
-        : '<span>None</span>';
-
-detailModalContent.innerHTML = `
-        <div class="modal-header" style="position: sticky; top: 0; background: inherit; z-index: 10; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;">
-          <div class="modal-title" style="margin: 0; font-size: 1.25rem;">${g.title}</div>
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${game.title}</div>
+        <div class="meta-tags-grid">
+          <div><strong>Plays Recorded:</strong> <span class="clickable-tag" onclick="togglePlayStateFilter('${isPlayed ? 'played' : 'unplayed'}')">${game.plays_recorded} (${isPlayed ? 'Played' : 'Unplayed'})</span></div>
+          <div><strong>Player Count:</strong> <span class="clickable-tag" onclick="filterByPlayerCount(${game.min_players})">${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players} Players</span></div>
+          <div><strong>Playtime:</strong> <span class="clickable-tag" onclick="filterByPlaytimeTier('${timeTier}')">${game.playing_time_raw || game.playing_time + ' min'}</span></div>
+          <div><strong>Weight:</strong> <span class="clickable-tag" onclick="filterByWeightTier('${weightTier}')">${game.weight > 0 ? game.weight.toFixed(1) + ' / 5.0' : 'N/A'} (${weightTier})</span></div>
+          <div><strong>Game Mode:</strong> <span class="clickable-tag" onclick="filterByGameMode('${game.game_mode}')">${game.game_mode}</span></div>
+          <div><strong>Year:</strong> <span class="clickable-tag" onclick="filterByYear(${game.year})">${game.year > 0 ? game.year : 'N/A'}</span></div>
+          <div><strong>Publisher:</strong> <span class="clickable-tag ${selectedPublishers.has(game.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${game.publisher.replace(/'/g, "\\'")}')">${game.publisher}</span></div>
+          <div><strong>Designer:</strong> <span class="clickable-tag ${selectedDesigners.has(game.designer) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${game.designer.replace(/'/g, "\\'")}')">${game.designer}</span></div>
+          <div><strong>Artist:</strong> <span class="clickable-tag ${selectedArtists.has(game.artist) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${game.artist.replace(/'/g, "\\'")}')">${game.artist}</span></div>
         </div>
 
-        <div class="modal-scrollable-body" style="overflow-y: auto; max-height: 70vh; padding-top: 10px;">
-          <div class="detail-section" style="margin-bottom: 15px;">
-            <strong>Description:</strong>
-            <div id="modal-desc" class="description-text">${g.description || 'No description available.'}</div>
-            <button id="desc-read-more" class="read-more-btn" onclick="toggleDescription()">Read More</button>
-          </div>
+        ${majorAwardsTags ? `<div class="detail-section"><strong>Major Awards:</strong><br>${majorAwardsTags}</div>` : ''}
+        ${minorAwardsTags ? `<div class="detail-section"><strong>Minor Awards:</strong><br>${minorAwardsTags}</div>` : ''}
+        ${themeTags ? `<div class="detail-section"><strong>Themes:</strong><br>${themeTags}</div>` : ''}
+        ${catTags ? `<div class="detail-section"><strong>Categories:</strong><br>${catTags}</div>` : ''}
+        ${mechTags ? `<div class="detail-section"><strong>Mechanics:</strong><br>${mechTags}</div>` : ''}
 
-          <div class="meta-tags-grid">
-            <div><strong>Players:</strong> ${playerTagsHTML}</div>
-            <div><strong>Length:</strong> ${playTimeTagHTML}</div>
-            <div><strong>Weight:</strong> ${weightTagHTML}</div>
-            <div><strong>Year:</strong> ${yearTagHTML}</div>
-            <div><strong>Mode:</strong> ${gameModeTagHTML}</div>
-            <div><strong>Conflict:</strong> ${conflictTagHTML}</div>
-          </div>
-
-          <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>          
-          <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
-          <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
-          <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
-          <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
-          <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
-          <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
-
-          <div class="detail-section"><strong>Status:</strong> ${playStateTag}</div>
-
-          <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
+        <div class="detail-section">
+          <strong>Description:</strong>
+          <div id="modal-desc-text" class="description-text">${game.description}</div>
+          <button id="modal-read-more-btn" class="read-more-btn" onclick="toggleDescriptionReadMore()">Read More</button>
         </div>
+
+        <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
+
+      detailModal.classList.add('open');
     }
 
-    function toggleDescription() {
-      const desc = document.getElementById('modal-desc');
-      const btn = document.getElementById('desc-read-more');
-      if (desc.classList.contains('expanded')) {
-        desc.classList.remove('expanded');
-        btn.innerText = 'Read More';
+    function toggleDescriptionReadMore() {
+      const descEl = document.getElementById('modal-desc-text');
+      const btnEl = document.getElementById('modal-read-more-btn');
+      if (descEl.classList.contains('expanded')) {
+        descEl.classList.remove('expanded');
+        btnEl.innerText = "Read More";
       } else {
-        desc.classList.add('expanded');
-        btn.innerText = 'Show Less';
+        descEl.classList.add('expanded');
+        btnEl.innerText = "Show Less";
       }
     }
 
-    luckBtn.addEventListener('click', () => {
+    function pickRandomGame() {
       if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align: center; padding: 20px;">No games available under current filters!</div>`;
+        modalContent.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1rem;">No games match your current filters. Try expanding your filter criteria!</div>`;
+        modalTryAgainBtn.style.display = 'none';
+        modalChangeFiltersBtn.style.display = 'block';
+        modalCloseBtn.style.display = 'none';
       } else {
-        const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
+        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+        const selectedGame = currentlyFilteredGames[randomIndex];
         modalContent.innerHTML = `
           <div style="text-align: center;">
-            <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 200px; max-width: 100%; border-radius: 8px; margin-bottom: 12px;">
-            <h2 style="color: var(--yellow); margin-bottom: 8px;">${randomGame.title}</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">👥 ${randomGame.min_players}-${randomGame.max_players} Players | ⏱️ ${randomGame.playing_time} min | ⚖️ ${randomGame.weight.toFixed(1)}</p>
+            <div style="font-size: 1.2rem; font-weight: bold; color: var(--yellow); margin-bottom: 8px;">${selectedGame.title}</div>
+            <img src="${selectedGame.image || selectedGame.thumbnail}" style="max-height: 180px; max-width: 100%; object-fit: contain; margin: 10px 0; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">👥 ${selectedGame.min_players}-${selectedGame.max_players} Players | ⏱️ ${selectedGame.playing_time} min | ⚖️ ${selectedGame.weight.toFixed(1)} Weight</div>
           </div>
         `;
+        modalTryAgainBtn.style.display = 'block';
+        modalChangeFiltersBtn.style.display = 'none';
+        modalCloseBtn.style.display = 'block';
       }
       luckModal.classList.add('open');
-    });
+    }
 
-    modalTryAgainBtn.addEventListener('click', () => {
-      luckBtn.click();
-    });
-
+    luckBtn.addEventListener('click', pickRandomGame);
+    modalTryAgainBtn.addEventListener('click', pickRandomGame);
     modalChangeFiltersBtn.addEventListener('click', () => {
       closeLuckModal();
-      if (toolbar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
+      toggleSidebar();
     });
+    modalCloseBtn.addEventListener('click', closeLuckModal);
+
+    function sortGames() {
+      const criteria = (sortSelect && sortSelect.value) || 'popularity_owned';
+      currentlyFilteredGames.sort((a, b) => {
+        let valA = a[criteria];
+        let valB = b[criteria];
+
+        if (typeof valA === 'string') {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return isAscending ? -1 : 1;
+        if (valA > valB) return isAscending ? 1 : -1;
+        return 0;
+      });
+    }
   </script>
 </body>
 </html>
