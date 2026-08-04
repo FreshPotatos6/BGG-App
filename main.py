@@ -2478,10 +2478,10 @@ detailModalContent.innerHTML = `
             <div><strong>Conflict:</strong> ${conflictTagHTML}</div>
           </div>
 
+          <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>          
+          <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
           <div class="detail-section"><strong>Designer:</strong> ${designersHTML}</div>
           <div class="detail-section"><strong>Artist:</strong> ${artistsHTML}</div>
-          <div class="detail-section"><strong>Awards:</strong> ${majorAwardsHTML}</div>
-          <div class="detail-section"><strong>Publisher:</strong> ${publisherTagHTML}</div>
           <div class="detail-section"><strong>Themes:</strong> ${themesHTML}</div>
           <div class="detail-section"><strong>Categories:</strong> ${categoriesHTML}</div>
           <div class="detail-section"><strong>Mechanics:</strong> ${mechanicsHTML}</div>
