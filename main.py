@@ -131,9 +131,10 @@ def generate_json_from_sheet():
             parent_ref = str(row.get("Parent Game ID", row.get("Parent Game", ""))).strip()
 
             is_standalone_val = str(row.get("Is Standalone", "")).strip().lower()
-            is_standalone = is_standalone_val in ["yes", "true", "1"]
-
             supports_one_off_val = str(row.get("Supports One-Off", "")).strip().lower()
+            
+            # Requires BOTH "Is Standalone" and "Supports One-Off" to be 'yes'
+            is_standalone = (is_standalone_val in ["yes", "true", "1"]) and (supports_one_off_val in ["yes", "true", "1"])
             supports_one_off = supports_one_off_val in ["yes", "true", "1"]
 
             campaign_struct = str(row.get("Campaign Structure", "")).strip()
@@ -1642,7 +1643,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-<script>
+  <script>
     let games = [];
     let rawCollection = [];
     let currentlyFilteredGames = [];
@@ -1895,7 +1896,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       })
       .catch(err => console.error("Error fetching collection:", err));
 
-    function initApp() {
+function initApp() {
+      // Use full raw collection so expansions can be filtered dynamically
       games = rawCollection;
       
       const stylesSet = new Set();
@@ -1956,6 +1958,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
       setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
 
+      // Bind dynamic checkboxes
       document.getElementById('filter-played').addEventListener('change', applyFilters);
       document.getElementById('filter-unplayed').addEventListener('change', applyFilters);
       document.getElementById('filter-standalone').addEventListener('change', applyFilters);
@@ -2006,13 +2009,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
       currentlyFilteredGames = games.filter(g => {
+        // Standalone / Expansion / Campaign Filter Group
         const isExp = g.is_expansion;
-        const isCampaign = g.campaign_structure && g.campaign_structure !== "" && g.campaign_structure !== "None";
-        // Base Game = Is Standalone (yes) AND Supports One-Off (yes)
-        const isBaseGame = g.is_standalone && g.supports_one_off;
+        const isCampaign = g.campaign_structure && g.campaign_structure !== "None";
+        const isStandalone = g.is_standalone;
 
         let matchesType = false;
-        if (filterStandalone && isBaseGame) matchesType = true;
+        if (filterStandalone && isStandalone) matchesType = true;
         if (filterExpansions && isExp) matchesType = true;
         if (filterCampaign && isCampaign) matchesType = true;
 
@@ -2066,21 +2069,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
     }
 
-    function sortGames() {
-      const activeSortKey = (sortSelect && sortSelect.value) || 'popularity_owned';
-      currentlyFilteredGames.sort((a, b) => {
-        let valA = a[activeSortKey];
-        let valB = b[activeSortKey];
-
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
-
-        if (valA < valB) return isAscending ? -1 : 1;
-        if (valA > valB) return isAscending ? 1 : -1;
-        return 0;
-      });
-    }
-
     function resetAllFilters() {
       pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
       wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
@@ -2092,7 +2080,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
       
-      // Default back to Base Games being checked
+      // Default back to showing Standalone Games checked
       document.getElementById('filter-standalone').checked = true;
       document.getElementById('filter-expansions').checked = false;
       document.getElementById('filter-campaign').checked = false;
@@ -2281,10 +2269,89 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     function closeLuckModal() {
       luckModal.classList.remove('open');
     }
+
+    function togglePlayStateFilter(state) {
+      const filterPlayed = document.getElementById('filter-played');
+      const filterUnplayed = document.getElementById('filter-unplayed');
+      if (state === 'played') {
+        filterPlayed.checked = !filterPlayed.checked;
+        filterUnplayed.checked = false;
+      } else {
+        filterUnplayed.checked = !filterUnplayed.checked;
+        filterPlayed.checked = false;
+      }
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByPlayerCount(count) {
+      if (selectedPlayerCounts.has(count)) {
+        selectedPlayerCounts.delete(count);
+      } else {
+        selectedPlayerCounts.clear();
+        selectedPlayerCounts.add(count);
+        pMin.value = count;
+        pMax.value = count;
+        updatePlayerDisplay();
+      }
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByWeightTier(tier) {
+      if (tier === 'Light') { wMin.value = 1.0; wMax.value = 2.0; }
+      else if (tier === 'Medium') { wMin.value = 2.0; wMax.value = 3.0; }
+      else if (tier === 'Heavy') { wMin.value = 3.0; wMax.value = 5.0; }
+      updateWeightDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByPlaytimeTier(tier) {
+      if (tier === 'Short') { tMin.value = 0; tMax.value = 30; }
+      else if (tier === 'Medium') { tMin.value = 30; tMax.value = 90; }
+      else if (tier === 'Long') { tMin.value = 90; tMax.value = 300; }
+      updateTimeDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByGameMode(mode) {
+      if (selectedStyles.has(mode)) selectedStyles.delete(mode);
+      else selectedStyles.add(mode);
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function filterByYear(yr) {
+      const idx = sliderIndexFromYear(yr);
+      yMin.value = idx;
+      yMax.value = idx;
+      updateYearDisplay();
+      applyFilters();
+      if (currentDetailGame) openDetailModal(currentDetailGame);
+    }
+
+    function sortGames() {
+      const selectedSort = (sortSelect && sortSelect.value) || "popularity_owned";
+      currentlyFilteredGames.sort((a, b) => {
+        let valA = a[selectedSort];
+        let valB = b[selectedSort];
+
+        if (typeof valA === 'string') {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+          return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+
+        return isAscending ? valA - valB : valB - valA;
+      });
+    }
   </script>
 </body>
 </html>
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
