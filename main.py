@@ -1461,7 +1461,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="checkbox-grid">
             <label class="style-item">
               <input type="checkbox" id="filter-standalone" checked>
-              Standalone Games
+              Base Games
             </label>
             <label class="style-item">
               <input type="checkbox" id="filter-expansions">
@@ -1642,7 +1642,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <script>
+<script>
     let games = [];
     let rawCollection = [];
     let currentlyFilteredGames = [];
@@ -1895,8 +1895,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       })
       .catch(err => console.error("Error fetching collection:", err));
 
-function initApp() {
-      // Use full raw collection so expansions can be filtered dynamically
+    function initApp() {
       games = rawCollection;
       
       const stylesSet = new Set();
@@ -1957,7 +1956,6 @@ function initApp() {
       setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
       setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
 
-      // Bind dynamic checkboxes
       document.getElementById('filter-played').addEventListener('change', applyFilters);
       document.getElementById('filter-unplayed').addEventListener('change', applyFilters);
       document.getElementById('filter-standalone').addEventListener('change', applyFilters);
@@ -2008,13 +2006,13 @@ function initApp() {
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
       currentlyFilteredGames = games.filter(g => {
-        // Standalone / Expansion / Campaign Filter Group
         const isExp = g.is_expansion;
-        const isCampaign = g.campaign_structure && g.campaign_structure !== "None";
-        const isStandalone = !isExp;
+        const isCampaign = g.campaign_structure && g.campaign_structure !== "" && g.campaign_structure !== "None";
+        // Base Game = Is Standalone (yes) AND Supports One-Off (yes)
+        const isBaseGame = g.is_standalone && g.supports_one_off;
 
         let matchesType = false;
-        if (filterStandalone && isStandalone) matchesType = true;
+        if (filterStandalone && isBaseGame) matchesType = true;
         if (filterExpansions && isExp) matchesType = true;
         if (filterCampaign && isCampaign) matchesType = true;
 
@@ -2068,6 +2066,21 @@ function initApp() {
       renderGames();
     }
 
+    function sortGames() {
+      const activeSortKey = (sortSelect && sortSelect.value) || 'popularity_owned';
+      currentlyFilteredGames.sort((a, b) => {
+        let valA = a[activeSortKey];
+        let valB = b[activeSortKey];
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return isAscending ? -1 : 1;
+        if (valA > valB) return isAscending ? 1 : -1;
+        return 0;
+      });
+    }
+
     function resetAllFilters() {
       pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
       wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
@@ -2079,7 +2092,7 @@ function initApp() {
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
       
-      // Default back to showing Standalone Games only
+      // Default back to Base Games being checked
       document.getElementById('filter-standalone').checked = true;
       document.getElementById('filter-expansions').checked = false;
       document.getElementById('filter-campaign').checked = false;
@@ -2267,219 +2280,6 @@ function initApp() {
 
     function closeLuckModal() {
       luckModal.classList.remove('open');
-    }
-
-    function togglePlayStateFilter(state) {
-      const filterPlayed = document.getElementById('filter-played');
-      const filterUnplayed = document.getElementById('filter-unplayed');
-      if (state === 'played') {
-        filterPlayed.checked = !filterPlayed.checked;
-        filterUnplayed.checked = false;
-      } else {
-        filterUnplayed.checked = !filterUnplayed.checked;
-        filterPlayed.checked = false;
-      }
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function filterByPlayerCount(count) {
-      if (selectedPlayerCounts.has(count)) {
-        selectedPlayerCounts.delete(count);
-      } else {
-        selectedPlayerCounts.clear();
-        selectedPlayerCounts.add(count);
-        pMin.value = count;
-        pMax.value = count;
-        updatePlayerDisplay();
-      }
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function filterByWeightTier(tier) {
-      if (tier === 'Light') { wMin.value = 1.0; wMax.value = 2.0; }
-      else if (tier === 'Medium') { wMin.value = 2.0; wMax.value = 3.0; }
-      else if (tier === 'Heavy') { wMin.value = 3.0; wMax.value = 5.0; }
-      updateWeightDisplay();
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function filterByPlaytimeTier(tier) {
-      if (tier === 'Short') { tMin.value = 0; tMax.value = 30; }
-      else if (tier === 'Medium') { tMin.value = 30; tMax.value = 90; }
-      else if (tier === 'Long') { tMin.value = 90; tMax.value = 300; }
-      updateTimeDisplay();
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function filterByGameMode(mode) {
-      if (selectedStyles.has(mode)) selectedStyles.delete(mode);
-      else selectedStyles.add(mode);
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function filterByYear(yr) {
-      const idx = sliderIndexFromYear(yr);
-      yMin.value = idx;
-      yMax.value = idx;
-      updateYearDisplay();
-      applyFilters();
-      if (currentDetailGame) openDetailModal(currentDetailGame);
-    }
-
-    function toggleTagFilter(type, val) {
-      let setRef = null;
-      let toggleId = '';
-      let nameKey = '';
-
-      if (type === 'major_award') { setRef = selectedMajorAwards; toggleId = 'major-award-toggle'; nameKey = 'Major Awards'; }
-      else if (type === 'minor_award') { setRef = selectedMinorAwards; toggleId = 'minor-award-toggle'; nameKey = 'Minor Awards'; }
-      else if (type === 'theme') { setRef = selectedThemes; toggleId = 'theme-toggle'; nameKey = 'Themes'; }
-      else if (type === 'cat') { setRef = selectedCategories; toggleId = 'cat-toggle'; nameKey = 'Categories'; }
-      else if (type === 'mech') { setRef = selectedMechanics; toggleId = 'mech-toggle'; nameKey = 'Mechanics'; }
-      else if (type === 'pub') { setRef = selectedPublishers; toggleId = 'pub-toggle'; nameKey = 'Publishers'; }
-      else if (type === 'des') { setRef = selectedDesigners; toggleId = 'des-toggle'; nameKey = 'Designers'; }
-      else if (type === 'art') { setRef = selectedArtists; toggleId = 'art-toggle'; nameKey = 'Artists'; }
-
-      if (setRef) {
-        if (setRef.has(val)) {
-          setRef.delete(val);
-        } else {
-          setRef.add(val);
-        }
-        updateDropdownToggleLabel(document.getElementById(toggleId), setRef, nameKey);
-        applyFilters();
-        if (currentDetailGame) openDetailModal(currentDetailGame);
-      }
-    }
-
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
-      const isPlayed = game.plays_recorded > 0;
-
-      let weightTier = 'Light';
-      if (game.weight >= 3.0) weightTier = 'Heavy';
-      else if (game.weight >= 2.0) weightTier = 'Medium';
-
-      let timeTier = 'Short';
-      if (game.playing_time >= 90) timeTier = 'Long';
-      else if (game.playing_time >= 30) timeTier = 'Medium';
-
-      const majorAwardsTags = (game.major_awards || []).map(a => 
-        `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`
-      ).join('');
-
-      const minorAwardsTags = (game.minor_awards || []).map(a => 
-        `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🎖️ ${a}</span>`
-      ).join('');
-
-      const themeTags = (game.themes || []).map(t => 
-        `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`
-      ).join('');
-
-      const catTags = (game.categories || []).map(c => 
-        `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`
-      ).join('');
-
-      const mechTags = (game.mechanics || []).map(m => 
-        `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`
-      ).join('');
-
-      detailModalContent.innerHTML = `
-        <div class="modal-title">${game.title}</div>
-        <div class="meta-tags-grid">
-          <div><strong>Plays Recorded:</strong> <span class="clickable-tag" onclick="togglePlayStateFilter('${isPlayed ? 'played' : 'unplayed'}')">${game.plays_recorded} (${isPlayed ? 'Played' : 'Unplayed'})</span></div>
-          <div><strong>Player Count:</strong> <span class="clickable-tag" onclick="filterByPlayerCount(${game.min_players})">${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players} Players</span></div>
-          <div><strong>Playtime:</strong> <span class="clickable-tag" onclick="filterByPlaytimeTier('${timeTier}')">${game.playing_time_raw || game.playing_time + ' min'}</span></div>
-          <div><strong>Weight:</strong> <span class="clickable-tag" onclick="filterByWeightTier('${weightTier}')">${game.weight > 0 ? game.weight.toFixed(1) + ' / 5.0' : 'N/A'} (${weightTier})</span></div>
-          <div><strong>Game Mode:</strong> <span class="clickable-tag" onclick="filterByGameMode('${game.game_mode}')">${game.game_mode}</span></div>
-          <div><strong>Year:</strong> <span class="clickable-tag" onclick="filterByYear(${game.year})">${game.year > 0 ? game.year : 'N/A'}</span></div>
-          <div><strong>Publisher:</strong> <span class="clickable-tag ${selectedPublishers.has(game.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${game.publisher.replace(/'/g, "\\'")}')">${game.publisher}</span></div>
-          <div><strong>Designer:</strong> <span class="clickable-tag ${selectedDesigners.has(game.designer) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${game.designer.replace(/'/g, "\\'")}')">${game.designer}</span></div>
-          <div><strong>Artist:</strong> <span class="clickable-tag ${selectedArtists.has(game.artist) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${game.artist.replace(/'/g, "\\'")}')">${game.artist}</span></div>
-        </div>
-
-        ${majorAwardsTags ? `<div class="detail-section"><strong>Major Awards:</strong><br>${majorAwardsTags}</div>` : ''}
-        ${minorAwardsTags ? `<div class="detail-section"><strong>Minor Awards:</strong><br>${minorAwardsTags}</div>` : ''}
-        ${themeTags ? `<div class="detail-section"><strong>Themes:</strong><br>${themeTags}</div>` : ''}
-        ${catTags ? `<div class="detail-section"><strong>Categories:</strong><br>${catTags}</div>` : ''}
-        ${mechTags ? `<div class="detail-section"><strong>Mechanics:</strong><br>${mechTags}</div>` : ''}
-
-        <div class="detail-section">
-          <strong>Description:</strong>
-          <div id="modal-desc-text" class="description-text">${game.description}</div>
-          <button id="modal-read-more-btn" class="read-more-btn" onclick="toggleDescriptionReadMore()">Read More</button>
-        </div>
-
-        <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
-      `;
-
-      detailModal.classList.add('open');
-    }
-
-    function toggleDescriptionReadMore() {
-      const descEl = document.getElementById('modal-desc-text');
-      const btnEl = document.getElementById('modal-read-more-btn');
-      if (descEl.classList.contains('expanded')) {
-        descEl.classList.remove('expanded');
-        btnEl.innerText = "Read More";
-      } else {
-        descEl.classList.add('expanded');
-        btnEl.innerText = "Show Less";
-      }
-    }
-
-    function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1rem;">No games match your current filters. Try expanding your filter criteria!</div>`;
-        modalTryAgainBtn.style.display = 'none';
-        modalChangeFiltersBtn.style.display = 'block';
-        modalCloseBtn.style.display = 'none';
-      } else {
-        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const selectedGame = currentlyFilteredGames[randomIndex];
-        modalContent.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 1.2rem; font-weight: bold; color: var(--yellow); margin-bottom: 8px;">${selectedGame.title}</div>
-            <img src="${selectedGame.image || selectedGame.thumbnail}" style="max-height: 180px; max-width: 100%; object-fit: contain; margin: 10px 0; border-radius: 8px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted);">👥 ${selectedGame.min_players}-${selectedGame.max_players} Players | ⏱️ ${selectedGame.playing_time} min | ⚖️ ${selectedGame.weight.toFixed(1)} Weight</div>
-          </div>
-        `;
-        modalTryAgainBtn.style.display = 'block';
-        modalChangeFiltersBtn.style.display = 'none';
-        modalCloseBtn.style.display = 'block';
-      }
-      luckModal.classList.add('open');
-    }
-
-    luckBtn.addEventListener('click', pickRandomGame);
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
-    modalChangeFiltersBtn.addEventListener('click', () => {
-      closeLuckModal();
-      toggleSidebar();
-    });
-    modalCloseBtn.addEventListener('click', closeLuckModal);
-
-    function sortGames() {
-      const criteria = (sortSelect && sortSelect.value) || 'popularity_owned';
-      currentlyFilteredGames.sort((a, b) => {
-        let valA = a[criteria];
-        let valB = b[criteria];
-
-        if (typeof valA === 'string') {
-          valA = valA.toLowerCase();
-          valB = valB.toLowerCase();
-        }
-
-        if (valA < valB) return isAscending ? -1 : 1;
-        if (valA > valB) return isAscending ? 1 : -1;
-        return 0;
-      });
     }
   </script>
 </body>
