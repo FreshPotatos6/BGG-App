@@ -1464,9 +1464,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           </label>
 
           <label class="style-item" style="padding: 4px 2px;">
-            <input type="checkbox" id="filter-solo">
-            Solo
-          </label>
+
+          <label>
+          <input type="checkbox" id="filter-expansion"> Show Expansions Only
+        </label>
+           
         </div>
       </div>
 
@@ -1895,9 +1897,20 @@ function initApp() {
         // Base games must be standalone
         if (!g.is_standalone) return false;
         
-        // Campaign/Legacy games require checking the filter state
-        const filterCampaign = document.getElementById('filter-campaign').checked;
-        if (!g.supports_one_off && !filterCampaign) return false;
+    const filterCampaign = document.getElementById('filter-campaign').checked;
+    
+    currentlyFilteredGames = rawCollection.filter(g => {
+      // Campaign Logic:
+      // If checked, ONLY include games with a campaign structure other than "None" (or null/empty)
+      const isCampaign = g.campaign_structure && g.campaign_structure.toLowerCase() !== 'none';
+      if (filterCampaign && !isCampaign) return false;
+
+      const expansionCheckbox = document.getElementById('filter-expansion');
+        if (expansionCheckbox) {
+          expansionCheckbox.addEventListener('change', () => {
+            applyFilters();
+          });
+        }
         
         return true;
       });
@@ -2005,7 +2018,20 @@ function initApp() {
       const filterPlayed = document.getElementById('filter-played').checked;
       const filterUnplayed = document.getElementById('filter-unplayed').checked;
       const filterCampaign = document.getElementById('filter-campaign').checked;
-      const filterSolo = document.getElementById('filter-solo').checked;
+      const filterExpansion = document.getElementById('filter-expansion').checked;
+       currentlyFilteredGames = rawCollection.filter(g => {
+
+      const isExpansion = g.is_expansion === true || (typeof g.is_expansion === 'string' && g.is_expansion.toLowerCase() === 'yes');
+    
+      if (filterExpansion) {
+        if (!isExpansion) return false;
+      } else {
+        if (!g.is_standalone) return false;
+      }
+    
+      // Campaign filter logic:
+      const isCampaign = g.campaign_structure && g.campaign_structure.toLowerCase() !== 'none';
+      if (filterCampaign && !isCampaign) return false;
 
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
