@@ -1464,11 +1464,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           </label>
 
           <label class="style-item" style="padding: 4px 2px;">
-
-          <label>
-          <input type="checkbox" id="filter-expansion"> Show Expansions Only
-        </label>
-           
+            <input type="checkbox" id="filter-solo">
+            Solo
+          </label>
         </div>
       </div>
 
@@ -1892,28 +1890,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       })
       .catch(err => console.error("Error fetching collection:", err));
 
-function initApp() {
-      games = rawCollection.filter(g => {
-        // Base games must be standalone
-        if (!g.is_standalone) return false;
-        
-    const filterCampaign = document.getElementById('filter-campaign').checked;
-    
-    currentlyFilteredGames = rawCollection.filter(g => {
-      // Campaign Logic:
-      // If checked, ONLY include games with a campaign structure other than "None" (or null/empty)
-      const isCampaign = g.campaign_structure && g.campaign_structure.toLowerCase() !== 'none';
-      if (filterCampaign && !isCampaign) return false;
-
-      const expansionCheckbox = document.getElementById('filter-expansion');
-        if (expansionCheckbox) {
-          expansionCheckbox.addEventListener('change', () => {
-            applyFilters();
-          });
-        }
-        
-        return true;
-      });
+    function initApp() {
+      games = rawCollection.filter(g => !g.is_expansion);
       
       const stylesSet = new Set();
       const majorAwardsSet = new Set();
@@ -1973,14 +1951,6 @@ function initApp() {
       setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
       setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
 
-      // Bind dynamic filtering to the campaign checkbox so grid updates on toggle
-      const campaignCheckbox = document.getElementById('filter-campaign');
-      if (campaignCheckbox) {
-        campaignCheckbox.addEventListener('change', () => {
-          applyFilters();
-        });
-      }
-
       updatePlayerDisplay();
       updateWeightDisplay();
       updateTimeDisplay();
@@ -1988,13 +1958,14 @@ function initApp() {
       updateLukeDisplay();
       updateYearDisplay();
 
-      [globalSearch, globalSearchMobile].forEach(input => {
-        if (input) {
-          input.addEventListener('input', () => {
-            applyFilters();
-          });
-        }
-      });  
+          // --- AUTO-SEARCH INTEGRATION ---
+    [globalSearch, globalSearchMobile].forEach(input => {
+      if (input) {
+        input.addEventListener('input', () => {
+          applyFilters();
+        });
+      }
+    });  
       applyFilters();
     }
 
@@ -2018,31 +1989,11 @@ function initApp() {
       const filterPlayed = document.getElementById('filter-played').checked;
       const filterUnplayed = document.getElementById('filter-unplayed').checked;
       const filterCampaign = document.getElementById('filter-campaign').checked;
-      const filterExpansion = document.getElementById('filter-expansion').checked;
-       currentlyFilteredGames = rawCollection.filter(g => {
-
-      const isExpansion = g.is_expansion === true || (typeof g.is_expansion === 'string' && g.is_expansion.toLowerCase() === 'yes');
-    
-      if (filterExpansion) {
-        if (!isExpansion) return false;
-      } else {
-        if (!g.is_standalone) return false;
-      }
-    
-      // Campaign filter logic:
-      const isCampaign = g.campaign_structure && g.campaign_structure.toLowerCase() !== 'none';
-      if (filterCampaign && !isCampaign) return false;
+      const filterSolo = document.getElementById('filter-solo').checked;
 
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
-      // Dynamic filtering directly from rawCollection
-      currentlyFilteredGames = rawCollection.filter(g => {
-        // Must be standalone (excludes expansions from main grid)
-        if (!g.is_standalone) return false;
-
-        // Legacy/Campaign rule: If it doesn't support one-off plays, only show if Campaign checkbox is checked
-        if (!g.supports_one_off && !filterCampaign) return false;
-
+      currentlyFilteredGames = games.filter(g => {
         if (g.max_players < pMinValue || g.min_players > pMaxValue) return false;
         if (g.weight < wMinValue || g.weight > wMaxValue) return false;
         if (tMaxValue < 300 && (g.playing_time < tMinValue || g.playing_time > tMaxValue)) return false;
@@ -2061,6 +2012,7 @@ function initApp() {
 
         if (filterPlayed && g.plays_recorded === 0) return false;
         if (filterUnplayed && g.plays_recorded > 0) return false;
+        if (filterCampaign && (!g.campaign_structure || g.campaign_structure === "None")) return false;
         if (filterSolo && g.min_players > 1) return false;
 
         if (selectedMajorAwards.size > 0 && !g.major_awards.some(a => selectedMajorAwards.has(a))) return false;
