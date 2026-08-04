@@ -1458,15 +1458,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             </label>
           </div>
 
-          <label class="style-item" style="padding: 4px 2px;">
-            <input type="checkbox" id="filter-campaign">
-            Campaign
-          </label>
-
-          <label class="style-item" style="padding: 4px 2px;">
-            <input type="checkbox" id="filter-solo">
-            Solo
-          </label>
+          <div class="checkbox-grid">
+            <label class="style-item">
+              <input type="checkbox" id="filter-standalone" checked>
+              Standalone Games
+            </label>
+            <label class="style-item">
+              <input type="checkbox" id="filter-expansions">
+              Expansions
+            </label>
+            <label class="style-item">
+              <input type="checkbox" id="filter-campaign">
+              Campaign / Legacy
+            </label>
+          </div>
         </div>
       </div>
 
@@ -1890,8 +1895,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       })
       .catch(err => console.error("Error fetching collection:", err));
 
-    function initApp() {
-      games = rawCollection.filter(g => !g.is_expansion);
+function initApp() {
+      // Use full raw collection so expansions can be filtered dynamically
+      games = rawCollection;
       
       const stylesSet = new Set();
       const majorAwardsSet = new Set();
@@ -1951,6 +1957,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
       setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
 
+      // Bind dynamic checkboxes
+      document.getElementById('filter-played').addEventListener('change', applyFilters);
+      document.getElementById('filter-unplayed').addEventListener('change', applyFilters);
+      document.getElementById('filter-standalone').addEventListener('change', applyFilters);
+      document.getElementById('filter-expansions').addEventListener('change', applyFilters);
+      document.getElementById('filter-campaign').addEventListener('change', applyFilters);
+
       updatePlayerDisplay();
       updateWeightDisplay();
       updateTimeDisplay();
@@ -1958,14 +1971,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateLukeDisplay();
       updateYearDisplay();
 
-          // --- AUTO-SEARCH INTEGRATION ---
-    [globalSearch, globalSearchMobile].forEach(input => {
-      if (input) {
-        input.addEventListener('input', () => {
-          applyFilters();
-        });
-      }
-    });  
+      [globalSearch, globalSearchMobile].forEach(input => {
+        if (input) {
+          input.addEventListener('input', () => {
+            applyFilters();
+          });
+        }
+      });  
       applyFilters();
     }
 
@@ -1988,12 +2000,26 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const filterPlayed = document.getElementById('filter-played').checked;
       const filterUnplayed = document.getElementById('filter-unplayed').checked;
+      
+      const filterStandalone = document.getElementById('filter-standalone').checked;
+      const filterExpansions = document.getElementById('filter-expansions').checked;
       const filterCampaign = document.getElementById('filter-campaign').checked;
-      const filterSolo = document.getElementById('filter-solo').checked;
 
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
       currentlyFilteredGames = games.filter(g => {
+        // Standalone / Expansion / Campaign Filter Group
+        const isExp = g.is_expansion;
+        const isCampaign = g.campaign_structure && g.campaign_structure !== "None";
+        const isStandalone = !isExp;
+
+        let matchesType = false;
+        if (filterStandalone && isStandalone) matchesType = true;
+        if (filterExpansions && isExp) matchesType = true;
+        if (filterCampaign && isCampaign) matchesType = true;
+
+        if (!matchesType) return false;
+
         if (g.max_players < pMinValue || g.min_players > pMaxValue) return false;
         if (g.weight < wMinValue || g.weight > wMaxValue) return false;
         if (tMaxValue < 300 && (g.playing_time < tMinValue || g.playing_time > tMaxValue)) return false;
@@ -2012,8 +2038,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         if (filterPlayed && g.plays_recorded === 0) return false;
         if (filterUnplayed && g.plays_recorded > 0) return false;
-        if (filterCampaign && (!g.campaign_structure || g.campaign_structure === "None")) return false;
-        if (filterSolo && g.min_players > 1) return false;
 
         if (selectedMajorAwards.size > 0 && !g.major_awards.some(a => selectedMajorAwards.has(a))) return false;
         if (selectedMinorAwards.size > 0 && !g.minor_awards.some(a => selectedMinorAwards.has(a))) return false;
@@ -2044,26 +2068,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
     }
 
-    function sortGames() {
-      const sortBy = sortSelect.value;
-      currentlyFilteredGames.sort((a, b) => {
-        let valA = a[sortBy];
-        let valB = b[sortBy];
-
-        if (typeof valA === 'string') {
-          valA = valA.toLowerCase();
-          valB = valB.toLowerCase();
-          if (valA < valB) return isAscending ? -1 : 1;
-          if (valA > valB) return isAscending ? 1 : -1;
-          return 0;
-        } else {
-          if (valA < valB) return isAscending ? -1 : 1;
-          if (valA > valB) return isAscending ? 1 : -1;
-          return 0;
-        }
-      });
-    }
-
     function resetAllFilters() {
       pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
       wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
@@ -2074,8 +2078,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
+      
+      // Default back to showing Standalone Games only
+      document.getElementById('filter-standalone').checked = true;
+      document.getElementById('filter-expansions').checked = false;
       document.getElementById('filter-campaign').checked = false;
-      document.getElementById('filter-solo').checked = false;
 
       selectedPlayerCounts.clear();
       selectedStyles.clear();
