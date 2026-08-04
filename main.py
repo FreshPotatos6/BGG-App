@@ -1890,8 +1890,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       })
       .catch(err => console.error("Error fetching collection:", err));
 
-    function initApp() {
-      games = rawCollection.filter(g => !g.is_expansion);
+function initApp() {
+      games = rawCollection.filter(g => {
+        // Base games must be standalone
+        if (!g.is_standalone) return false;
+        
+        // Campaign/Legacy games require checking the filter state
+        const filterCampaign = document.getElementById('filter-campaign').checked;
+        if (!g.supports_one_off && !filterCampaign) return false;
+        
+        return true;
+      });
       
       const stylesSet = new Set();
       const majorAwardsSet = new Set();
@@ -1951,6 +1960,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       setupDropdown('des-toggle', 'des-menu', 'des-search', 'des-list', 'des-select-all', 'des-clear-all', selectedDesigners, 'Designers');
       setupDropdown('art-toggle', 'art-menu', 'art-search', 'art-list', 'art-select-all', 'art-clear-all', selectedArtists, 'Artists');
 
+      // Bind dynamic filtering to the campaign checkbox so grid updates on toggle
+      const campaignCheckbox = document.getElementById('filter-campaign');
+      if (campaignCheckbox) {
+        campaignCheckbox.addEventListener('change', () => {
+          applyFilters();
+        });
+      }
+
       updatePlayerDisplay();
       updateWeightDisplay();
       updateTimeDisplay();
@@ -1958,14 +1975,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateLukeDisplay();
       updateYearDisplay();
 
-          // --- AUTO-SEARCH INTEGRATION ---
-    [globalSearch, globalSearchMobile].forEach(input => {
-      if (input) {
-        input.addEventListener('input', () => {
-          applyFilters();
-        });
-      }
-    });  
+      [globalSearch, globalSearchMobile].forEach(input => {
+        if (input) {
+          input.addEventListener('input', () => {
+            applyFilters();
+          });
+        }
+      });  
       applyFilters();
     }
 
@@ -1993,7 +2009,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const searchQuery = ((globalSearch && globalSearch.value) || (globalSearchMobile && globalSearchMobile.value) || "").toLowerCase().trim();
 
-      currentlyFilteredGames = games.filter(g => {
+      // Dynamic filtering directly from rawCollection
+      currentlyFilteredGames = rawCollection.filter(g => {
+        // Must be standalone (excludes expansions from main grid)
+        if (!g.is_standalone) return false;
+
+        // Legacy/Campaign rule: If it doesn't support one-off plays, only show if Campaign checkbox is checked
+        if (!g.supports_one_off && !filterCampaign) return false;
+
         if (g.max_players < pMinValue || g.min_players > pMaxValue) return false;
         if (g.weight < wMinValue || g.weight > wMaxValue) return false;
         if (tMaxValue < 300 && (g.playing_time < tMinValue || g.playing_time > tMaxValue)) return false;
@@ -2012,7 +2035,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
         if (filterPlayed && g.plays_recorded === 0) return false;
         if (filterUnplayed && g.plays_recorded > 0) return false;
-        if (filterCampaign && (!g.campaign_structure || g.campaign_structure === "None")) return false;
         if (filterSolo && g.min_players > 1) return false;
 
         if (selectedMajorAwards.size > 0 && !g.major_awards.some(a => selectedMajorAwards.has(a))) return false;
