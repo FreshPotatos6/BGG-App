@@ -130,11 +130,13 @@ def generate_json_from_sheet():
 
             parent_ref = str(row.get("Parent Game ID", row.get("Parent Game", ""))).strip()
 
-            is_standalone_val = str(row.get("Is Standalone", "")).strip().lower()
-            supports_one_off_val = str(row.get("Supports One-Off", "")).strip().lower()
+            is_standalone_raw = str(row.get("Is Standalone", "")).strip().lower() in ["yes", "true", "1"]
+            supports_one_off_raw = str(row.get("Supports One-Off", "")).strip().lower() in ["yes", "true", "1"]
             
-            # Requires BOTH "Is Standalone" and "Supports One-Off" to be 'yes'
-            is_standalone = (is_standalone_val in ["yes", "true", "1"]) and (supports_one_off_val in ["yes", "true", "1"])
+            # Standalone Games must have BOTH Is Standalone = Yes and Supports One-Off = Yes
+            is_standalone = is_standalone_raw and supports_one_off_raw
+
+            supports_one_off_val = str(row.get("Supports One-Off", "")).strip().lower()
             supports_one_off = supports_one_off_val in ["yes", "true", "1"]
 
             campaign_struct = str(row.get("Campaign Structure", "")).strip()
@@ -1462,7 +1464,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="checkbox-grid">
             <label class="style-item">
               <input type="checkbox" id="filter-standalone" checked>
-              Base Games
+              Standalone Games
             </label>
             <label class="style-item">
               <input type="checkbox" id="filter-expansions">
@@ -1982,7 +1984,7 @@ function initApp() {
       applyFilters();
     }
 
-    function applyFilters() {
+function applyFilters() {
       const pMinValue = parseInt(pMin.value);
       const pMaxValue = parseInt(pMax.value);
       const wMinValue = parseFloat(wMin.value);
@@ -2068,8 +2070,8 @@ function initApp() {
       sortGames();
       renderGames();
     }
-
-    function resetAllFilters() {
+    
+function resetAllFilters() {
       pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
       wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
       tMin.value = 0; tMax.value = 300; updateTimeDisplay();
@@ -2332,19 +2334,154 @@ function initApp() {
       if (currentDetailGame) openDetailModal(currentDetailGame);
     }
 
+    function toggleTagFilter(type, val) {
+      let setRef = null;
+      let toggleId = '';
+      let nameKey = '';
+
+      if (type === 'major_award') { setRef = selectedMajorAwards; toggleId = 'major-award-toggle'; nameKey = 'Major Awards'; }
+      else if (type === 'minor_award') { setRef = selectedMinorAwards; toggleId = 'minor-award-toggle'; nameKey = 'Minor Awards'; }
+      else if (type === 'theme') { setRef = selectedThemes; toggleId = 'theme-toggle'; nameKey = 'Themes'; }
+      else if (type === 'cat') { setRef = selectedCategories; toggleId = 'cat-toggle'; nameKey = 'Categories'; }
+      else if (type === 'mech') { setRef = selectedMechanics; toggleId = 'mech-toggle'; nameKey = 'Mechanics'; }
+      else if (type === 'pub') { setRef = selectedPublishers; toggleId = 'pub-toggle'; nameKey = 'Publishers'; }
+      else if (type === 'des') { setRef = selectedDesigners; toggleId = 'des-toggle'; nameKey = 'Designers'; }
+      else if (type === 'art') { setRef = selectedArtists; toggleId = 'art-toggle'; nameKey = 'Artists'; }
+
+      if (setRef) {
+        if (setRef.has(val)) {
+          setRef.delete(val);
+        } else {
+          setRef.add(val);
+        }
+        updateDropdownToggleLabel(document.getElementById(toggleId), setRef, nameKey);
+        applyFilters();
+        if (currentDetailGame) openDetailModal(currentDetailGame);
+      }
+    }
+
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      const bggUrl = `https://boardgamegeek.com/boardgame/${game.id}`;
+      const isPlayed = game.plays_recorded > 0;
+
+      let weightTier = 'Light';
+      if (game.weight >= 3.0) weightTier = 'Heavy';
+      else if (game.weight >= 2.0) weightTier = 'Medium';
+
+      let timeTier = 'Short';
+      if (game.playing_time >= 90) timeTier = 'Long';
+      else if (game.playing_time >= 30) timeTier = 'Medium';
+
+      const majorAwardsTags = (game.major_awards || []).map(a => 
+        `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🥇 ${a}</span>`
+      ).join('');
+
+      const minorAwardsTags = (game.minor_awards || []).map(a => 
+        `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🎖️ ${a}</span>`
+      ).join('');
+
+      const themeTags = (game.themes || []).map(t => 
+        `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`
+      ).join('');
+
+      const catTags = (game.categories || []).map(c => 
+        `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`
+      ).join('');
+
+      const mechTags = (game.mechanics || []).map(m => 
+        `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`
+      ).join('');
+
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${game.title}</div>
+        <div class="meta-tags-grid">
+          <div><strong>Plays Recorded:</strong> <span class="clickable-tag" onclick="togglePlayStateFilter('${isPlayed ? 'played' : 'unplayed'}')">${game.plays_recorded} (${isPlayed ? 'Played' : 'Unplayed'})</span></div>
+          <div><strong>Player Count:</strong> <span class="clickable-tag" onclick="filterByPlayerCount(${game.min_players})">${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players} Players</span></div>
+          <div><strong>Playtime:</strong> <span class="clickable-tag" onclick="filterByPlaytimeTier('${timeTier}')">${game.playing_time_raw || game.playing_time + ' min'}</span></div>
+          <div><strong>Weight:</strong> <span class="clickable-tag" onclick="filterByWeightTier('${weightTier}')">${game.weight > 0 ? game.weight.toFixed(1) + ' / 5.0' : 'N/A'} (${weightTier})</span></div>
+          <div><strong>Game Mode:</strong> <span class="clickable-tag" onclick="filterByGameMode('${game.game_mode}')">${game.game_mode}</span></div>
+          <div><strong>Year:</strong> <span class="clickable-tag" onclick="filterByYear(${game.year})">${game.year > 0 ? game.year : 'N/A'}</span></div>
+          <div><strong>Publisher:</strong> <span class="clickable-tag ${selectedPublishers.has(game.publisher) ? 'active-tag' : ''}" onclick="toggleTagFilter('pub', '${game.publisher.replace(/'/g, "\\'")}')">${game.publisher}</span></div>
+          <div><strong>Designer:</strong> <span class="clickable-tag ${selectedDesigners.has(game.designer) ? 'active-tag' : ''}" onclick="toggleTagFilter('des', '${game.designer.replace(/'/g, "\\'")}')">${game.designer}</span></div>
+          <div><strong>Artist:</strong> <span class="clickable-tag ${selectedArtists.has(game.artist) ? 'active-tag' : ''}" onclick="toggleTagFilter('art', '${game.artist.replace(/'/g, "\\'")}')">${game.artist}</span></div>
+        </div>
+
+        ${majorAwardsTags ? `<div class="detail-section"><strong>Major Awards:</strong><br>${majorAwardsTags}</div>` : ''}
+        ${minorAwardsTags ? `<div class="detail-section"><strong>Minor Awards:</strong><br>${minorAwardsTags}</div>` : ''}
+        ${themeTags ? `<div class="detail-section"><strong>Themes:</strong><br>${themeTags}</div>` : ''}
+        ${catTags ? `<div class="detail-section"><strong>Categories:</strong><br>${catTags}</div>` : ''}
+        ${mechTags ? `<div class="detail-section"><strong>Mechanics:</strong><br>${mechTags}</div>` : ''}
+
+        <div class="detail-section">
+          <strong>Description:</strong>
+          <div id="modal-desc-text" class="description-text">${game.description}</div>
+          <button id="modal-read-more-btn" class="read-more-btn" onclick="toggleDescriptionReadMore()">Read More</button>
+        </div>
+
+        <a href="${bggUrl}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
+      `;
+
+      detailModal.classList.add('open');
+    }
+
+    function toggleDescriptionReadMore() {
+      const descEl = document.getElementById('modal-desc-text');
+      const btnEl = document.getElementById('modal-read-more-btn');
+      if (descEl.classList.contains('expanded')) {
+        descEl.classList.remove('expanded');
+        btnEl.innerText = "Read More";
+      } else {
+        descEl.classList.add('expanded');
+        btnEl.innerText = "Show Less";
+      }
+    }
+
+    function pickRandomGame() {
+      if (currentlyFilteredGames.length === 0) {
+        modalContent.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1rem;">No games match your current filters. Try expanding your filter criteria!</div>`;
+        modalTryAgainBtn.style.display = 'none';
+        modalChangeFiltersBtn.style.display = 'block';
+        modalCloseBtn.style.display = 'none';
+      } else {
+        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+        const selectedGame = currentlyFilteredGames[randomIndex];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: var(--yellow); margin-bottom: 8px;">${selectedGame.title}</div>
+            <img src="${selectedGame.image || selectedGame.thumbnail}" style="max-height: 180px; max-width: 100%; object-fit: contain; margin: 10px 0; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">👥 ${selectedGame.min_players}-${selectedGame.max_players} Players | ⏱️ ${selectedGame.playing_time} min | ⚖️ ${selectedGame.weight.toFixed(1)} Weight</div>
+          </div>
+        `;
+        modalTryAgainBtn.style.display = 'block';
+        modalChangeFiltersBtn.style.display = 'none';
+        modalCloseBtn.style.display = 'block';
+      }
+      luckModal.classList.add('open');
+    }
+
+    luckBtn.addEventListener('click', pickRandomGame);
+    modalTryAgainBtn.addEventListener('click', pickRandomGame);
+    modalChangeFiltersBtn.addEventListener('click', () => {
+      closeLuckModal();
+      toggleSidebar();
+    });
+    modalCloseBtn.addEventListener('click', closeLuckModal);
+
     function sortGames() {
-      const selectedSort = (sortSelect && sortSelect.value) || "popularity_owned";
+      const criteria = (sortSelect && sortSelect.value) || 'popularity_owned';
       currentlyFilteredGames.sort((a, b) => {
-        let valA = a[selectedSort];
-        let valB = b[selectedSort];
+        let valA = a[criteria];
+        let valB = b[criteria];
 
         if (typeof valA === 'string') {
           valA = valA.toLowerCase();
           valB = valB.toLowerCase();
-          return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
 
-        return isAscending ? valA - valB : valB - valA;
+        if (valA < valB) return isAscending ? -1 : 1;
+        if (valA > valB) return isAscending ? 1 : -1;
+        return 0;
       });
     }
   </script>
@@ -2353,5 +2490,4 @@ function initApp() {
 """
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
