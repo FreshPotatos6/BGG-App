@@ -1464,7 +1464,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <div class="checkbox-grid">
             <label class="style-item">
               <input type="checkbox" id="filter-standalone" checked>
-              Standalone Games
+              Base Games
             </label>
             <label class="style-item">
               <input type="checkbox" id="filter-expansions">
