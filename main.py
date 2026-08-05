@@ -2082,51 +2082,58 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
     }
     
-    function resetAllFilters() {
-      pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
-      wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
-      tMin.value = 0; tMax.value = 300; updateTimeDisplay();
-      bMin.value = 1; bMax.value = 10; updateBggDisplay();
-      lMin.value = 0; lMax.value = 10; updateLukeDisplay();
-      yMin.value = 0; yMax.value = 28; updateYearDisplay();
+function resetAllFilters() {
+  // Reset Range Sliders
+  pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
+  wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
+  tMin.value = 0; tMax.value = 300; updateTimeDisplay();
+  bMin.value = 1; bMax.value = 10; updateBggDisplay();
+  lMin.value = 0; lMax.value = 10; updateLukeDisplay();
+  yMin.value = 0; yMax.value = 28; updateYearDisplay();
 
-      document.getElementById('filter-played').checked = false;
-      document.getElementById('filter-unplayed').checked = false;
-      
-      // Default back to Base Games checked on filter reset
-      document.getElementById('filter-standalone').checked = true;
-      document.getElementById('filter-expansions').checked = false;
-      document.getElementById('filter-campaign').checked = false;
+  // Reset Played / Unplayed checkboxes
+  document.getElementById('filter-played').checked = false;
+  document.getElementById('filter-unplayed').checked = false;
+  
+  // Set default game types (Base Games checked, Expansions & Campaigns unchecked)
+  document.getElementById('filter-standalone').checked = true;
+  document.getElementById('filter-expansions').checked = false;
+  document.getElementById('filter-campaign').checked = false;
 
-      selectedPlayerCounts.clear();
-      selectedStyles.clear();
-      selectedMajorAwards.clear();
-      selectedMinorAwards.clear();
-      selectedThemes.clear();
-      selectedCategories.clear();
-      selectedMechanics.clear();
-      selectedPublishers.clear();
-      selectedDesigners.clear();
-      selectedArtists.clear();
+  // Clear all multi-select tracking sets
+  selectedPlayerCounts.clear();
+  selectedStyles.clear();
+  selectedMajorAwards.clear();
+  selectedMinorAwards.clear();
+  selectedThemes.clear();
+  selectedCategories.clear();
+  selectedMechanics.clear();
+  selectedPublishers.clear();
+  selectedDesigners.clear();
+  selectedArtists.clear();
 
-      document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+  // Uncheck all style and dropdown menu checkboxes
+  document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
 
-      updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
-      updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
-      updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
-      updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
-      updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
-      updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
-      updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
-      updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
+  // Reset UI labels on dropdown buttons
+  updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
+  updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
+  updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
+  updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
+  updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
+  updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
+  updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
+  updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
 
-      if (globalSearch) globalSearch.value = "";
-      if (globalSearchMobile) globalSearchMobile.value = "";
+  // Clear global search inputs
+  if (globalSearch) globalSearch.value = "";
+  if (globalSearchMobile) globalSearchMobile.value = "";
 
-      applyFilters();
-    }
+  // Re-apply filters to refresh the view
+  applyFilters();
+}
 
     resetBtn.addEventListener('click', resetAllFilters);
     headerClearBtn.addEventListener('click', resetAllFilters);
