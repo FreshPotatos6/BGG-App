@@ -2082,58 +2082,51 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
     }
     
-function resetAllFilters() {
-  // Reset Range Sliders
-  pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
-  wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
-  tMin.value = 0; tMax.value = 300; updateTimeDisplay();
-  bMin.value = 1; bMax.value = 10; updateBggDisplay();
-  lMin.value = 0; lMax.value = 10; updateLukeDisplay();
-  yMin.value = 0; yMax.value = 28; updateYearDisplay();
+    function resetAllFilters() {
+      pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
+      wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
+      tMin.value = 0; tMax.value = 300; updateTimeDisplay();
+      bMin.value = 1; bMax.value = 10; updateBggDisplay();
+      lMin.value = 0; lMax.value = 10; updateLukeDisplay();
+      yMin.value = 0; yMax.value = 28; updateYearDisplay();
 
-  // Reset Played / Unplayed checkboxes
-  document.getElementById('filter-played').checked = false;
-  document.getElementById('filter-unplayed').checked = false;
-  
-  // Set default game types (Base Games checked, Expansions & Campaigns unchecked)
-  document.getElementById('filter-standalone').checked = true;
-  document.getElementById('filter-expansions').checked = false;
-  document.getElementById('filter-campaign').checked = false;
+      document.getElementById('filter-played').checked = false;
+      document.getElementById('filter-unplayed').checked = false;
+      
+      // Explicitly restore initial page-load defaults
+      document.getElementById('filter-standalone').checked = true;
+      document.getElementById('filter-expansions').checked = false;
+      document.getElementById('filter-campaign').checked = false;
 
-  // Clear all multi-select tracking sets
-  selectedPlayerCounts.clear();
-  selectedStyles.clear();
-  selectedMajorAwards.clear();
-  selectedMinorAwards.clear();
-  selectedThemes.clear();
-  selectedCategories.clear();
-  selectedMechanics.clear();
-  selectedPublishers.clear();
-  selectedDesigners.clear();
-  selectedArtists.clear();
+      selectedPlayerCounts.clear();
+      selectedStyles.clear();
+      selectedMajorAwards.clear();
+      selectedMinorAwards.clear();
+      selectedThemes.clear();
+      selectedCategories.clear();
+      selectedMechanics.clear();
+      selectedPublishers.clear();
+      selectedDesigners.clear();
+      selectedArtists.clear();
 
-  // Uncheck all style and dropdown menu checkboxes
-  document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
-  document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
-  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+      document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
 
-  // Reset UI labels on dropdown buttons
-  updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
-  updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
-  updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
-  updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
-  updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
-  updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
-  updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
-  updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
+      updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
+      updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
+      updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
+      updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
+      updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
+      updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
+      updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
+      updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
 
-  // Clear global search inputs
-  if (globalSearch) globalSearch.value = "";
-  if (globalSearchMobile) globalSearchMobile.value = "";
+      if (globalSearch) globalSearch.value = "";
+      if (globalSearchMobile) globalSearchMobile.value = "";
 
-  // Re-apply filters to refresh the view
-  applyFilters();
-}
+      applyFilters();
+    }
 
     resetBtn.addEventListener('click', resetAllFilters);
     headerClearBtn.addEventListener('click', resetAllFilters);
@@ -2332,113 +2325,6 @@ function resetAllFilters() {
         toggleSidebar();
       }
     });
-
-    if (modalCloseBtn) {
-      modalCloseBtn.addEventListener('click', closeLuckModal);
-    }
-
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
-      const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
-      
-      const bggActive = selectedMajorAwards.size > 0 || selectedMinorAwards.size > 0;
-
-      let html = `
-        <div class="modal-title">${game.title}</div>
-        
-        <div style="height: 220px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; border: 1px solid var(--purple-border);">
-          <img src="${game.image || game.thumbnail}" alt="${game.title}" style="max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));">
-        </div>
-
-        <div class="meta-tags-grid">
-          <div><strong>Players:</strong> ${pCountText}</div>
-          <div><strong>Playtime:</strong> ${timeText} min</div>
-          <div><strong>Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'} / 5.0</div>
-          <div><strong>Year:</strong> ${game.year > 0 ? game.year : 'N/A'}</div>
-          <div><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating : 'N/A'}</div>
-          <div><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
-          <div><strong>Game Mode:</strong> ${game.game_mode || 'N/A'}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Publisher:</strong> ${game.publisher}
-        </div>
-        <div class="detail-section">
-          <strong>Designer:</strong> ${game.designer}
-        </div>
-        <div class="detail-section">
-          <strong>Artist:</strong> ${game.artist}
-        </div>
-
-        ${game.categories && game.categories.length > 0 ? `
-          <div class="detail-section">
-            <strong>Categories:</strong><br>
-            ${game.categories.map(c => `<span class="clickable-tag ${selectedCategories.has(c) ? 'active-tag' : ''}" onclick="toggleTagFilter('cat', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${game.mechanics && game.mechanics.length > 0 ? `
-          <div class="detail-section">
-            <strong>Mechanics:</strong><br>
-            ${game.mechanics.map(m => `<span class="clickable-tag ${selectedMechanics.has(m) ? 'active-tag' : ''}" onclick="toggleTagFilter('mech', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${game.themes && game.themes.length > 0 ? `
-          <div class="detail-section">
-            <strong>Themes:</strong><br>
-            ${game.themes.map(t => `<span class="clickable-tag ${selectedThemes.has(t) ? 'active-tag' : ''}" onclick="toggleTagFilter('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        ${(game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0) ? `
-          <div class="detail-section">
-            <strong>Awards:</strong><br>
-            ${(game.major_awards || []).map(a => `<span class="clickable-tag ${selectedMajorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('major_award', '${a.replace(/'/g, "\\'")}')">🏆 ${a}</span>`).join('')}
-            ${(game.minor_awards || []).map(a => `<span class="clickable-tag ${selectedMinorAwards.has(a) ? 'active-tag' : ''}" onclick="toggleTagFilter('minor_award', '${a.replace(/'/g, "\\'")}')">🎖️ ${a}</span>`).join('')}
-          </div>
-        ` : ''}
-
-        <div class="detail-section" style="margin-top: 14px;">
-          <strong>Description:</strong>
-          <div id="modal-description" class="description-text">${game.description}</div>
-          <button id="read-more-btn" class="read-more-btn" onclick="toggleDescription()">Show More ▼</button>
-        </div>
-
-        ${game.id ? `
-          <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">
-            View on BoardGameGeek ↗
-          </a>
-        ` : ''}
-      `;
-
-      detailModalContent.innerHTML = html;
-      detailModal.classList.add('open');
-
-      setTimeout(() => {
-        const descEl = document.getElementById('modal-description');
-        const readMoreBtn = document.getElementById('read-more-btn');
-        if (descEl && readMoreBtn) {
-          if (descEl.scrollHeight <= descEl.clientHeight) {
-            readMoreBtn.style.display = 'none';
-          }
-        }
-      }, 50);
-    }
-
-    function toggleDescription() {
-      const descEl = document.getElementById('modal-description');
-      const readMoreBtn = document.getElementById('read-more-btn');
-      if (descEl.classList.contains('expanded')) {
-        descEl.classList.remove('expanded');
-        readMoreBtn.innerText = 'Show More ▼';
-      } else {
-        descEl.classList.add('expanded');
-        readMoreBtn.innerText = 'Show Less ▲';
-      }
-    }
   </script>
 </body>
 </html>
