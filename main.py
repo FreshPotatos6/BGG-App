@@ -2083,7 +2083,70 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     
     function resetToPageLoad() {
-      window.location.reload();
+      // 1. Reset text inputs
+      if (globalSearch) globalSearch.value = "";
+      if (globalSearchMobile) globalSearchMobile.value = "";
+
+      // 2. Reset range sliders
+      pMin.value = 1; pMax.value = 10;
+      wMin.value = 1.0; wMax.value = 5.0;
+      tMin.value = 0; tMax.value = 300;
+      bMin.value = 1; bMax.value = 10;
+      lMin.value = 0; lMax.value = 10;
+      yMin.value = 0; yMax.value = 28;
+
+      updatePlayerDisplay();
+      updateWeightDisplay();
+      updateTimeDisplay();
+      updateBggDisplay();
+      updateLukeDisplay();
+      updateYearDisplay();
+
+      // 3. Reset standard checkboxes
+      document.getElementById('filter-played').checked = false;
+      document.getElementById('filter-unplayed').checked = false;
+      document.getElementById('filter-standalone').checked = true;
+      document.getElementById('filter-expansions').checked = false;
+      document.getElementById('filter-campaign').checked = false;
+
+      // 4. Reset style checkboxes
+      selectedStyles.clear();
+      document.querySelectorAll('#style-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+      // 5. Reset multi-select sets & dropdown checkboxes
+      const dropdowns = [
+        { set: selectedMajorAwards, toggleId: 'major-award-toggle', listId: 'major-award-list', name: 'Major Awards' },
+        { set: selectedMinorAwards, toggleId: 'minor-award-toggle', listId: 'minor-award-list', name: 'Minor Awards' },
+        { set: selectedThemes, toggleId: 'theme-toggle', listId: 'theme-list', name: 'Themes' },
+        { set: selectedCategories, toggleId: 'cat-toggle', listId: 'cat-list', name: 'Categories' },
+        { set: selectedMechanics, toggleId: 'mech-toggle', listId: 'mech-list', name: 'Mechanics' },
+        { set: selectedPublishers, toggleId: 'pub-toggle', listId: 'pub-list', name: 'Publishers' },
+        { set: selectedDesigners, toggleId: 'des-toggle', listId: 'des-list', name: 'Designers' },
+        { set: selectedArtists, toggleId: 'art-toggle', listId: 'art-list', name: 'Artists' }
+      ];
+
+      dropdowns.forEach(d => {
+        d.set.clear();
+        const list = document.getElementById(d.listId);
+        if (list) {
+          list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+        const toggle = document.getElementById(d.toggleId);
+        if (toggle) {
+          updateDropdownToggleLabel(toggle, d.set, d.name);
+        }
+      });
+
+      // 6. Reset sort choices
+      if (sortSelect) sortSelect.value = "popularity_owned";
+      if (sortSelectMobile) sortSelectMobile.value = "popularity_owned";
+      isAscending = false;
+      if (sortDirBtn) sortDirBtn.innerText = "▼";
+      if (sortDirBtnMobile) sortDirBtnMobile.innerText = "▼";
+
+      // 7. Apply cleared filter state
+      applyFilters();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     resetBtn.addEventListener('click', resetToPageLoad);
@@ -2324,120 +2387,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }, 50);
     }
 
-    function toggleDescription() {
-      const descEl = document.getElementById('modal-description-text');
-      const readMoreBtn = document.getElementById('modal-read-more-btn');
-      if (descEl.classList.contains('expanded')) {
-        descEl.classList.remove('expanded');
-        readMoreBtn.innerText = 'Read More';
-      } else {
-        descEl.classList.add('expanded');
-        readMoreBtn.innerText = 'Show Less';
-      }
-    }
-
-    function filterByTag(type, value) {
-      if (!value || value === 'Unknown' || value === 'None') return;
-
-      closeDetailModal();
-
-      if (type === 'publisher') {
-        selectedPublishers.clear();
-        selectedPublishers.add(value);
-        updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
-      } else if (type === 'designer') {
-        selectedDesigners.clear();
-        selectedDesigners.add(value);
-        updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
-      } else if (type === 'artist') {
-        selectedArtists.clear();
-        selectedArtists.add(value);
-        updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
-      } else if (type === 'category') {
-        selectedCategories.clear();
-        selectedCategories.add(value);
-        updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
-      } else if (type === 'mechanic') {
-        selectedMechanics.clear();
-        selectedMechanics.add(value);
-        updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
-      } else if (type === 'theme') {
-        selectedThemes.clear();
-        selectedThemes.add(value);
-        updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
-      } else if (type === 'major_award') {
-        selectedMajorAwards.clear();
-        selectedMajorAwards.add(value);
-        updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
-      } else if (type === 'minor_award') {
-        selectedMinorAwards.clear();
-        selectedMinorAwards.add(value);
-        updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
-      }
-
-      applyFilters();
-    }
-
     function closeDetailModal() {
       detailModal.classList.remove('open');
-      currentDetailGame = null;
     }
 
     function closeLuckModal() {
       luckModal.classList.remove('open');
-    }
-
-    function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--magenta); font-weight: bold;">No games available with your active filters!</div>`;
-        modalTryAgainBtn.style.display = 'none';
-        modalChangeFiltersBtn.style.display = 'block';
-        modalCloseBtn.style.display = 'none';
-      } else {
-        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const selectedGame = currentlyFilteredGames[randomIndex];
-
-        const pCountText = selectedGame.min_players === selectedGame.max_players ? `${selectedGame.min_players}` : `${selectedGame.min_players}-${selectedGame.max_players}`;
-        const timeText = selectedGame.playing_time_raw ? selectedGame.playing_time_raw.replace(/\s*min\.?/gi, '') : `${selectedGame.playing_time}`;
-
-        modalContent.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 1.4rem; font-weight: 900; color: var(--yellow); margin-bottom: 12px;">${selectedGame.title}</div>
-            <div style="height: 180px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px;">
-              <img src="${selectedGame.image || selectedGame.thumbnail}" alt="${selectedGame.title}" style="max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; text-align: left; background: var(--panel-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--purple-border);">
-              <div>👥 <strong>Players:</strong> ${pCountText}</div>
-              <div>⏱️ <strong>Time:</strong> ${timeText} min</div>
-              <div>⚖️ <strong>Weight:</strong> ${selectedGame.weight > 0 ? selectedGame.weight.toFixed(1) : 'N/A'}</div>
-              <div>⭐ <strong>Luke:</strong> ${selectedGame.user_rating > 0 ? selectedGame.user_rating : 'N/A'}</div>
-            </div>
-          </div>
-        `;
-        modalTryAgainBtn.style.display = 'block';
-        modalChangeFiltersBtn.style.display = 'block';
-        modalCloseBtn.style.display = 'none';
-      }
-      luckModal.classList.add('open');
-    }
-
-    luckBtn.addEventListener('click', pickRandomGame);
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
-    modalChangeFiltersBtn.addEventListener('click', () => {
-      closeLuckModal();
-      if (toolbar.classList.contains('collapsed')) {
-        toggleSidebar();
-      }
-    });
-
-    if (modalCloseBtn) {
-      modalCloseBtn.addEventListener('click', closeLuckModal);
     }
   </script>
 </body>
 </html>
 """
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
