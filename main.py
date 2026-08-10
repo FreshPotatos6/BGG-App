@@ -2837,3 +2837,4 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </script>
 </body>
 </html>
+"""
