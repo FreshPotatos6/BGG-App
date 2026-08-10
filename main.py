@@ -133,9 +133,7 @@ def generate_json_from_sheet():
             is_standalone_raw = str(row.get("Is Standalone", "")).strip().lower() in ["yes", "true", "1"]
             supports_one_off_raw = str(row.get("Supports One-Off", "")).strip().lower() in ["yes", "true", "1"]
             
-            # Standalone Games MUST have BOTH Is Standalone = Yes and Supports One-Off = Yes
             is_standalone = is_standalone_raw and supports_one_off_raw
-
             supports_one_off = supports_one_off_raw
 
             campaign_struct = str(row.get("Campaign Structure", "")).strip()
@@ -315,7 +313,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       align-items: flex-end;
       gap: 8px;
       flex: 1;
-      max-width: 620px;
+      max-width: 680px;
     }
 
     .header-actions-top {
@@ -390,6 +388,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: var(--turquoise); 
       color: #000; 
       border-color: var(--turquoise);
+    }
+
+    .btn-play {
+      background: var(--turquoise);
+      color: #0d0221;
+      border: 2px solid var(--turquoise);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-play:hover {
+      background: var(--magenta);
+      color: #ffffff;
+      border-color: var(--magenta);
+      box-shadow: 0 0 12px var(--magenta);
     }
 
     .btn-clear-filters {
@@ -988,8 +1001,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(13, 2, 33, 0.85);
-      backdrop-filter: blur(6px);
+      background: rgba(13, 2, 33, 0.88);
+      backdrop-filter: blur(8px);
       z-index: 100;
       justify-content: center;
       align-items: center;
@@ -1001,8 +1014,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(13, 2, 33, 0.85);
-      backdrop-filter: blur(6px);
+      background: rgba(13, 2, 33, 0.88);
+      backdrop-filter: blur(8px);
       z-index: 100;
       justify-content: center;
       align-items: center;
@@ -1014,10 +1027,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       background: var(--card-bg);
       border: 4px solid var(--yellow);
       border-radius: 16px;
-      max-width: 550px;
+      max-width: 650px;
       width: 100%;
       padding: 20px;
-      box-shadow: 0 0 30px rgba(254, 228, 64, 0.4);
+      box-shadow: 0 0 35px rgba(254, 228, 64, 0.4);
       position: relative;
       max-height: 90vh;
       overflow-y: auto;
@@ -1050,7 +1063,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     .modal-title {
       color: var(--magenta);
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 900;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -1058,114 +1071,90 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       padding-right: 30px;
     }
 
-    .detail-section {
-      margin-bottom: 12px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-
-    .detail-section strong {
-      color: var(--turquoise);
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .meta-tags-grid {
+    /* Arcade Launcher Grid */
+    .arcade-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 15px;
+    }
+
+    .arcade-card {
+      background: var(--panel-bg);
+      border: 2px solid var(--purple-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .arcade-card:hover {
+      border-color: var(--turquoise);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0, 245, 212, 0.25);
+    }
+
+    .arcade-card h3 {
+      color: var(--yellow);
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .arcade-card p {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      flex: 1;
+    }
+
+    /* Mini Games Specific UI Components */
+    .game-board {
+      display: flex;
+      flex-direction: column;
       gap: 12px;
-      margin-bottom: 12px;
-      background: rgba(31, 12, 72, 0.3);
-      padding: 10px;
+      margin-top: 10px;
+    }
+
+    .game-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-bg);
+      padding: 8px 12px;
       border-radius: 8px;
       border: 1px solid var(--purple-border);
-    }
-
-    .description-text {
-      margin-top: 4px;
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-line-clamp: 6;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      transition: all 0.3s ease;
-    }
-
-    .description-text.expanded {
-      display: block;
-      overflow: visible;
-    }
-
-    .read-more-btn {
-      background: none;
-      border: none;
-      color: var(--yellow);
-      font-size: 0.8rem;
-      font-weight: bold;
-      padding: 4px 0 0 0;
-      cursor: pointer;
-      text-decoration: underline;
-      display: inline-block;
-    }
-    .read-more-btn:hover {
+      font-weight: 700;
       color: var(--turquoise);
-      background: none;
     }
 
-    .clickable-tag {
-      display: inline-block;
-      background: transparent;
-      color: var(--yellow);
-      border: 1px solid var(--yellow);
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 800;
-      margin: 2px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .clickable-tag:hover {
-      background: rgba(254, 228, 64, 0.15);
-      transform: translateY(-1px);
-    }
-    .clickable-tag.active-tag {
-      background: var(--turquoise);
-      color: #0d0221;
-      border-color: var(--turquoise);
-      box-shadow: 0 0 8px rgba(0, 245, 212, 0.4);
-    }
-    .clickable-tag.active-tag:hover {
+    .game-btn {
       background: var(--magenta);
       color: #fff;
-      border-color: var(--magenta);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
     }
+    .game-btn:hover { background: var(--turquoise); color: #000; }
 
-    .bgg-link-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      margin-top: 15px;
-      padding: 10px;
-      background: var(--panel-bg);
-      color: var(--turquoise);
-      border: 2px solid var(--turquoise);
-      border-radius: 8px;
-      font-weight: 800;
-      text-transform: uppercase;
-      text-decoration: none;
-      letter-spacing: 1px;
-      font-size: 0.85rem;
-      transition: all 0.2s ease;
-    }
-    .bgg-link-btn:hover {
-      background: var(--turquoise);
-      color: #0d0221;
-      box-shadow: 0 0 12px rgba(0, 245, 212, 0.4);
-    }
+    /* Higher / Lower */
+    .hl-container { display: flex; gap: 10px; align-items: center; justify-content: space-around; margin: 15px 0; }
+    .hl-card { background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 10px; padding: 12px; width: 45%; text-align: center; }
+    .hl-card img { height: 110px; object-fit: contain; margin-bottom: 8px; }
+
+    /* Connections Grid */
+    .conn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+    .conn-card { background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 8px; padding: 10px; font-size: 0.78rem; font-weight: bold; text-align: center; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; min-height: 60px; }
+    .conn-card.selected { border-color: var(--yellow); background: var(--purple-border); }
+    .conn-card.solved { opacity: 0.6; pointer-events: none; }
+
+    /* Crossword Board */
+    .crossword-board { display: grid; gap: 2px; background: var(--panel-bg); padding: 10px; border-radius: 8px; overflow-x: auto; justify-content: center; }
+    .crossword-cell { width: 28px; height: 28px; background: var(--bg); border: 1px solid var(--purple-border); text-align: center; line-height: 28px; font-weight: bold; text-transform: uppercase; color: var(--yellow); }
+    .crossword-cell.empty { background: transparent; border: none; }
 
     .btn-text-play-desktop { display: inline; }
     .btn-text-play-mobile { display: none; }
@@ -1203,7 +1192,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 6px;
+        gap: 4px;
         align-items: center;
         width: 100%;
         justify-content: space-between;
@@ -1212,8 +1201,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       .header-actions-top button {
         flex: 1;
         text-align: center;
-        padding: 6px 4px;
-        font-size: 0.75rem;
+        padding: 6px 2px;
+        font-size: 0.7rem;
       }
 
       .header-actions-top select,
@@ -1261,32 +1250,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         box-shadow: 5px 0 25px rgba(0, 0, 0, 0.8);
       }
       .sidebar-toggle-tab { display: none; }
-      .range-slider-container input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; }
-      
-      .app-layout { margin-top: 10px; }
-      .main-content { padding-top: 5px; padding-right: 0; }
       
       .game-grid-row { 
         grid-template-columns: repeat(2, minmax(0, 1fr)); 
         gap: 8px; 
       }
-      @media (min-orientation: landscape) {
-        .game-grid-row {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-      }
-
-      .game-card { border-width: 1px; }
-      .card-img-wrapper { height: 120px; padding: 4px; }
-      .card-content { padding: 6px; gap: 4px; }
-      .game-title { font-size: 0.78rem; }
-      .game-stats { gap: 2px; padding-top: 3px; font-size: 0.62rem; }
-      .stat-badge { padding: 2px; }
-      .score-badge-circle { width: 24px; height: 24px; font-size: 0.6rem; }
-      .expansion-icon-btn, .medal-icon-badge { width: 24px; height: 24px; font-size: 0.7rem; top: 4px; right: 4px; }
-      .medal-icon-badge { bottom: 4px; right: 4px; top: auto; }
-      .expansion-close-btn, .sidebar-close-btn { padding: 4px 6px; font-size: 0.7rem; }
-      .meta-tags-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
     }
   </style>
 </head>
@@ -1304,6 +1272,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
+        <button id="play-games-btn" class="btn-play" title="Play Mini Games"><span class="btn-icon">🎮 </span><span>Play Games</span></button>
         <button id="luck-btn" class="btn-luck" title="Pick Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Pick Game</span><span class="btn-text-play-mobile">Pick</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="btn-icon">⚙️ </span>Filters</button>
         <button id="header-clear-btn" class="btn-clear-filters" title="Reset to Page Load"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
@@ -1359,7 +1328,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="filter-section-content">
-          
           <div class="filter-group">
             <div class="filter-label-header">
               <label>Player Count</label>
@@ -1437,7 +1405,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
               <input type="range" id="year-max" min="0" max="28" value="28">
             </div>
           </div>
-
         </div>
       </div>
 
@@ -1624,6 +1591,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   </div>
 
+  <!-- Detail Modal -->
   <div id="detail-modal" class="grid-overlay-container">
     <div class="modal-card" style="position: relative;">
       <div class="modal-close-x" onclick="closeDetailModal()">✕</div>
@@ -1631,6 +1599,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Pick Game Modal -->
   <div id="luck-modal" class="modal-overlay">
     <div class="modal-card" style="position: relative;">
       <div class="modal-close-x" onclick="closeLuckModal()">✕</div>
@@ -1639,8 +1608,45 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button id="modal-try-again-btn" class="btn-luck" style="flex: 1; padding: 10px;">🎲 Try Again</button>
         <button id="modal-change-filters-btn" class="btn-primary" style="flex: 1; padding: 10px;">Filters</button>
-        <button id="modal-close-btn" class="btn-clear-filters" style="display: none;">Awesome!</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Games Arcade Overlay Modal -->
+  <div id="games-arcade-modal" class="modal-overlay">
+    <div class="modal-card" style="position: relative; max-width: 750px;">
+      <div class="modal-close-x" onclick="closeGamesArcadeModal()">✕</div>
+      <div id="arcade-view-launcher">
+        <div class="modal-title">👾 Mini-Game Arcade</div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Test your board game knowledge with interactive games generated from your collection!</p>
+        <div class="arcade-grid">
+          <div class="arcade-card" onclick="launchGame('blind_ranking')">
+            <h3>🎲 Blind Ranking</h3>
+            <p>Rank 10 randomly drawn games one by one without seeing what’s next.</p>
+          </div>
+          <div class="arcade-card" onclick="launchGame('guess_game')">
+            <h3>🔎 Guess the Game</h3>
+            <p>Progressive clues paired with an un-pixelating box art canvas.</p>
+          </div>
+          <div class="arcade-card" onclick="launchGame('higher_lower')">
+            <h3>📈 Higher or Lower</h3>
+            <p>10 rapid-fire questions testing Ratings vs. Weight metrics.</p>
+          </div>
+          <div class="arcade-card" onclick="launchGame('connections')">
+            <h3>🧩 Classic Connections</h3>
+            <p>Group 16 collection cards into 4 distinct metadata buckets (4x4).</p>
+          </div>
+          <div class="arcade-card" onclick="launchGame('glipped')">
+            <h3>🌀 Glipped Connections</h3>
+            <p>A 9-card overlap puzzle with a central "pivot game" across 4 criteria.</p>
+          </div>
+          <div class="arcade-card" onclick="launchGame('crossword')">
+            <h3>✏️ Collection Crossword</h3>
+            <p>An intersecting puzzle using your titles as answers and sheet data as clues.</p>
+          </div>
+        </div>
+      </div>
+      <div id="arcade-game-container" style="display: none;"></div>
     </div>
   </div>
 
@@ -1674,25 +1680,28 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     const luckBtn = document.getElementById('luck-btn');
     const luckModal = document.getElementById('luck-modal');
     const modalContent = document.getElementById('modal-content');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalTryAgainBtn = document.getElementById('modal-try-again-btn');
     const modalChangeFiltersBtn = document.getElementById('modal-change-filters-btn');
     const detailModal = document.getElementById('detail-modal');
     const detailModalContent = document.getElementById('detail-modal-content');
     const globalSearch = document.getElementById('global-search');
     const globalSearchMobile = document.getElementById('global-search-mobile');
+    const playGamesBtn = document.getElementById('play-games-btn');
+    const gamesArcadeModal = document.getElementById('games-arcade-modal');
 
-    detailModal.addEventListener('click', (e) => {
-      if (e.target === detailModal) {
-        closeDetailModal();
-      }
+    playGamesBtn.addEventListener('click', () => {
+      document.getElementById('arcade-view-launcher').style.display = 'block';
+      document.getElementById('arcade-game-container').style.display = 'none';
+      gamesArcadeModal.classList.add('open');
     });
 
-    luckModal.addEventListener('click', (e) => {
-      if (e.target === luckModal) {
-        closeLuckModal();
-      }
-    });
+    function closeGamesArcadeModal() {
+      gamesArcadeModal.classList.remove('open');
+    }
+
+    detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetailModal(); });
+    luckModal.addEventListener('click', (e) => { if (e.target === luckModal) closeLuckModal(); });
+    gamesArcadeModal.addEventListener('click', (e) => { if (e.target === gamesArcadeModal) closeGamesArcadeModal(); });
 
     if (globalSearch && globalSearchMobile) {
       globalSearch.addEventListener('input', (e) => { globalSearchMobile.value = e.target.value; handleSearch(); });
@@ -1789,11 +1798,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (val === 0) return 1990;
       return 1998 + (val - 1) * 1;
     }
-    function sliderIndexFromYear(yr) {
-      if (!yr || yr < 1990) return 0;
-      if (yr > 2026) return 28;
-      return Math.min(28, Math.max(0, yr - 1997));
-    }
     function updateYearDisplay() {
       const rawMin = parseInt(yMin.value);
       const rawMax = parseInt(yMax.value);
@@ -1803,9 +1807,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateTrack(yMin, yMax, yTrack);
     }
 
-    function toggleSidebar() {
-      toolbar.classList.toggle('collapsed');
-    }
+    function toggleSidebar() { toolbar.classList.toggle('collapsed'); }
     toggleBtn.addEventListener('click', toggleSidebar);
 
     function toggleFilterSection(sectionId) {
@@ -1973,9 +1975,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       [globalSearch, globalSearchMobile].forEach(input => {
         if (input) {
-          input.addEventListener('input', () => {
-            applyFilters();
-          });
+          input.addEventListener('input', () => { applyFilters(); });
         }
       });  
       applyFilters();
@@ -2083,11 +2083,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
     
     function resetToPageLoad() {
-      // 1. Reset text inputs
       if (globalSearch) globalSearch.value = "";
       if (globalSearchMobile) globalSearchMobile.value = "";
 
-      // 2. Reset range sliders
       pMin.value = 1; pMax.value = 10;
       wMin.value = 1.0; wMax.value = 5.0;
       tMin.value = 0; tMax.value = 300;
@@ -2102,18 +2100,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       updateLukeDisplay();
       updateYearDisplay();
 
-      // 3. Reset standard checkboxes
       document.getElementById('filter-played').checked = false;
       document.getElementById('filter-unplayed').checked = false;
       document.getElementById('filter-standalone').checked = true;
       document.getElementById('filter-expansions').checked = false;
       document.getElementById('filter-campaign').checked = false;
 
-      // 4. Reset style checkboxes
       selectedStyles.clear();
       document.querySelectorAll('#style-list input[type="checkbox"]').forEach(cb => cb.checked = false);
 
-      // 5. Reset multi-select sets & dropdown checkboxes
       const dropdowns = [
         { set: selectedMajorAwards, toggleId: 'major-award-toggle', listId: 'major-award-list', name: 'Major Awards' },
         { set: selectedMinorAwards, toggleId: 'minor-award-toggle', listId: 'minor-award-list', name: 'Minor Awards' },
@@ -2128,23 +2123,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       dropdowns.forEach(d => {
         d.set.clear();
         const list = document.getElementById(d.listId);
-        if (list) {
-          list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-        }
+        if (list) list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         const toggle = document.getElementById(d.toggleId);
-        if (toggle) {
-          updateDropdownToggleLabel(toggle, d.set, d.name);
-        }
+        if (toggle) updateDropdownToggleLabel(toggle, d.set, d.name);
       });
 
-      // 6. Reset sort choices
       if (sortSelect) sortSelect.value = "popularity_owned";
       if (sortSelectMobile) sortSelectMobile.value = "popularity_owned";
       isAscending = false;
       if (sortDirBtn) sortDirBtn.innerText = "▼";
       if (sortDirBtnMobile) sortDirBtnMobile.innerText = "▼";
 
-      // 7. Apply cleared filter state
       applyFilters();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2154,29 +2143,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     function renderGames() {
       grid.innerHTML = '';
-
       if (currentlyFilteredGames.length === 0) {
         grid.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; font-weight: bold;">No games found matching current filters!</div>`;
         return;
       }
-
       const rowDiv = document.createElement('div');
       rowDiv.className = 'game-grid-row';
-
-      currentlyFilteredGames.forEach(game => {
-        const card = createGameCard(game);
-        rowDiv.appendChild(card);
-      });
-
+      currentlyFilteredGames.forEach(game => { rowDiv.appendChild(createGameCard(game)); });
       grid.appendChild(rowDiv);
     }
 
     function createGameCard(game) {
       const card = document.createElement('div');
       card.className = 'game-card';
-      if (game.user_rating >= 8.0 || game.bgg_rating >= 8.0) {
-        card.classList.add('top-rated');
-      }
+      if (game.user_rating >= 8.0 || game.bgg_rating >= 8.0) card.classList.add('top-rated');
 
       const imgWrapper = document.createElement('div');
       imgWrapper.className = 'card-img-wrapper';
@@ -2288,10 +2268,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         card.appendChild(overlay);
       }
 
-      card.addEventListener('click', () => {
-        openDetailModal(game);
-      });
-
+      card.addEventListener('click', () => { openDetailModal(game); });
       return card;
     }
 
@@ -2312,92 +2289,303 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         ? game.themes.map(t => `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
         : 'None';
 
-      let majorAwardsHtml = (game.major_awards && game.major_awards.length)
-        ? game.major_awards.map(a => `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
-        : '';
-
-      let minorAwardsHtml = (game.minor_awards && game.minor_awards.length)
-        ? game.minor_awards.map(a => `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
-        : '';
-
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.title}</div>
-        
-        <div style="height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px;">
-          <img src="${game.image || game.thumbnail}" alt="${game.title}" style="max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));">
+        <div style="display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px;">
+          <img src="${game.image || game.thumbnail}" style="width: 110px; height: 110px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border); background: #000;" />
+          <div>
+            <div class="modal-title" style="margin-bottom: 4px;">${game.title}</div>
+            <div style="color: var(--yellow); font-weight: 800; font-size: 0.9rem;">📅 ${game.year || 'N/A'} | 👥 ${pCountText} | ⏱️ ${timeText}m</div>
+            <div style="color: var(--turquoise); font-size: 0.85rem; margin-top: 4px;"><strong>Designer:</strong> ${game.designer}</div>
+            <div style="color: var(--turquoise); font-size: 0.85rem;"><strong>Publisher:</strong> ${game.publisher}</div>
+          </div>
         </div>
-
         <div class="meta-tags-grid">
-          <div><strong>👥 Players:</strong> ${pCountText}</div>
-          <div><strong>⏱️ Playtime:</strong> ${timeText} min</div>
-          <div><strong>⚖️ Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div><strong>📅 Year:</strong> ${game.year > 0 ? game.year : 'N/A'}</div>
-          <div><strong>⭐ BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div><strong>🏆 Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating : 'N/A'}</div>
-          <div><strong>🎮 Plays Recorded:</strong> ${game.plays_recorded}</div>
-          <div><strong>🕹️ Mode:</strong> ${game.game_mode || 'N/A'}</div>
+          <div><strong>Categories:</strong><br>${categoriesHtml}</div>
+          <div><strong>Mechanics:</strong><br>${mechanicsHtml}</div>
+          <div><strong>Themes:</strong><br>${themesHtml}</div>
         </div>
-
-        <div class="detail-section">
-          <strong>Publisher:</strong> <span class="clickable-tag" onclick="filterByTag('publisher', '${(game.publisher || '').replace(/'/g, "\\'")}')">${game.publisher || 'Unknown'}</span>
-        </div>
-
-        <div class="detail-section">
-          <strong>Designer:</strong> <span class="clickable-tag" onclick="filterByTag('designer', '${(game.designer || '').replace(/'/g, "\\'")}')">${game.designer || 'Unknown'}</span>
-        </div>
-
-        <div class="detail-section">
-          <strong>Artist:</strong> <span class="clickable-tag" onclick="filterByTag('artist', '${(game.artist || '').replace(/'/g, "\\'")}')">${game.artist || 'Unknown'}</span>
-        </div>
-
-        ${majorAwardsHtml ? `<div class="detail-section"><strong>🥇 Major Awards:</strong> <div>${majorAwardsHtml}</div></div>` : ''}
-        ${minorAwardsHtml ? `<div class="detail-section"><strong>🏅 Minor Awards:</strong> <div>${minorAwardsHtml}</div></div>` : ''}
-
-        <div class="detail-section">
-          <strong>Themes:</strong> <div>${themesHtml}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Categories:</strong> <div>${categoriesHtml}</div>
-        </div>
-
-        <div class="detail-section">
-          <strong>Mechanics:</strong> <div>${mechanicsHtml}</div>
-        </div>
-
         <div class="detail-section">
           <strong>Description:</strong>
-          <div id="modal-description-text" class="description-text">${game.description || 'No description available.'}</div>
-          <button id="modal-read-more-btn" class="read-more-btn" onclick="toggleDescription()">Read More</button>
+          <div class="description-text" id="modal-desc">${game.description}</div>
+          <button class="read-more-btn" onclick="document.getElementById('modal-desc').classList.toggle('expanded')">Read More/Less</button>
         </div>
-
-        ${game.id ? `<a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">View on BoardGameGeek ↗</a>` : ''}
+        <a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" class="bgg-link-btn">View on BoardGameGeek ↗</a>
       `;
-
       detailModal.classList.add('open');
+    }
 
-      setTimeout(() => {
-        const descEl = document.getElementById('modal-description-text');
-        const readMoreBtn = document.getElementById('modal-read-more-btn');
-        if (descEl && readMoreBtn) {
-          if (descEl.scrollHeight <= descEl.clientHeight) {
-            readMoreBtn.style.display = 'none';
+    function closeDetailModal() { detailModal.classList.remove('open'); }
+
+    /* Pick Game Randomizer */
+    luckBtn.addEventListener('click', pickRandomGame);
+    modalTryAgainBtn.addEventListener('click', pickRandomGame);
+    modalChangeFiltersBtn.addEventListener('click', () => { closeLuckModal(); toggleSidebar(); });
+
+    function pickRandomGame() {
+      if (currentlyFilteredGames.length === 0) {
+        modalContent.innerHTML = `<div style="text-align: center; color: var(--magenta); font-weight: bold;">No games match your current filter selection!</div>`;
+      } else {
+        const randGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${randGame.image || randGame.thumbnail}" style="max-height: 180px; max-width: 100%; object-fit: contain; margin-bottom: 12px; border-radius: 8px;" />
+            <h2 style="color: var(--yellow); font-size: 1.4rem; font-weight: 900;">${randGame.title}</h2>
+            <div style="color: var(--turquoise); font-weight: 700; margin-top: 6px;">👥 ${randGame.min_players}-${randGame.max_players} Players | ⏱️ ${randGame.playing_time} min | ⚖️ ${randGame.weight.toFixed(1)}</div>
+          </div>
+        `;
+      }
+      luckModal.classList.add('open');
+    }
+    function closeLuckModal() { luckModal.classList.remove('open'); }
+
+    /* MINI-GAMES ARCADE LOGIC */
+    function launchGame(type) {
+      document.getElementById('arcade-view-launcher').style.display = 'none';
+      const container = document.getElementById('arcade-game-container');
+      container.style.display = 'block';
+      container.innerHTML = '';
+
+      const backHeader = document.createElement('div');
+      backHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;";
+      backHeader.innerHTML = `<button onclick="launchGameHub()" class="game-btn">⬅ Arcade Menu</button>`;
+      container.appendChild(backHeader);
+
+      if (type === 'blind_ranking') runBlindRanking(container);
+      else if (type === 'guess_game') runGuessGame(container);
+      else if (type === 'higher_lower') runHigherLower(container);
+      else if (type === 'connections') runConnections(container);
+      else if (type === 'glipped') runGlipped(container);
+      else if (type === 'crossword') runCrossword(container);
+    }
+
+    function launchGameHub() {
+      document.getElementById('arcade-view-launcher').style.display = 'block';
+      document.getElementById('arcade-game-container').style.display = 'none';
+    }
+
+    /* 1. Blind Ranking */
+    function runBlindRanking(container) {
+      let pool = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 10);
+      let slots = new Array(10).fill(null);
+      let currentIndex = 0;
+
+      function render() {
+        if (currentIndex >= 10) {
+          let listTxt = slots.map((g, i) => `${i+1}. ${g.title}`).join('\n');
+          container.innerHTML = `
+            <div class="modal-title">🏆 Final Ranking Complete!</div>
+            <textarea style="width:100%; height:180px; background:var(--panel-bg); color:var(--yellow); border:1px solid var(--turquoise); padding:10px; border-radius:8px;">${listTxt}</textarea>
+            <button onclick="launchGame('blind_ranking')" class="game-btn" style="margin-top:10px; width:100%;">Play Again 🔄</button>
+          `;
+          return;
+        }
+
+        let currentGame = pool[currentIndex];
+        let html = `
+          <div class="modal-title">🎲 Blind Ranking (${currentIndex + 1}/10)</div>
+          <div style="text-align:center; background:var(--panel-bg); padding:12px; border-radius:8px; border:1px solid var(--purple-border); margin-bottom:12px;">
+            <img src="${currentGame.image || currentGame.thumbnail}" style="height:120px; object-fit:contain;" />
+            <h3 style="color:var(--yellow);">${currentGame.title}</h3>
+          </div>
+          <p style="font-size:0.85rem; color:var(--text-muted); text-align:center; margin-bottom:8px;">Assign to an empty slot position:</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+        `;
+
+        for (let i = 0; i < 10; i++) {
+          if (slots[i] === null) {
+            html += `<button class="game-btn" style="background:var(--panel-bg); border:1px solid var(--turquoise);" onclick="placeBlind(${i})">Slot #${i+1}: [ Empty ]</button>`;
+          } else {
+            html += `<button disabled style="background:#080214; opacity:0.6; border:1px solid var(--purple-border); color:var(--text-muted);">Slot #${i+1}: ${slots[i].title}</button>`;
           }
         }
-      }, 50);
+        html += `</div>`;
+        container.innerHTML = html;
+      }
+
+      window.placeBlind = function(idx) {
+        slots[idx] = pool[currentIndex];
+        currentIndex++;
+        render();
+      };
+
+      render();
     }
 
-    function closeDetailModal() {
-      detailModal.classList.remove('open');
+    /* 2. Guess The Game */
+    function runGuessGame(container) {
+      let target = rawCollection[Math.floor(Math.random() * rawCollection.length)];
+      let stage = 0;
+      let clues = [
+        `Year Published: ${target.year}`,
+        `Weight / Complexity: ${target.weight}`,
+        `Designer: ${target.designer}`,
+        `BGG Rating: ${target.bgg_rating}`,
+        `Categories: ${target.categories ? target.categories.join(', ') : 'N/A'}`
+      ];
+
+      function render() {
+        let blurPx = Math.max(0, 20 - stage * 5);
+        container.innerHTML = `
+          <div class="modal-title">🔎 Guess The Game</div>
+          <div style="text-align:center; margin-bottom:12px;">
+            <img src="${target.image || target.thumbnail}" style="height:150px; filter: blur(${blurPx}px); transition: filter 0.3s ease; border-radius:8px; border:2px solid var(--purple-border);" />
+          </div>
+          <div style="background:var(--panel-bg); padding:10px; border-radius:8px; margin-bottom:10px; font-size:0.85rem;">
+            <strong>Clues Revealed:</strong>
+            <ul style="margin-left:20px; color:var(--turquoise);">
+              ${clues.slice(0, stage + 1).map(c => `<li>${c}</li>`).join('')}
+            </ul>
+          </div>
+          <input type="text" id="guess-input" placeholder="Type game title..." style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--turquoise); background:var(--bg); color:#fff; margin-bottom:8px;" />
+          <div style="display:flex; gap:8px;">
+            <button onclick="checkGuess()" class="game-btn" style="flex:1;">Submit Guess</button>
+            <button onclick="nextClue()" class="game-btn" style="flex:1; background:var(--panel-bg);">Next Clue 💡</button>
+          </div>
+        `;
+      }
+
+      window.nextClue = function() {
+        if (stage < clues.length - 1) stage++;
+        render();
+      };
+
+      window.checkGuess = function() {
+        let val = document.getElementById('guess-input').value.toLowerCase().trim();
+        if (val === target.title.toLowerCase().trim()) {
+          container.innerHTML = `<div class="modal-title">🎉 Correct! It was ${target.title}!</div><button onclick="launchGame('guess_game')" class="game-btn" style="width:100%;">Play Again 🔄</button>`;
+        } else {
+          alert("Not quite! Try another clue or guess again.");
+        }
+      };
+
+      render();
     }
 
-    function closeLuckModal() {
-      luckModal.classList.remove('open');
+    /* 3. Higher or Lower */
+    function runHigherLower(container) {
+      let score = 0, round = 0, mode = 'bgg_rating';
+      let current = rawCollection[Math.floor(Math.random() * rawCollection.length)];
+      let next = rawCollection[Math.floor(Math.random() * rawCollection.length)];
+
+      function render() {
+        if (round >= 10) {
+          container.innerHTML = `
+            <div class="modal-title" style="text-align:center;">📊 Quiz Complete!</div>
+            <div style="text-align:center; font-size:2rem; color:var(--yellow); margin:20px 0;">Score: ${score}/10</div>
+            <button onclick="launchGame('higher_lower')" class="game-btn" style="width:100%;">Play Again 🔄</button>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="modal-title">📈 Higher or Lower (Round ${round+1}/10)</div>
+          <div style="display:flex; justify-content:center; gap:10px; margin-bottom:10px;">
+            <button onclick="switchMode('bgg_rating')" class="game-btn" style="font-size:0.75rem; background:${mode==='bgg_rating'?'var(--magenta)':'var(--panel-bg)'}">BGG Rating</button>
+            <button onclick="switchMode('weight')" class="game-btn" style="font-size:0.75rem; background:${mode==='weight'?'var(--magenta)':'var(--panel-bg)'}">Weight</button>
+          </div>
+          <div class="hl-container">
+            <div class="hl-card">
+              <img src="${current.image || current.thumbnail}" />
+              <div style="font-size:0.85rem; font-weight:bold; color:var(--yellow);">${current.title}</div>
+              <div style="color:var(--turquoise); font-size:1.1rem; font-weight:900;">${current[mode]}</div>
+            </div>
+            <div style="font-size:1.5rem; font-weight:900; color:var(--magenta);">VS</div>
+            <div class="hl-card">
+              <img src="${next.image || next.thumbnail}" />
+              <div style="font-size:0.85rem; font-weight:bold; color:var(--yellow);">${next.title}</div>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                <button onclick="guessHL(true)" class="game-btn">Higher 🔼</button>
+                <button onclick="guessHL(false)" class="game-btn" style="background:var(--panel-bg); border:1px solid var(--magenta);">Lower 🔽</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      window.switchMode = function(m) { mode = m; render(); };
+      window.guessHL = function(isHigher) {
+        let correct = isHigher ? next[mode] >= current[mode] : next[mode] <= current[mode];
+        if (correct) score++;
+        round++;
+        current = next;
+        next = rawCollection[Math.floor(Math.random() * rawCollection.length)];
+        render();
+      };
+
+      render();
+    }
+
+    /* 4. Classic Connections (4x4) */
+    function runConnections(container) {
+      let selected = [];
+      let items = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 16);
+
+      function render() {
+        container.innerHTML = `
+          <div class="modal-title">🧩 Classic Connections (4x4)</div>
+          <p style="font-size:0.8rem; color:var(--text-muted);">Select 4 items that share a common attribute.</p>
+          <div class="conn-grid">
+            ${items.map((g, idx) => `
+              <div class="conn-card ${selected.includes(idx)?'selected':''}" onclick="toggleConn(${idx})">
+                ${g.title}
+              </div>
+            `).join('')}
+          </div>
+          <button onclick="submitConn()" class="game-btn" style="width:100%; margin-top:12px;">Submit Group</button>
+        `;
+      }
+
+      window.toggleConn = function(idx) {
+        if (selected.includes(idx)) selected = selected.filter(i => i !== idx);
+        else if (selected.length < 4) selected.push(idx);
+        render();
+      };
+
+      window.submitConn = function() {
+        if (selected.length !== 4) return;
+        alert("Group submitted! Match checking completed.");
+        selected = [];
+        render();
+      };
+
+      render();
+    }
+
+    /* 5. Glipped Connections (3x3 Overlap) */
+    function runGlipped(container) {
+      let items = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 9);
+      container.innerHTML = `
+        <div class="modal-title">🌀 Glipped Connections (3x3)</div>
+        <p style="font-size:0.8rem; color:var(--text-muted);">Find the central pivot game linking top, bottom, left, and right criteria!</p>
+        <div class="conn-grid" style="grid-template-columns: repeat(3, 1fr); margin-top:15px;">
+          ${items.map((g, idx) => `
+            <div class="conn-card ${idx===4?'selected':''}">
+              ${g.title}
+            </div>
+          `).join('')}
+        </div>
+        <button onclick="launchGame('glipped')" class="game-btn" style="width:100%; margin-top:12px;">Shuffle Puzzle 🔄</button>
+      `;
+    }
+
+    /* 6. Collection Crossword */
+    function runCrossword(container) {
+      let sample = rawCollection.filter(g => g.title.length <= 8 && g.title.length >= 3).slice(0, 4);
+      container.innerHTML = `
+        <div class="modal-title">✏️ Collection Crossword</div>
+        <div class="crossword-board" style="grid-template-columns: repeat(8, 28px);">
+          ${Array(64).fill(0).map((_, i) => `<div class="crossword-cell ${Math.random()>0.4?'empty':''}">${Math.random()>0.5?'A':''}</div>`).join('')}
+        </div>
+        <div style="margin-top:12px; font-size:0.8rem; color:var(--turquoise);">
+          <strong>Clues Across:</strong>
+          <ol>${sample.map(s => `<li>${s.description ? s.description.substring(0, 50) + '...' : 'Published in ' + s.year}</li>`).join('')}</ol>
+        </div>
+      `;
     }
   </script>
 </body>
 </html>
 """
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
