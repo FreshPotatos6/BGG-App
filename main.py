@@ -2271,7 +2271,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         overlay.className = 'expansions-overlay';
 
         const expHeader = document.createElement('div');
-        expHeader.className = 'expansions-header';
+expHeader.className = 'expansions-header';
         expHeader.innerHTML = `<span>Expansions (${expansionsForGame.length})</span>`;
         
         const closeExpBtn = document.createElement('button');
@@ -2285,44 +2285,71 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         overlay.appendChild(expHeader);
 
         expansionsForGame.forEach(exp => {
-          const item = document.createElement('div');
-          item.className = 'expansion-item';
-          item.innerHTML = `<div class="expansion-title">${exp.title}</div><div style="color: var(--text-muted); font-size: 0.7rem;">Published ${exp.year || 'N/A'}</div>`;
-          overlay.appendChild(item);
+          const expItem = document.createElement('div');
+          expItem.className = 'expansion-item';
+          expItem.innerHTML = `
+            <div class="expansion-title">${exp.title} (${exp.year || 'N/A'})</div>
+            <div style="color: var(--text-muted); font-size: 0.7rem;">
+              👥 ${exp.min_players}-${exp.max_players} | ⏱️ ${exp.playing_time}m | ⚖️ ${exp.weight ? exp.weight.toFixed(1) : 'N/A'}
+            </div>
+          `;
+          expItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDetailModal(exp);
+          });
+          overlay.appendChild(expItem);
         });
+
         card.appendChild(overlay);
       }
 
-      card.addEventListener('click', () => showGameDetail(game));
+      card.addEventListener('click', () => openDetailModal(game));
       return card;
     }
 
-    function showGameDetail(game) {
+    function openDetailModal(game) {
       currentDetailGame = game;
+      const allAwards = [...(game.major_awards || []), ...(game.minor_awards || [])];
+      
       detailModalContent.innerHTML = `
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-          <img src="${game.image || game.thumbnail}" style="max-width: 220px; max-height: 220px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);" />
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
+          <img src="${game.image || game.thumbnail}" alt="${game.title}" style="max-height: 180px; max-width: 180px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);">
           <div style="flex: 1; min-width: 200px;">
-            <h2 style="color: var(--yellow); font-size: 1.5rem; margin-bottom: 8px;">${game.title} (${game.year || 'N/A'})</h2>
-            <div style="color: var(--turquoise); font-size: 0.9rem; margin-bottom: 4px;"><strong>Publisher:</strong> ${game.publisher}</div>
-            <div style="color: var(--turquoise); font-size: 0.9rem; margin-bottom: 4px;"><strong>Designer:</strong> ${game.designer}</div>
-            <div style="color: var(--turquoise); font-size: 0.9rem; margin-bottom: 12px;"><strong>Artist:</strong> ${game.artist}</div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-              <span class="stat-badge">BGG Rating: ${game.bgg_rating || 'N/A'}</span>
-              <span class="stat-badge">Luke's Rating: ${game.user_rating || 'N/A'}</span>
-              <span class="stat-badge">Weight: ${game.weight || 'N/A'}</span>
-              <span class="stat-badge">Plays: ${game.plays_recorded}</span>
+            <div class="modal-title" style="margin-bottom: 4px;">${game.title}</div>
+            <div style="color: var(--turquoise); font-weight: bold; margin-bottom: 8px;">Published: ${game.year || 'N/A'} | ${game.publisher}</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+              <span class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players} Players</span>
+              <span class="stat-badge">⏱️ ${game.playing_time} Min</span>
+              <span class="stat-badge">⚖️ Weight: ${game.weight ? game.weight.toFixed(1) : 'N/A'}</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <span class="stat-badge" style="background: var(--turquoise); color: #000;">⭐ BGG: ${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</span>
+              <span class="stat-badge" style="background: var(--yellow); color: #000;">👑 Luke: ${game.user_rating ? game.user_rating : 'N/A'}</span>
+              <span class="stat-badge" style="background: var(--magenta); color: #fff;">🕹️ Plays: ${game.plays_recorded}</span>
             </div>
           </div>
         </div>
-        <hr style="border: none; border-top: 1px solid var(--purple-border); margin: 16px 0;">
-        <p style="line-height: 1.5; color: var(--text); font-size: 0.95rem;">${game.description}</p>
+
+        <div style="margin-bottom: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-muted); max-height: 120px; overflow-y: auto; background: var(--panel-bg); padding: 8px; border-radius: 6px;">
+          ${game.description || 'No description available.'}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.8rem;">
+          <div><strong style="color: var(--yellow);">Designer:</strong> ${game.designer || 'Unknown'}</div>
+          <div><strong style="color: var(--yellow);">Artist:</strong> ${game.artist || 'Unknown'}</div>
+          <div><strong style="color: var(--yellow);">Mode:</strong> ${game.game_mode || 'Competitive'}</div>
+          <div><strong style="color: var(--yellow);">Conflict:</strong> ${game.conflict_level || 'Medium'}</div>
+        </div>
+
+        ${game.categories && game.categories.length ? `<div style="margin-top: 8px; font-size: 0.8rem;"><strong style="color: var(--turquoise);">Categories:</strong> ${game.categories.join(', ')}</div>` : ''}
+        ${game.mechanics && game.mechanics.length ? `<div style="margin-top: 4px; font-size: 0.8rem;"><strong style="color: var(--turquoise);">Mechanics:</strong> ${game.mechanics.join(', ')}</div>` : ''}
+        ${game.themes && game.themes.length ? `<div style="margin-top: 4px; font-size: 0.8rem;"><strong style="color: var(--turquoise);">Themes:</strong> ${game.themes.join(', ')}</div>` : ''}
+        ${allAwards.length > 0 ? `<div style="margin-top: 4px; font-size: 0.8rem;"><strong style="color: var(--yellow);">Awards:</strong> 🏆 ${allAwards.join(', ')}</div>` : ''}
       `;
       detailModal.classList.add('open');
     }
 
     function closeDetailModal() { detailModal.classList.remove('open'); }
-    function closeLuckModal() { luckModal.classList.remove('open'); }
 
     luckBtn.addEventListener('click', pickRandomGame);
     modalTryAgainBtn.addEventListener('click', pickRandomGame);
@@ -2332,588 +2359,932 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     });
 
     function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align: center; color: var(--magenta); font-weight: bold;">No games match current filter constraints!</div>`;
-        luckModal.classList.add('open');
-        return;
+      const candidates = currentlyFilteredGames.length > 0 ? currentlyFilteredGames : games;
+      if (candidates.length === 0) {
+        modalContent.innerHTML = `<div style="text-align: center; color: var(--magenta);">No games available! Try clearing filters.</div>`;
+      } else {
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${picked.image || picked.thumbnail}" style="max-height: 200px; max-width: 100%; object-fit: contain; border-radius: 8px; margin-bottom: 12px; border: 2px solid var(--turquoise);">
+            <h2 style="color: var(--yellow); font-size: 1.4rem; margin-bottom: 6px;">${picked.title}</h2>
+            <div style="color: var(--turquoise); font-size: 0.9rem; margin-bottom: 10px;">👥 ${picked.min_players}-${picked.max_players} | ⏱️ ${picked.playing_time} min | ⚖️ ${picked.weight ? picked.weight.toFixed(1) : 'N/A'}</div>
+            <button class="btn-primary" onclick="closeLuckModal(); openDetailModal(rawCollection.find(g => g.id === '${picked.id}') || games[0]);" style="width: 100%;">View Full Details</button>
+          </div>
+        `;
       }
-      const randGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
-      modalContent.innerHTML = `
-        <div style="text-align: center;">
-          <img src="${randGame.image || randGame.thumbnail}" style="max-height: 200px; object-fit: contain; margin-bottom: 12px; border-radius: 8px;" />
-          <h2 style="color: var(--yellow); font-size: 1.4rem; margin-bottom: 6px;">${randGame.title}</h2>
-          <div style="color: var(--turquoise); font-weight: bold; margin-bottom: 8px;">⏱️ ${randGame.playing_time} mins | 👥 ${randGame.min_players}-${randGame.max_players} Players</div>
-        </div>
-      `;
       luckModal.classList.add('open');
     }
 
-    // --- UNIVERSAL SHARE IMAGE GENERATOR ---
-    function createShareImage(gameName, scoreSummaryText, detailsList) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 600;
-      canvas.height = 340;
-      const ctx = canvas.getContext('2d');
+    function closeLuckModal() { luckModal.classList.remove('open'); }
 
-      ctx.fillStyle = '#0d0221';
-      ctx.fillRect(0, 0, 600, 340);
-
-      ctx.strokeStyle = '#fee440';
-      ctx.lineWidth = 6;
-      ctx.strokeRect(10, 10, 580, 320);
-
-      ctx.fillStyle = '#fee440';
-      ctx.font = '900 24px Segoe UI, sans-serif';
-      ctx.fillText("RENGAW'S MEEPLES // MINI-GAMES", 30, 45);
-
-      ctx.fillStyle = '#f72585';
-      ctx.font = '800 20px Segoe UI, sans-serif';
-      ctx.fillText(gameName.toUpperCase(), 30, 80);
-
-      ctx.fillStyle = '#00f5d4';
-      ctx.font = 'bold 18px Segoe UI, sans-serif';
-      ctx.fillText(scoreSummaryText, 30, 115);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '14px Segoe UI, sans-serif';
-      let yPos = 150;
-      detailsList.slice(0, 7).forEach((line) => {
-        ctx.fillText(line, 30, yPos);
-        yPos += 24;
-      });
-
-      const dataUrl = canvas.toDataURL('image/png');
-      const w = window.open('about:blank');
-      const image = new Image();
-      image.src = dataUrl;
-      w.document.write('<html><head><title>Share Results</title></head><body style="background:#0d0221; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;"><img src="' + dataUrl + '" style="border:2px solid #fee440; border-radius:12px;"/></body></html>');
-    }
-
-    // --- GAME LAUNCHER ENGINE ---
+    /* ==========================================
+       MINI-GAMES SYSTEM
+       ========================================== */
     function launchGame(gameType) {
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
       container.innerHTML = '';
 
-      if (rawCollection.length < 10) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta);">At least 10 games are required in your collection to run arcade games!</div>`;
-        return;
-      }
-
-      if (gameType === 'blind_ranking') runBlindRanking(container);
-      else if (gameType === 'higher_lower') runHigherLower(container);
-      else if (gameType === 'glipped') run4x3Game(container);
-      else if (gameType === 'guess_game') runGuessGame(container);
-      else if (gameType === 'connections') runConnectionsGame(container);
-      else if (gameType === 'crossword') runCrosswordGame(container);
+      if (gameType === 'blind_ranking') initBlindRanking(container);
+      else if (gameType === 'higher_lower') initHigherLower(container);
+      else if (gameType === 'guess_game') initGuessGame(container);
+      else if (gameType === 'connections') initConnections(container);
+      else if (gameType === 'glipped') initGlipped(container);
+      else if (gameType === 'crossword') initCrossword(container);
     }
 
-    // --- 1. BLIND RANKING ---
-    function runBlindRanking(container) {
-      let pool = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 10);
-      let slots = new Array(10).fill(null);
+    /* 1. BLIND RANKING */
+    function initBlindRanking(container) {
+      let candidatePool = rawCollection.filter(g => !g.is_expansion && g.user_rating > 0);
+      if (candidatePool.length < 10) candidatePool = rawCollection.filter(g => !g.is_expansion);
+      
+      const shuffled = [...candidatePool].sort(() => 0.5 - Math.random()).slice(0, 10);
       let currentIndex = 0;
+      let slots = new Array(10).fill(null);
 
       function render() {
         if (currentIndex >= 10) {
-          let summary = slots.map((g, i) => `${i + 1}. ${g.title}`);
           container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--yellow); font-size:1.4rem;">🎉 Blind Ranking Complete!</h2>
-              <div style="margin:15px 0; font-size:0.85rem; text-align:left; background:var(--panel-bg); padding:10px; border-radius:8px;">
-                ${summary.map(s => `<div>${s}</div>`).join('')}
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="game-btn" onclick="createShareImage('Blind Ranking', 'Ranked 10 Collection Games', ${JSON.stringify(summary)})">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        const current = pool[currentIndex];
-        let slotsCol1 = '';
-        for (let i = 0; i < 5; i++) {
-          slotsCol1 += `
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <span style="font-weight:900; color:var(--magenta); width:20px;">${i + 1}.</span>
-              <button style="flex:1; text-align:left;" ${slots[i] ? 'disabled' : ''} onclick="placeRank(${i})">
-                ${slots[i] ? slots[i].title : '[ Empty Slot ]'}
-              </button>
-            </div>`;
-        }
-
-        let slotsCol2 = '';
-        for (let i = 5; i < 10; i++) {
-          slotsCol2 += `
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <span style="font-weight:900; color:var(--magenta); width:20px;">${i + 1}.</span>
-              <button style="flex:1; text-align:left;" ${slots[i] ? 'disabled' : ''} onclick="placeRank(${i})">
-                ${slots[i] ? slots[i].title : '[ Empty Slot ]'}
-              </button>
-            </div>`;
-        }
-
-        container.innerHTML = `
-          <div class="game-board">
-            <div class="game-status-bar">
-              <span>Card ${currentIndex + 1} of 10</span>
-              <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
-            </div>
-            <div style="text-align:center; background:var(--panel-bg); padding:10px; border-radius:8px; border:1px solid var(--purple-border);">
-              <img src="${current.image || current.thumbnail}" style="height:110px; object-fit:contain;" />
-              <h3 style="color:var(--yellow); font-size:1.1rem; margin-top:4px;">${current.title}</h3>
-            </div>
+            <div class="modal-title" style="text-align: center;">🎉 Ranking Complete!</div>
+            <p style="text-align: center; color: var(--turquoise); margin-bottom: 12px;">Here is how you ranked your 10 games:</p>
             <div class="blind-grid-columns">
-              <div>${slotsCol1}</div>
-              <div>${slotsCol2}</div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${slots.slice(0, 5).map((g, i) => `
+                  <div style="background: var(--panel-bg); border: 1px solid var(--purple-border); padding: 8px; border-radius: 6px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--yellow); font-weight: 900;">#${i+1}</span>
+                    <span style="color: #fff; font-weight: bold;">${g.title}</span>
+                    <span style="color: var(--turquoise); margin-left: auto;">👑 ${g.user_rating}</span>
+                  </div>
+                `).join('')}
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${slots.slice(5, 10).map((g, i) => `
+                  <div style="background: var(--panel-bg); border: 1px solid var(--purple-border); padding: 8px; border-radius: 6px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--yellow); font-weight: 900;">#${i+6}</span>
+                    <span style="color: #fff; font-weight: bold;">${g.title}</span>
+                    <span style="color: var(--turquoise); margin-left: auto;">👑 ${g.user_rating}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+              <button class="game-btn" style="flex:1;" onclick="initBlindRanking(document.getElementById('arcade-game-container'))">Play Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+          return;
+        }
+
+        const currentGame = shuffled[currentIndex];
+
+        let html = `
+          <div class="game-status-bar">
+            <span>🎲 Blind Ranking (${currentIndex + 1} / 10)</span>
+            <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
+          </div>
+
+          <div style="display: flex; gap: 16px; align-items: center; background: var(--panel-bg); border: 2px solid var(--magenta); padding: 12px; border-radius: 10px; margin-top: 10px;">
+            <img src="${currentGame.image || currentGame.thumbnail}" style="width: 80px; height: 80px; object-fit: contain; border-radius: 6px;">
+            <div>
+              <div style="color: var(--yellow); font-size: 1.1rem; font-weight: 900;">${currentGame.title}</div>
+              <div style="color: var(--turquoise); font-size: 0.8rem; margin-top: 4px;">Assign this game to an available rank slot below!</div>
+            </div>
+          </div>
+
+          <div class="blind-grid-columns">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              ${[0, 1, 2, 3, 4].map(idx => renderSlotButton(idx)).join('')}
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              ${[5, 6, 7, 8, 9].map(idx => renderSlotButton(idx)).join('')}
             </div>
           </div>
         `;
+
+        container.innerHTML = html;
+
+        slots.forEach((item, idx) => {
+          if (!item) {
+            const btn = document.getElementById(`blind-slot-btn-${idx}`);
+            if (btn) {
+              btn.addEventListener('click', () => {
+                slots[idx] = currentGame;
+                currentIndex++;
+                render();
+              });
+            }
+          }
+        });
       }
 
-      window.placeRank = function(idx) {
-        if (slots[idx] === null) {
-          slots[idx] = pool[currentIndex];
-          currentIndex++;
-          render();
-        }
-      };
-
-      render();
-    }
-
-    // --- 2. HIGHER OR LOWER ---
-    function runHigherLower(container) {
-      let pool = [...rawCollection].filter(g => g.weight > 0 && g.bgg_rating > 0).sort(() => 0.5 - Math.random());
-      let round = 0;
-      let score = 0;
-      let mode = Math.random() > 0.5 ? 'weight' : 'bgg_rating';
-
-      function render() {
-        if (round >= 5 || pool.length < 2) {
-          container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--yellow);">Game Over!</h2>
-              <p style="margin:10px 0; font-size:1.2rem;">Final Score: ${score} / 5</p>
-              <div style="display:flex; gap:8px; justify-content:center;">
-                <button class="game-btn" onclick="createShareImage('Higher or Lower', 'Final Score: ${score}/5', ['Tested Metric: ${mode}'])">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
+      function renderSlotButton(idx) {
+        if (slots[idx]) {
+          return `
+            <div style="background: var(--card-bg); border: 1px solid var(--purple-border); padding: 8px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; opacity: 0.7;">
+              <span style="color: var(--yellow); font-weight: 900; width: 24px;">#${idx+1}</span>
+              <span style="color: #fff; font-weight: bold; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${slots[idx].title}</span>
             </div>
           `;
-          return;
-        }
-
-        const g1 = pool[round * 2];
-        const g2 = pool[round * 2 + 1];
-        const metricName = mode === 'weight' ? 'Higher Weight / Complexity' : 'Higher Rating';
-
-        container.innerHTML = `
-          <div class="game-board">
-            <div class="game-status-bar">
-              <span>Round ${round + 1} of 5</span>
-              <span>Score: ${score}</span>
-              <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
-            </div>
-            <div style="text-align:center; font-size:1rem; font-weight:bold; color:var(--yellow); margin:5px 0;">
-              Which game has a ${metricName}?
-            </div>
-            <div class="hl-container">
-              <div class="hl-card">
-                <img src="${g1.image || g1.thumbnail}" />
-                <div style="font-weight:bold; font-size:0.85rem; margin-bottom:8px;">${g1.title}</div>
-                <button class="game-btn" style="width:100%; font-size:0.75rem;" onclick="pickHL(0)">Select ${g1.title}</button>
-              </div>
-              <div style="font-weight:900; color:var(--magenta); font-size:1.2rem;">VS</div>
-              <div class="hl-card">
-                <img src="${g2.image || g2.thumbnail}" />
-                <div style="font-weight:bold; font-size:0.85rem; margin-bottom:8px;">${g2.title}</div>
-                <button class="game-btn" style="width:100%; font-size:0.75rem;" onclick="pickHL(1)">Select ${g2.title}</button>
-              </div>
-            </div>
-            <div id="hl-feedback" style="text-align:center; min-height:30px; font-weight:bold;"></div>
-          </div>
-        `;
-
-        window.pickHL = function(choice) {
-          const val1 = g1[mode];
-          const val2 = g2[mode];
-          const correctChoice = val1 >= val2 ? 0 : 1;
-          const isCorrect = choice === correctChoice;
-
-          if (isCorrect) score++;
-
-          document.getElementById('hl-feedback').innerHTML = `
-            <div style="color:${isCorrect ? 'var(--turquoise)' : 'var(--magenta)'}">
-              ${isCorrect ? 'Correct!' : 'Wrong!'} (${g1.title}: ${val1.toFixed(1)} vs ${g2.title}: ${val2.toFixed(1)})
-            </div>
-          `;
-
-          setTimeout(() => {
-            round++;
-            render();
-          }, 1800);
-        };
-      }
-
-      render();
-    }
-
-    // --- 3. 4X3 (GLIPPED CONNECTIONS) ---
-    function run4x3Game(container) {
-      let strikes = 0;
-      let pool = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 9);
-      let selected = new Set();
-      let solvedSets = 0;
-
-      function render() {
-        if (strikes >= 4) {
-          container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--magenta);">Game Over! Strike Out!</h2>
-              <p style="margin:10px 0;">You accumulated 4 strikes.</p>
-              <div style="display:flex; gap:8px; justify-content:center;">
-                <button class="game-btn" onclick="createShareImage('4X3', 'Game Over (4 Strikes)', ['Sets Solved: ${solvedSets}'])">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        if (solvedSets >= 4) {
-          container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--turquoise);">🎉 Grid Solved!</h2>
-              <p style="margin:10px 0;">Completed with ${strikes} strikes!</p>
-              <div style="display:flex; gap:8px; justify-content:center;">
-                <button class="game-btn" onclick="createShareImage('4X3', 'Victory!', ['Strikes: ${strikes}/4'])">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        let strikeIcons = '❤️'.repeat(Math.max(0, 4 - strikes)) + '🖤'.repeat(strikes);
-
-        let gridHtml = pool.map((g, idx) => `
-          <div class="conn-card ${selected.has(idx) ? 'selected' : ''}" onclick="toggle4x3(${idx})">
-            <div>${g.title}</div>
-          </div>
-        `).join('');
-
-        container.innerHTML = `
-          <div class="game-board">
-            <div class="game-status-bar">
-              <span>4X3 Connections</span>
-              <span>Strikes: ${strikeIcons}</span>
-              <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
-            </div>
-            <p style="font-size:0.75rem; color:var(--text-muted); text-align:center;">Select 3 cards that share an attribute to lock a set.</p>
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:5px;">
-              ${gridHtml}
-            </div>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-              <button class="game-btn" style="flex:1;" onclick="submit4x3()">Submit Set</button>
-            </div>
-            <div id="glipped-msg" style="text-align:center; font-size:0.8rem; font-weight:bold; min-height:20px;"></div>
-          </div>
-        `;
-      }
-
-      window.toggle4x3 = function(idx) {
-        if (selected.has(idx)) selected.delete(idx);
-        else if (selected.size < 3) selected.add(idx);
-        render();
-      };
-
-      window.submit4x3 = function() {
-        if (selected.size !== 3) {
-          document.getElementById('glipped-msg').innerText = "Please select exactly 3 games.";
-          return;
-        }
-        let items = Array.from(selected).map(i => pool[i]);
-        let catMatch = items[0].categories.find(c => items[1].categories.includes(c) && items[2].categories.includes(c));
-        let mechMatch = items[0].mechanics.find(m => items[1].mechanics.includes(m) && items[2].mechanics.includes(m));
-
-        if (catMatch || mechMatch) {
-          solvedSets++;
-          selected.clear();
-          document.getElementById('glipped-msg').innerHTML = `<span style="color:var(--turquoise);">Set Found! (${catMatch || mechMatch})</span>`;
-          setTimeout(render, 1200);
         } else {
-          strikes++;
-          selected.clear();
-          document.getElementById('glipped-msg').innerHTML = `<span style="color:var(--magenta);">Incorrect set! Strike added.</span>`;
-          setTimeout(render, 1200);
+          return `
+            <button id="blind-slot-btn-${idx}" style="background: var(--panel-bg); border: 2px dashed var(--turquoise); color: var(--turquoise); padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; text-align: left; width: 100%; cursor: pointer;">
+              Place at Slot #${idx+1}
+            </button>
+          `;
         }
-      };
+      }
 
       render();
     }
 
-    // --- 4. GUESS THE GAME ---
-    function runGuessGame(container) {
-      let game = rawCollection[Math.floor(Math.random() * rawCollection.length)];
+    /* 2. HIGHER OR LOWER */
+    function initHigherLower(container) {
+      let metric = 'weight'; // 'weight' or 'rating'
+      let streak = 0;
+      let pool = rawCollection.filter(g => !g.is_expansion && g.weight > 0 && g.bgg_rating > 0);
+      let leftGame = pool[Math.floor(Math.random() * pool.length)];
+      let rightGame = getNextRightGame(leftGame);
+
+      function getNextRightGame(current) {
+        let remaining = pool.filter(g => g.id !== current.id);
+        return remaining[Math.floor(Math.random() * remaining.length)];
+      }
+
+      function render() {
+        const metricName = metric === 'weight' ? 'Weight (Complexity)' : 'BGG Rating';
+        const leftVal = metric === 'weight' ? leftGame.weight.toFixed(1) : leftGame.bgg_rating.toFixed(1);
+
+        container.innerHTML = `
+          <div class="game-status-bar">
+            <span>📈 Higher or Lower (Streak: ${streak})</span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <select id="hl-metric-select" style="padding: 2px 6px; font-size: 0.75rem;">
+                <option value="weight" ${metric === 'weight' ? 'selected' : ''}>Weight</option>
+                <option value="rating" ${metric === 'rating' ? 'selected' : ''}>Rating</option>
+              </select>
+              <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-top: 10px; color: var(--yellow); font-size: 0.88rem; font-weight: 800;">
+            Is <span style="color: var(--turquoise);">${rightGame.title}</span> Higher or Lower in <span style="color: var(--magenta);">${metricName}</span> than <span style="color: var(--turquoise);">${leftGame.title}</span>?
+          </div>
+
+          <div class="hl-container">
+            <div class="hl-card">
+              <img src="${leftGame.image || leftGame.thumbnail}">
+              <div style="font-weight: 800; font-size: 0.9rem; color: #fff;">${leftGame.title}</div>
+              <div style="font-size: 1.2rem; font-weight: 900; color: var(--yellow); margin-top: 6px;">${leftVal}</div>
+            </div>
+
+            <div style="font-size: 1.5rem; font-weight: 900; color: var(--magenta);">VS</div>
+
+            <div class="hl-card">
+              <img src="${rightGame.image || rightGame.thumbnail}">
+              <div style="font-weight: 800; font-size: 0.9rem; color: #fff;">${rightGame.title}</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                <button class="game-btn" id="hl-btn-higher" style="background: var(--turquoise); color: #000;">▲ HIGHER</button>
+                <button class="game-btn" id="hl-btn-lower" style="background: var(--magenta); color: #fff;">▼ LOWER</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('hl-metric-select').addEventListener('change', (e) => {
+          metric = e.target.value;
+          streak = 0;
+          leftGame = pool[Math.floor(Math.random() * pool.length)];
+          rightGame = getNextRightGame(leftGame);
+          render();
+        });
+
+        document.getElementById('hl-btn-higher').addEventListener('click', () => makeGuess('higher'));
+        document.getElementById('hl-btn-lower').addEventListener('click', () => makeGuess('lower'));
+      }
+
+      function makeGuess(choice) {
+        const v1 = metric === 'weight' ? leftGame.weight : leftGame.bgg_rating;
+        const v2 = metric === 'weight' ? rightGame.weight : rightGame.bgg_rating;
+
+        let isCorrect = false;
+        if (choice === 'higher' && v2 >= v1) isCorrect = true;
+        if (choice === 'lower' && v2 <= v1) isCorrect = true;
+
+        if (isCorrect) {
+          streak++;
+          leftGame = rightGame;
+          rightGame = getNextRightGame(leftGame);
+          render();
+        } else {
+          const rightVal = metric === 'weight' ? rightGame.weight.toFixed(1) : rightGame.bgg_rating.toFixed(1);
+          const leftVal = metric === 'weight' ? leftGame.weight.toFixed(1) : leftGame.bgg_rating.toFixed(1);
+          container.innerHTML = `
+            <div class="modal-title" style="text-align: center; color: var(--magenta);">💥 Wrong Guess!</div>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
+              <strong>${rightGame.title}</strong> was <strong>${rightVal}</strong> (compared to <strong>${leftGame.title}</strong>'s ${leftVal}).
+            </p>
+            <div style="text-align: center; font-size: 1.1rem; font-weight: bold; color: var(--yellow); margin-bottom: 15px;">Final Streak: ${streak}</div>
+            <div style="display:flex; gap:8px;">
+              <button class="game-btn" style="flex:1;" onclick="initHigherLower(document.getElementById('arcade-game-container'))">Try Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+        }
+      }
+
+      render();
+    }
+
+    /* 3. GUESS THE GAME */
+    function initGuessGame(container) {
       let mode = 'blur'; // 'blur' or 'zoom'
-      let step = 0;
-      let clues = [
-        `Year: ${game.year || 'Unknown'}`,
-        `Player Count: ${game.min_players}-${game.max_players}`,
-        `Designer: ${game.designer}`,
-        `Categories: ${game.categories.join(', ')}`,
-        `Description: ${game.description ? game.description.slice(0, 90) + '...' : 'N/A'}`
+      let pool = rawCollection.filter(g => !g.is_expansion && (g.image || g.thumbnail));
+      let target = pool[Math.floor(Math.random() * pool.length)];
+      let stage = 1;
+
+      function render() {
+        container.innerHTML = `
+          <div class="game-status-bar">
+            <span>🔎 Guess the Game (Stage ${stage} / 4)</span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <select id="guess-mode-select" style="padding: 2px 6px; font-size: 0.75rem;">
+                <option value="blur" ${mode === 'blur' ? 'selected' : ''}>Blur Mode</option>
+                <option value="zoom" ${mode === 'zoom' ? 'selected' : ''}>Zoom Mode</option>
+              </select>
+              <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px;">
+            <div style="width: 200px; height: 200px; overflow: hidden; border-radius: 12px; border: 3px solid var(--turquoise); background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
+              <img id="guess-img" src="${target.image || target.thumbnail}" style="${getImageStyle()}">
+            </div>
+
+            <div style="width: 100%; background: var(--panel-bg); border: 1px solid var(--purple-border); border-radius: 8px; padding: 10px; font-size: 0.82rem; color: var(--text-muted);">
+              <div style="color: var(--yellow); font-weight: bold; margin-bottom: 4px;">💡 Unlocked Clues:</div>
+              <div>• Year: ${target.year || 'N/A'} | Players: ${target.min_players}-${target.max_players}</div>
+              ${stage >= 2 ? `<div>• Designer: ${target.designer || 'Unknown'}</div>` : ''}
+              ${stage >= 3 ? `<div>• Categories: ${(target.categories || []).join(', ')}</div>` : ''}
+              ${stage >= 4 ? `<div>• Description Snippet: ${(target.description || '').substring(0, 90)}...</div>` : ''}
+            </div>
+
+            <div class="autocomplete-wrapper">
+              <input type="text" id="guess-input" class="global-search-input" placeholder="Type game title..." style="font-size: 0.9rem; padding: 8px 12px;">
+              <div id="guess-autocomplete" class="autocomplete-list" style="display: none;"></div>
+            </div>
+
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <button id="guess-submit-btn" class="game-btn" style="flex: 2;">Submit Guess</button>
+              <button id="guess-skip-btn" class="btn-primary" style="flex: 1; font-size: 0.8rem;">Give Clue</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('guess-mode-select').addEventListener('change', (e) => {
+          mode = e.target.value;
+          stage = 1;
+          render();
+        });
+
+        const input = document.getElementById('guess-input');
+        const autoBox = document.getElementById('guess-autocomplete');
+
+        input.addEventListener('input', () => {
+          const val = input.value.toLowerCase().trim();
+          if (!val) { autoBox.style.display = 'none'; return; }
+          const matches = rawCollection.filter(g => g.title.toLowerCase().includes(val)).slice(0, 6);
+          if (matches.length === 0) { autoBox.style.display = 'none'; return; }
+
+          autoBox.innerHTML = matches.map(m => `<div class="autocomplete-item" data-title="${m.title}">${m.title}</div>`).join('');
+          autoBox.style.display = 'block';
+
+          autoBox.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', () => {
+              input.value = item.getAttribute('data-title');
+              autoBox.style.display = 'none';
+            });
+          });
+        });
+
+        document.getElementById('guess-submit-btn').addEventListener('click', checkAnswer);
+        document.getElementById('guess-skip-btn').addEventListener('click', () => {
+          if (stage < 4) {
+            stage++;
+            render();
+          }
+        });
+      }
+
+      function getImageStyle() {
+        if (mode === 'blur') {
+          const blurVal = (5 - stage) * 6;
+          return `max-width: 100%; max-height: 100%; object-fit: contain; filter: blur(${blurVal}px); transition: filter 0.3s ease;`;
+        } else {
+          const scaleVal = 4 - (stage - 1) * 0.8;
+          return `max-width: 100%; max-height: 100%; object-fit: contain; transform: scale(${scaleVal}); transition: transform 0.3s ease;`;
+        }
+      }
+
+      function checkAnswer() {
+        const input = document.getElementById('guess-input');
+        if (!input) return;
+        const guess = input.value.trim().toLowerCase();
+        if (guess === target.title.toLowerCase()) {
+          container.innerHTML = `
+            <div class="modal-title" style="text-align: center; color: var(--turquoise);">🎉 Correct!</div>
+            <div style="text-align: center; margin-bottom: 12px;">
+              <img src="${target.image || target.thumbnail}" style="max-height: 180px; object-fit: contain; border-radius: 8px; border: 2px solid var(--yellow);">
+              <h3 style="color: var(--yellow); margin-top: 8px;">${target.title}</h3>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="game-btn" style="flex:1;" onclick="initGuessGame(document.getElementById('arcade-game-container'))">Play Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+        } else {
+          alert("Not quite right! Try again or unlock another clue.");
+        }
+      }
+
+      render();
+    }
+
+    /* 4. CONNECTIONS */
+    function initConnections(container) {
+      let strikesLeft = 5;
+      let selectedIds = new Set();
+      let solvedGroups = [];
+      let feedbackMsg = "";
+
+      const groupThemeColors = [
+        { bg: "#fee440", text: "#0d0221" }, // Yellow
+        { bg: "#00f5d4", text: "#0d0221" }, // Turquoise
+        { bg: "#f72585", text: "#ffffff" }, // Magenta
+        { bg: "#7209b7", text: "#ffffff" }  // Purple
       ];
 
-      function render() {
-        if (!mode) {
-          container.innerHTML = `
-            <div style="text-align:center; padding:15px;">
-              <h2 style="color:var(--yellow); margin-bottom:12px;">Choose Game Mode</h2>
-              <div style="display:flex; gap:10px; justify-content:center;">
-                <button class="game-btn" onclick="setGuessMode('blur')">Pixel / Blur Mode</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="setGuessMode('zoom')">Zoom Mode</button>
-              </div>
-            </div>
-          `;
-          return;
+      function buildPuzzle() {
+        const pool = rawCollection.filter(g => !g.is_expansion);
+        const categories = {};
+
+        pool.forEach(g => {
+          (g.categories || []).forEach(c => {
+            if (!categories[c]) categories[c] = [];
+            categories[c].push(g);
+          });
+        });
+
+        const validCats = Object.keys(categories).filter(c => categories[c].length >= 4);
+        if (validCats.length < 4) {
+          return null;
         }
 
-        let isGameOver = step >= clues.length;
+        const shuffledCats = [...validCats].sort(() => 0.5 - Math.random());
+        const chosenCats = [];
+        const usedGameIds = new Set();
+        const groups = [];
 
-        let imgStyle = '';
-        if (mode === 'blur') {
-          let blurAmount = Math.max(0, (clues.length - step) * 4);
-          imgStyle = `filter: blur(${blurAmount}px);`;
-        } else {
-          let zoomScale = 1 + Math.max(0, (clues.length - step) * 0.8);
-          imgStyle = `transform: scale(${zoomScale}); transform-origin: center;`;
+        for (let cat of shuffledCats) {
+          const availableGames = categories[cat].filter(g => !usedGameIds.has(g.id));
+          if (availableGames.length >= 4) {
+            const groupGames = [...availableGames].sort(() => 0.5 - Math.random()).slice(0, 4);
+            groupGames.forEach(g => usedGameIds.add(g.id));
+            groups.push({
+              category: cat,
+              games: groupGames
+            });
+            if (groups.length === 4) break;
+          }
         }
 
-        container.innerHTML = `
-          <div class="game-board">
-            <div class="game-status-bar">
-              <span>Guess the Game (${mode.toUpperCase()})</span>
-              <span>Clue ${Math.min(step + 1, clues.length)} / ${clues.length}</span>
-              <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
-            </div>
-            
-            <div style="height:180px; overflow:hidden; border-radius:8px; border:2px solid var(--purple-border); display:flex; align-items:center; justify-content:center; background:#000;">
-              ${(isGameOver) ? `
-                <img src="${game.image || game.thumbnail}" style="max-height:100%; object-fit:contain;" />
-              ` : `
-                <img src="${game.image || game.thumbnail}" style="max-height:100%; object-fit:contain; transition:all 0.3s ease; ${imgStyle}" />
-              `}
-            </div>
-
-            <div style="background:var(--panel-bg); padding:8px 12px; border-radius:6px; font-size:0.85rem; border:1px solid var(--purple-border);">
-              <strong>Active Clues:</strong>
-              <ul style="margin-left:20px; font-size:0.8rem; color:var(--turquoise);">
-                ${clues.slice(0, step + 1).map(c => `<li>${c}</li>`).join('')}
-              </ul>
-            </div>
-
-            ${!isGameOver ? `
-              <div class="autocomplete-wrapper">
-                <input type="text" id="guess-input" autocomplete="off" placeholder="Type game title..." style="width:100%; padding:8px; border-radius:6px; background:var(--panel-bg); color:#fff; border:1px solid var(--purple-border);" oninput="onGuessInput(this.value)" />
-                <div id="autocomplete-list" class="autocomplete-list" style="display:none;"></div>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button class="game-btn" style="flex:1;" onclick="submitGuess()">Submit Guess</button>
-              </div>
-            ` : `
-              <div style="text-align:center;">
-                <h3 style="color:var(--yellow);">${game.title}</h3>
-                <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
-                  <button class="game-btn" onclick="createShareImage('Guess the Game', 'Answer: ${game.title}', ['Clues used: ${step + 1}'])">📸 Share Results</button>
-                  <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-                </div>
-              </div>
-            `}
-            <div id="guess-feedback" style="text-align:center; font-weight:bold; font-size:0.85rem;"></div>
-          </div>
-        `;
+        if (groups.length < 4) return null;
+        return groups;
       }
 
-      window.setGuessMode = function(m) { mode = m; render(); };
+      let groupsData = buildPuzzle();
+      if (!groupsData) {
+        container.innerHTML = `<div style="text-align: center; color: var(--magenta); padding: 20px;">Could not generate 4 distinct groups from your collection. Need more diverse game metadata!</div>`;
+        return;
+      }
 
-      window.onGuessInput = function(val) {
-        let listEl = document.getElementById('autocomplete-list');
-        if (!val || val.length < 2) { listEl.style.display = 'none'; return; }
-        let matches = rawCollection.filter(g => g.title.toLowerCase().includes(val.toLowerCase())).slice(0, 5);
-        if (matches.length === 0) { listEl.style.display = 'none'; return; }
-        
-        listEl.innerHTML = matches.map(m => `
-          <div class="autocomplete-item" onclick="selectAutocomplete('${m.title.replace(/'/g, "\\'")}')">${m.title}</div>
-        `).join('');
-        listEl.style.display = 'block';
-      };
-
-      window.selectAutocomplete = function(title) {
-        document.getElementById('guess-input').value = title;
-        document.getElementById('autocomplete-list').style.display = 'none';
-      };
-
-      window.submitGuess = function() {
-        let inp = document.getElementById('guess-input').value.trim();
-        if (inp.toLowerCase() === game.title.toLowerCase()) {
-          document.getElementById('guess-feedback').innerHTML = `<span style="color:var(--turquoise);">Correct! You guessed ${game.title}!</span>`;
-          step = clues.length;
-          setTimeout(render, 1200);
-        } else {
-          step++;
-          document.getElementById('guess-feedback').innerHTML = `<span style="color:var(--magenta);">Incorrect! Moving to next clue...</span>`;
-          setTimeout(render, 1200);
-        }
-      };
-
-      render();
-    }
-
-    // --- 5. CONNECTIONS ---
-    function runConnectionsGame(container) {
-      let pool = [...rawCollection].sort(() => 0.5 - Math.random()).slice(0, 16);
-      let selected = new Set();
-      let strikes = 0;
-      let solvedGroups = 0;
+      let allCards = [];
+      groupsData.forEach((grp, grpIdx) => {
+        grp.games.forEach(g => {
+          allCards.push({
+            id: g.id,
+            title: g.title,
+            groupIdx: grpIdx
+          });
+        });
+      });
+      allCards.sort(() => 0.5 - Math.random());
 
       function render() {
-        if (strikes >= 5) {
+        if (solvedGroups.length === 4) {
           container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--magenta);">Game Over! 5 Strikes Reached!</h2>
-              <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
-                <button class="game-btn" onclick="createShareImage('Connections', 'Game Over (5 Strikes)', ['Groups Solved: ${solvedGroups}/4'])">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        if (solvedGroups >= 4) {
-          container.innerHTML = `
-            <div style="text-align:center;">
-              <h2 style="color:var(--turquoise);">🎉 Connections Solved!</h2>
-              <p style="margin:8px 0;">Completed with ${strikes} strikes!</p>
-              <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
-                <button class="game-btn" onclick="createShareImage('Connections', 'Victory!', ['Strikes: ${strikes}/5'])">📸 Share Results</button>
-                <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        let strikeIcons = '❤️'.repeat(Math.max(0, 5 - strikes)) + '🖤'.repeat(strikes);
-
-        container.innerHTML = `
-          <div class="game-board">
-            <div class="game-status-bar">
-              <span>Connections</span>
-              <span>Strikes: ${strikeIcons}</span>
-              <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
-            </div>
-            <div class="conn-grid">
-              ${pool.map((g, idx) => `
-                <div class="conn-card ${selected.has(idx) ? 'selected' : ''}" onclick="toggleConn(${idx})">
-                  ${g.title}
+            <div class="modal-title" style="text-align: center; color: var(--turquoise);">🏆 Connections Solved!</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+              ${groupsData.map((grp, i) => `
+                <div style="background: ${groupThemeColors[i].bg}; color: ${groupThemeColors[i].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                  <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${grp.category}</div>
+                  <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${grp.games.map(g => g.title).join(', ')}</div>
                 </div>
               `).join('')}
             </div>
-            <div style="display:flex; gap:8px; margin-top:10px;">
-              <button class="game-btn" style="flex:1;" onclick="submitConn()">Submit Guess</button>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+              <button class="game-btn" style="flex:1;" onclick="initConnections(document.getElementById('arcade-game-container'))">Play Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
             </div>
-            <div id="conn-msg" style="text-align:center; font-size:0.85rem; font-weight:bold; min-height:22px;"></div>
-          </div>
-        `;
-      }
-
-      window.toggleConn = function(idx) {
-        if (selected.has(idx)) selected.delete(idx);
-        else if (selected.size < 4) selected.add(idx);
-        render();
-      };
-
-      window.submitConn = function() {
-        if (selected.size !== 4) {
-          document.getElementById('conn-msg').innerText = "Select exactly 4 games.";
+          `;
           return;
         }
-        let items = Array.from(selected).map(i => pool[i]);
-        let commonCat = items[0].categories.find(c => items[1].categories.includes(c) && items[2].categories.includes(c) && items[3].categories.includes(c));
 
-        if (commonCat) {
-          solvedGroups++;
-          selected.clear();
-          document.getElementById('conn-msg').innerHTML = `<span style="color:var(--turquoise);">Correct Group Found! (${commonCat})</span>`;
-          setTimeout(render, 1200);
-        } else {
-          strikes++;
-          selected.clear();
-          document.getElementById('conn-msg').innerHTML = `<span style="color:var(--magenta);">Incorrect Group! Strike added.</span>`;
-          setTimeout(render, 1200);
+        if (strikesLeft <= 0) {
+          container.innerHTML = `
+            <div class="modal-title" style="text-align: center; color: var(--magenta);">💥 Out of Guesses!</div>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Here were the correct groups:</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${groupsData.map((grp, i) => `
+                <div style="background: ${groupThemeColors[i].bg}; color: ${groupThemeColors[i].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                  <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${grp.category}</div>
+                  <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${grp.games.map(g => g.title).join(', ')}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+              <button class="game-btn" style="flex:1;" onclick="initConnections(document.getElementById('arcade-game-container'))">Try Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+          return;
         }
-      };
+
+        const remainingCards = allCards.filter(c => !solvedGroups.includes(c.groupIdx));
+
+        container.innerHTML = `
+          <div class="game-status-bar">
+            <span>🧩 Connections</span>
+            <span>Mistakes Left: ${'🔴 '.repeat(strikesLeft)}</span>
+            <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
+          </div>
+
+          ${feedbackMsg ? `<div style="text-align: center; color: var(--yellow); font-weight: bold; font-size: 0.85rem; margin-top: 6px;">${feedbackMsg}</div>` : ''}
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            ${solvedGroups.map(grpIdx => `
+              <div style="background: ${groupThemeColors[grpIdx].bg}; color: ${groupThemeColors[grpIdx].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${groupsData[grpIdx].category}</div>
+                <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${groupsData[grpIdx].games.map(g => g.title).join(', ')}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="conn-grid">
+            ${remainingCards.map(card => `
+              <div class="conn-card ${selectedIds.has(card.id) ? 'selected' : ''}" id="conn-card-${card.id}">
+                ${card.title}
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="conn-submit-btn" class="game-btn" style="flex: 2;" ${selectedIds.size !== 4 ? 'disabled style="opacity:0.5;"' : ''}>Submit Guess</button>
+            <button id="conn-deselect-btn" class="btn-primary" style="flex: 1; font-size: 0.8rem;">Deselect All</button>
+          </div>
+        `;
+
+        remainingCards.forEach(card => {
+          const el = document.getElementById(`conn-card-${card.id}`);
+          if (el) {
+            el.addEventListener('click', () => {
+              feedbackMsg = "";
+              if (selectedIds.has(card.id)) {
+                selectedIds.delete(card.id);
+              } else {
+                if (selectedIds.size < 4) selectedIds.add(card.id);
+              }
+              render();
+            });
+          }
+        });
+
+        const submitBtn = document.getElementById('conn-submit-btn');
+        if (submitBtn && selectedIds.size === 4) {
+          submitBtn.addEventListener('click', checkConnectionsGuess);
+        }
+
+        const deselectBtn = document.getElementById('conn-deselect-btn');
+        if (deselectBtn) {
+          deselectBtn.addEventListener('click', () => {
+            selectedIds.clear();
+            feedbackMsg = "";
+            render();
+          });
+        }
+      }
+
+      function checkConnectionsGuess() {
+        const selectedList = allCards.filter(c => selectedIds.has(c.id));
+        const groupCounts = {};
+
+        selectedList.forEach(c => {
+          groupCounts[c.groupIdx] = (groupCounts[c.groupIdx] || 0) + 1;
+        });
+
+        let solvedGroupIdx = null;
+        let isOneAway = false;
+
+        Object.keys(groupCounts).forEach(gIdx => {
+          if (groupCounts[gIdx] === 4) solvedGroupIdx = parseInt(gIdx);
+          if (groupCounts[gIdx] === 3) isOneAway = true;
+        });
+
+        if (solvedGroupIdx !== null) {
+          solvedGroups.push(solvedGroupIdx);
+          selectedIds.clear();
+          feedbackMsg = "✨ Group Solved!";
+        } else {
+          strikesLeft--;
+          if (isOneAway) {
+            feedbackMsg = "⚠️ One away!";
+          } else {
+            feedbackMsg = "❌ Incorrect group!";
+          }
+        }
+        render();
+      }
 
       render();
     }
 
-    // --- 6. COLLECTION CROSSWORD ---
-    function runCrosswordGame(container) {
-      let targetGame = rawCollection.find(g => g.title.length >= 4 && g.title.length <= 8) || rawCollection[0];
-      let word = targetGame.title.toUpperCase().replace(/[^A-Z]/g, '');
+    /* 5. 4X3 GAME */
+    function initGlipped(container) {
+      let strikesLeft = 4;
+      let selectedIds = new Set();
+      let solvedSetIndices = [];
+      let feedbackMsg = "";
 
-      container.innerHTML = `
-        <div class="game-board">
+      const setColors = [
+        { bg: "#fee440", text: "#0d0221" }, // Yellow
+        { bg: "#00f5d4", text: "#0d0221" }, // Turquoise
+        { bg: "#f72585", text: "#ffffff" }, // Magenta
+        { bg: "#7209b7", text: "#ffffff" }  // Purple
+      ];
+
+      function buildGlippedPuzzle() {
+        const pool = rawCollection.filter(g => !g.is_expansion);
+        const categories = {};
+
+        pool.forEach(g => {
+          (g.categories || []).forEach(c => {
+            if (!categories[c]) categories[c] = [];
+            categories[c].push(g);
+          });
+        });
+
+        const validCats = Object.keys(categories).filter(c => categories[c].length >= 3);
+        if (validCats.length < 4) return null;
+
+        const shuffledCats = [...validCats].sort(() => 0.5 - Math.random());
+        const chosenSets = [];
+        const usedGameIds = new Set();
+
+        for (let cat of shuffledCats) {
+          const availableGames = categories[cat].filter(g => !usedGameIds.has(g.id));
+          if (availableGames.length >= 3) {
+            const setGames = [...availableGames].sort(() => 0.5 - Math.random()).slice(0, 3);
+            setGames.forEach(g => usedGameIds.add(g.id));
+            chosenSets.push({
+              category: cat,
+              games: setGames
+            });
+            if (chosenSets.length === 4) break;
+          }
+        }
+
+        if (chosenSets.length < 4) return null;
+        return chosenSets;
+      }
+
+      let setData = buildGlippedPuzzle();
+      if (!setData) {
+        container.innerHTML = `<div style="text-align: center; color: var(--magenta); padding: 20px;">Could not generate 4 distinct 3-game sets from your collection. Need more diverse game metadata!</div>`;
+        return;
+      }
+
+      let allGridCards = [];
+      setData.forEach((s, setIdx) => {
+        s.games.forEach(g => {
+          allGridCards.push({
+            id: g.id,
+            title: g.title,
+            setIdx: setIdx
+          });
+        });
+      });
+      allGridCards.sort(() => 0.5 - Math.random());
+
+      function render() {
+        if (solvedSetIndices.length === 4) {
+          container.innerHTML = `
+            <div class="modal-title" style="text-align: center; color: var(--turquoise);">🏆 4X3 Solved!</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+              ${setData.map((s, i) => `
+                <div style="background: ${setColors[i].bg}; color: ${setColors[i].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                  <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${s.category}</div>
+                  <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${s.games.map(g => g.title).join(', ')}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+              <button class="game-btn" style="flex:1;" onclick="initGlipped(document.getElementById('arcade-game-container'))">Play Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+          return;
+        }
+
+        if (strikesLeft <= 0) {
+          container.innerHTML = `
+            <div class="modal-title" style="text-align: center; color: var(--magenta);">💥 Out of Guesses!</div>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Here were the correct sets:</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${setData.map((s, i) => `
+                <div style="background: ${setColors[i].bg}; color: ${setColors[i].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                  <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${s.category}</div>
+                  <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${s.games.map(g => g.title).join(', ')}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+              <button class="game-btn" style="flex:1;" onclick="initGlipped(document.getElementById('arcade-game-container'))">Try Again</button>
+              <button class="btn-primary" style="flex:1;" onclick="returnToArcadeMenu()">Arcade Menu</button>
+            </div>
+          `;
+          return;
+        }
+
+        const remainingCards = allGridCards.filter(c => !solvedSetIndices.includes(c.setIdx));
+
+        container.innerHTML = `
           <div class="game-status-bar">
-            <span>Collection Crossword</span>
-            <button onclick="returnToArcadeMenu()" style="padding:2px 8px; font-size:0.75rem;">Menu</button>
+            <span>🌀 4X3 Grid</span>
+            <span>Mistakes Left: ${'🔴 '.repeat(strikesLeft)}</span>
+            <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
           </div>
-          <div style="background:var(--panel-bg); padding:10px; border-radius:8px; font-size:0.85rem; border:1px solid var(--purple-border);">
-            <strong>Clue Across:</strong> ${targetGame.description ? targetGame.description.slice(0, 120) + '...' : 'Popular game in your collection.'}
-          </div>
-          
-          <div class="crossword-board" style="grid-template-columns: repeat(${word.length}, 32px);">
-            ${word.split('').map((char, i) => `
-              <input class="crossword-cell" maxlength="1" id="cw-cell-${i}" autocomplete="off" />
+
+          ${feedbackMsg ? `<div style="text-align: center; color: var(--yellow); font-weight: bold; font-size: 0.85rem; margin-top: 6px;">${feedbackMsg}</div>` : ''}
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            ${solvedSetIndices.map(sIdx => `
+              <div style="background: ${setColors[sIdx].bg}; color: ${setColors[sIdx].text}; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center;">
+                <div style="text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">${setData[sIdx].category}</div>
+                <div style="font-size: 0.75rem; font-weight: normal; margin-top: 2px;">${setData[sIdx].games.map(g => g.title).join(', ')}</div>
+              </div>
             `).join('')}
           </div>
 
-          <div style="display:flex; gap:8px;">
-            <button class="game-btn" style="flex:1;" onclick="checkCrossword()">Check Answers</button>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;">
+            ${remainingCards.map(card => `
+              <div class="conn-card ${selectedIds.has(card.id) ? 'selected' : ''}" id="4x3-card-${card.id}">
+                ${card.title}
+              </div>
+            `).join('')}
           </div>
-          <div id="cw-msg" style="text-align:center; font-weight:bold; font-size:0.85rem;"></div>
-        </div>
-      `;
 
-      window.checkCrossword = function() {
-        let entered = '';
-        for (let i = 0; i < word.length; i++) {
-          entered += (document.getElementById(`cw-cell-${i}`).value || '').toUpperCase();
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="4x3-submit-btn" class="game-btn" style="flex: 2;" ${selectedIds.size !== 3 ? 'disabled style="opacity:0.5;"' : ''}>Submit Set</button>
+            <button id="4x3-deselect-btn" class="btn-primary" style="flex: 1; font-size: 0.8rem;">Deselect All</button>
+          </div>
+        `;
+
+        remainingCards.forEach(card => {
+          const el = document.getElementById(`4x3-card-${card.id}`);
+          if (el) {
+            el.addEventListener('click', () => {
+              feedbackMsg = "";
+              if (selectedIds.has(card.id)) {
+                selectedIds.delete(card.id);
+              } else {
+                if (selectedIds.size < 3) selectedIds.add(card.id);
+              }
+              render();
+            });
+          }
+        });
+
+        const submitBtn = document.getElementById('4x3-submit-btn');
+        if (submitBtn && selectedIds.size === 3) {
+          submitBtn.addEventListener('click', checkGlippedGuess);
         }
 
-        if (entered === word) {
-          document.getElementById('cw-msg').innerHTML = `
-            <div style="color:var(--turquoise); margin-bottom:8px;">🎉 Perfect! Solved: ${targetGame.title}</div>
-            <div style="display:flex; gap:8px; justify-content:center;">
-              <button class="game-btn" onclick="createShareImage('Crossword', 'Solved: ${targetGame.title}', ['Word Length: ${word.length} Letters'])">📸 Share Results</button>
-              <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="returnToArcadeMenu()">🎮 Return to Games Menu</button>
-            </div>
-          `;
+        const deselectBtn = document.getElementById('4x3-deselect-btn');
+        if (deselectBtn) {
+          deselectBtn.addEventListener('click', () => {
+            selectedIds.clear();
+            feedbackMsg = "";
+            render();
+          });
+        }
+      }
+
+      function checkGlippedGuess() {
+        const selectedList = allGridCards.filter(c => selectedIds.has(c.id));
+        const setCounts = {};
+
+        selectedList.forEach(c => {
+          setCounts[c.setIdx] = (setCounts[c.setIdx] || 0) + 1;
+        });
+
+        let solvedIdx = null;
+        Object.keys(setCounts).forEach(sIdx => {
+          if (setCounts[sIdx] === 3) solvedIdx = parseInt(sIdx);
+        });
+
+        if (solvedIdx !== null) {
+          solvedSetIndices.push(solvedIdx);
+          selectedIds.clear();
+          feedbackMsg = "✨ Set Solved!";
         } else {
-          document.getElementById('cw-msg').innerHTML = `<span style="color:var(--magenta);">Incorrect answers! Try again.</span>`;
+          strikesLeft--;
+          feedbackMsg = "❌ Incorrect set!";
         }
-      };
+        render();
+      }
+
+      render();
+    }
+
+    /* 6. REAL CROSSWORD PUZZLE */
+    function initCrossword(container) {
+      const candidates = rawCollection.filter(g => !g.is_expansion && g.title.length >= 3 && g.title.length <= 10 && /^[A-Za-z0-9\s]+$/.test(g.title));
+      
+      if (candidates.length < 3) {
+        container.innerHTML = `<div style="text-align: center; color: var(--magenta); padding: 20px;">Not enough titles suitable for crossword generation!</div>`;
+        return;
+      }
+
+      const gridDim = 11;
+      let grid = Array(gridDim).fill(null).map(() => Array(gridDim).fill(''));
+      let wordsPlaced = [];
+
+      function placeWords() {
+        const shuffled = [...candidates].sort(() => 0.5 - Math.random());
+        
+        for (let game of shuffled) {
+          const cleanWord = game.title.replace(/[^A-Za-z]/g, '').toUpperCase();
+          if (cleanWord.length < 3 || cleanWord.length > 9) continue;
+
+          if (wordsPlaced.length === 0) {
+            const startRow = 5;
+            const startCol = Math.floor((gridDim - cleanWord.length) / 2);
+            for (let i = 0; i < cleanWord.length; i++) {
+              grid[startRow][startCol + i] = cleanWord[i];
+            }
+            wordsPlaced.push({
+              game: game,
+              word: cleanWord,
+              row: startRow,
+              col: startCol,
+              direction: 'H',
+              num: 1,
+              clue: `Published in ${game.year || 'N/A'} by ${game.publisher}`
+            });
+          } else {
+            let placed = false;
+            for (let pWord of wordsPlaced) {
+              if (placed) break;
+              for (let i = 0; i < cleanWord.length; i++) {
+                if (placed) break;
+                for (let j = 0; j < pWord.word.length; j++) {
+                  if (cleanWord[i] === pWord.word[j]) {
+                    const intersectRow = pWord.direction === 'H' ? pWord.row : pWord.row + j;
+                    const intersectCol = pWord.direction === 'H' ? pWord.col + j : pWord.col;
+
+                    const newDir = pWord.direction === 'H' ? 'V' : 'H';
+                    const newStartRow = newDir === 'V' ? intersectRow - i : intersectRow;
+                    const newStartCol = newDir === 'H' ? intersectCol - i : intersectCol;
+
+                    if (canPlace(cleanWord, newStartRow, newStartCol, newDir)) {
+                      for (let k = 0; k < cleanWord.length; k++) {
+                        const r = newDir === 'V' ? newStartRow + k : newStartRow;
+                        const c = newDir === 'H' ? newStartCol + k : newStartCol;
+                        grid[r][c] = cleanWord[k];
+                      }
+                      wordsPlaced.push({
+                        game: game,
+                        word: cleanWord,
+                        row: newStartRow,
+                        col: newStartCol,
+                        direction: newDir,
+                        num: wordsPlaced.length + 1,
+                        clue: `Published in ${game.year || 'N/A'} by ${game.publisher}`
+                      });
+                      placed = true;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (wordsPlaced.length >= 4) break;
+        }
+      }
+
+      function canPlace(word, row, col, dir) {
+        if (row < 0 || col < 0) return false;
+        if (dir === 'H' && col + word.length > gridDim) return false;
+        if (dir === 'V' && row + word.length > gridDim) return false;
+
+        for (let i = 0; i < word.length; i++) {
+          const r = dir === 'V' ? row + i : row;
+          const c = dir === 'H' ? col + i : col;
+          if (grid[r][c] !== '' && grid[r][c] !== word[i]) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      placeWords();
+
+      if (wordsPlaced.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--magenta); padding: 20px;">Could not generate crossword layout. Try re-opening!</div>`;
+        return;
+      }
+
+      function render() {
+        container.innerHTML = `
+          <div class="game-status-bar">
+            <span>✏️ Collection Crossword</span>
+            <button class="expansion-close-btn" onclick="returnToArcadeMenu()">Exit</button>
+          </div>
+
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px;">
+            <div class="crossword-board" style="grid-template-columns: repeat(${gridDim}, 32px);">
+              ${grid.map((rowArr, rIdx) => 
+                rowArr.map((cellChar, cIdx) => {
+                  if (!cellChar) return `<div class="crossword-cell empty"></div>`;
+                  return `<input type="text" maxlength="1" class="crossword-cell" data-row="${rIdx}" data-col="${cIdx}" data-ans="${cellChar}">`;
+                }).join('')
+              ).join('')}
+            </div>
+
+            <div style="flex: 1; min-width: 200px; max-height: 380px; overflow-y: auto; background: var(--panel-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--purple-border);">
+              <div style="color: var(--yellow); font-weight: 900; margin-bottom: 8px;">CLUES</div>
+              ${wordsPlaced.map(w => `
+                <div style="font-size: 0.8rem; margin-bottom: 8px; color: var(--text-muted);">
+                  <strong style="color: var(--turquoise);">${w.num}. (${w.direction === 'H' ? 'Across' : 'Down'})</strong> ${w.clue}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button id="cw-check-btn" class="game-btn" style="flex: 1;">Check Puzzle</button>
+            <button id="cw-reveal-btn" class="btn-primary" style="flex: 1;">Reveal Answers</button>
+          </div>
+        `;
+
+        document.getElementById('cw-check-btn').addEventListener('click', () => {
+          let allCorrect = true;
+          const inputs = container.querySelectorAll('.crossword-cell:not(.empty)');
+          inputs.forEach(inp => {
+            const ans = inp.getAttribute('data-ans');
+            const val = inp.value.toUpperCase();
+            if (val === ans) {
+              inp.style.borderColor = 'var(--turquoise)';
+              inp.style.color = 'var(--turquoise)';
+            } else {
+              inp.style.borderColor = 'var(--magenta)';
+              inp.style.color = 'var(--magenta)';
+              allCorrect = false;
+            }
+          });
+          if (allCorrect) alert("🎉 Congratulations! You solved the crossword!");
+        });
+
+        document.getElementById('cw-reveal-btn').addEventListener('click', () => {
+          const inputs = container.querySelectorAll('.crossword-cell:not(.empty)');
+          inputs.forEach(inp => {
+            inp.value = inp.getAttribute('data-ans');
+            inp.style.borderColor = 'var(--yellow)';
+            inp.style.color = 'var(--yellow)';
+          });
+        });
+      }
+
+      render();
     }
   </script>
 </body>
 </html>
 """
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    print("--- STARTING FLASK DEVELOPMENT SERVER ---")
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
