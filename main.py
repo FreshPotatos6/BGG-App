@@ -1306,7 +1306,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="header-actions-top">
         <button id="luck-btn" class="btn-luck" title="Pick Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Pick Game</span><span class="btn-text-play-mobile">Pick</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="btn-icon">⚙️ </span>Filters</button>
-        <button id="header-clear-btn" class="btn-clear-filters" title="Reset All Filters"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
+        <button id="header-clear-btn" class="btn-clear-filters" title="Reset to Page Load"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
         <select id="sort-select">
           <option value="popularity_owned" selected>Popularity</option>
           <option value="title">Title</option>
@@ -1615,7 +1615,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <button id="reset-filters-btn" style="width: 100%;">Reset All Filters</button>
+      <button id="reset-filters-btn" style="width: 100%;">Reset to Page Load</button>
 
     </aside>
 
@@ -2082,54 +2082,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       renderGames();
     }
     
-    function resetAllFilters() {
-      pMin.value = 1; pMax.value = 10; updatePlayerDisplay();
-      wMin.value = 1.0; wMax.value = 5.0; updateWeightDisplay();
-      tMin.value = 0; tMax.value = 300; updateTimeDisplay();
-      bMin.value = 1; bMax.value = 10; updateBggDisplay();
-      lMin.value = 0; lMax.value = 10; updateLukeDisplay();
-      yMin.value = 0; yMax.value = 28; updateYearDisplay();
-
-      document.getElementById('filter-played').checked = false;
-      document.getElementById('filter-unplayed').checked = false;
-      
-      // Explicitly restore initial page-load defaults
-      document.getElementById('filter-standalone').checked = true;
-      document.getElementById('filter-expansions').checked = false;
-      document.getElementById('filter-campaign').checked = false;
-
-      selectedPlayerCounts.clear();
-      selectedStyles.clear();
-      selectedMajorAwards.clear();
-      selectedMinorAwards.clear();
-      selectedThemes.clear();
-      selectedCategories.clear();
-      selectedMechanics.clear();
-      selectedPublishers.clear();
-      selectedDesigners.clear();
-      selectedArtists.clear();
-
-      document.querySelectorAll('.style-item input[type="checkbox"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
-
-      updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
-      updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
-      updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
-      updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
-      updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
-      updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
-      updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
-      updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
-
-      if (globalSearch) globalSearch.value = "";
-      if (globalSearchMobile) globalSearchMobile.value = "";
-
-      applyFilters();
+    function resetToPageLoad() {
+      window.location.reload();
     }
 
-    resetBtn.addEventListener('click', resetAllFilters);
-    headerClearBtn.addEventListener('click', resetAllFilters);
+    resetBtn.addEventListener('click', resetToPageLoad);
+    headerClearBtn.addEventListener('click', resetToPageLoad);
 
     function renderGames() {
       grid.innerHTML = '';
@@ -2274,6 +2232,152 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       return card;
     }
 
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      const pCountText = game.min_players === game.max_players ? `${game.min_players}` : `${game.min_players}-${game.max_players}`;
+      const timeText = game.playing_time_raw ? game.playing_time_raw.replace(/\s*min\.?/gi, '') : `${game.playing_time}`;
+
+      let categoriesHtml = (game.categories && game.categories.length)
+        ? game.categories.map(c => `<span class="clickable-tag" onclick="filterByTag('category', '${c.replace(/'/g, "\\'")}')">${c}</span>`).join(' ')
+        : 'None';
+
+      let mechanicsHtml = (game.mechanics && game.mechanics.length)
+        ? game.mechanics.map(m => `<span class="clickable-tag" onclick="filterByTag('mechanic', '${m.replace(/'/g, "\\'")}')">${m}</span>`).join(' ')
+        : 'None';
+
+      let themesHtml = (game.themes && game.themes.length)
+        ? game.themes.map(t => `<span class="clickable-tag" onclick="filterByTag('theme', '${t.replace(/'/g, "\\'")}')">${t}</span>`).join(' ')
+        : 'None';
+
+      let majorAwardsHtml = (game.major_awards && game.major_awards.length)
+        ? game.major_awards.map(a => `<span class="clickable-tag" onclick="filterByTag('major_award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
+        : '';
+
+      let minorAwardsHtml = (game.minor_awards && game.minor_awards.length)
+        ? game.minor_awards.map(a => `<span class="clickable-tag" onclick="filterByTag('minor_award', '${a.replace(/'/g, "\\'")}')">${a}</span>`).join(' ')
+        : '';
+
+      detailModalContent.innerHTML = `
+        <div class="modal-title">${game.title}</div>
+        
+        <div style="height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px;">
+          <img src="${game.image || game.thumbnail}" alt="${game.title}" style="max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));">
+        </div>
+
+        <div class="meta-tags-grid">
+          <div><strong>👥 Players:</strong> ${pCountText}</div>
+          <div><strong>⏱️ Playtime:</strong> ${timeText} min</div>
+          <div><strong>⚖️ Weight:</strong> ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
+          <div><strong>📅 Year:</strong> ${game.year > 0 ? game.year : 'N/A'}</div>
+          <div><strong>⭐ BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
+          <div><strong>🏆 Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating : 'N/A'}</div>
+          <div><strong>🎮 Plays Recorded:</strong> ${game.plays_recorded}</div>
+          <div><strong>🕹️ Mode:</strong> ${game.game_mode || 'N/A'}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Publisher:</strong> <span class="clickable-tag" onclick="filterByTag('publisher', '${(game.publisher || '').replace(/'/g, "\\'")}')">${game.publisher || 'Unknown'}</span>
+        </div>
+
+        <div class="detail-section">
+          <strong>Designer:</strong> <span class="clickable-tag" onclick="filterByTag('designer', '${(game.designer || '').replace(/'/g, "\\'")}')">${game.designer || 'Unknown'}</span>
+        </div>
+
+        <div class="detail-section">
+          <strong>Artist:</strong> <span class="clickable-tag" onclick="filterByTag('artist', '${(game.artist || '').replace(/'/g, "\\'")}')">${game.artist || 'Unknown'}</span>
+        </div>
+
+        ${majorAwardsHtml ? `<div class="detail-section"><strong>🥇 Major Awards:</strong> <div>${majorAwardsHtml}</div></div>` : ''}
+        ${minorAwardsHtml ? `<div class="detail-section"><strong>🏅 Minor Awards:</strong> <div>${minorAwardsHtml}</div></div>` : ''}
+
+        <div class="detail-section">
+          <strong>Themes:</strong> <div>${themesHtml}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Categories:</strong> <div>${categoriesHtml}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Mechanics:</strong> <div>${mechanicsHtml}</div>
+        </div>
+
+        <div class="detail-section">
+          <strong>Description:</strong>
+          <div id="modal-description-text" class="description-text">${game.description || 'No description available.'}</div>
+          <button id="modal-read-more-btn" class="read-more-btn" onclick="toggleDescription()">Read More</button>
+        </div>
+
+        ${game.id ? `<a href="https://boardgamegeek.com/boardgame/${game.id}" target="_blank" rel="noopener noreferrer" class="bgg-link-btn">View on BoardGameGeek ↗</a>` : ''}
+      `;
+
+      detailModal.classList.add('open');
+
+      setTimeout(() => {
+        const descEl = document.getElementById('modal-description-text');
+        const readMoreBtn = document.getElementById('modal-read-more-btn');
+        if (descEl && readMoreBtn) {
+          if (descEl.scrollHeight <= descEl.clientHeight) {
+            readMoreBtn.style.display = 'none';
+          }
+        }
+      }, 50);
+    }
+
+    function toggleDescription() {
+      const descEl = document.getElementById('modal-description-text');
+      const readMoreBtn = document.getElementById('modal-read-more-btn');
+      if (descEl.classList.contains('expanded')) {
+        descEl.classList.remove('expanded');
+        readMoreBtn.innerText = 'Read More';
+      } else {
+        descEl.classList.add('expanded');
+        readMoreBtn.innerText = 'Show Less';
+      }
+    }
+
+    function filterByTag(type, value) {
+      if (!value || value === 'Unknown' || value === 'None') return;
+
+      closeDetailModal();
+
+      if (type === 'publisher') {
+        selectedPublishers.clear();
+        selectedPublishers.add(value);
+        updateDropdownToggleLabel(document.getElementById('pub-toggle'), selectedPublishers, 'Publishers');
+      } else if (type === 'designer') {
+        selectedDesigners.clear();
+        selectedDesigners.add(value);
+        updateDropdownToggleLabel(document.getElementById('des-toggle'), selectedDesigners, 'Designers');
+      } else if (type === 'artist') {
+        selectedArtists.clear();
+        selectedArtists.add(value);
+        updateDropdownToggleLabel(document.getElementById('art-toggle'), selectedArtists, 'Artists');
+      } else if (type === 'category') {
+        selectedCategories.clear();
+        selectedCategories.add(value);
+        updateDropdownToggleLabel(document.getElementById('cat-toggle'), selectedCategories, 'Categories');
+      } else if (type === 'mechanic') {
+        selectedMechanics.clear();
+        selectedMechanics.add(value);
+        updateDropdownToggleLabel(document.getElementById('mech-toggle'), selectedMechanics, 'Mechanics');
+      } else if (type === 'theme') {
+        selectedThemes.clear();
+        selectedThemes.add(value);
+        updateDropdownToggleLabel(document.getElementById('theme-toggle'), selectedThemes, 'Themes');
+      } else if (type === 'major_award') {
+        selectedMajorAwards.clear();
+        selectedMajorAwards.add(value);
+        updateDropdownToggleLabel(document.getElementById('major-award-toggle'), selectedMajorAwards, 'Major Awards');
+      } else if (type === 'minor_award') {
+        selectedMinorAwards.clear();
+        selectedMinorAwards.add(value);
+        updateDropdownToggleLabel(document.getElementById('minor-award-toggle'), selectedMinorAwards, 'Minor Awards');
+      }
+
+      applyFilters();
+    }
+
     function closeDetailModal() {
       detailModal.classList.remove('open');
       currentDetailGame = null;
@@ -2325,10 +2429,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         toggleSidebar();
       }
     });
+
+    if (modalCloseBtn) {
+      modalCloseBtn.addEventListener('click', closeLuckModal);
+    }
   </script>
 </body>
 </html>
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
