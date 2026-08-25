@@ -2279,14 +2279,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           e.stopPropagation();
           card.classList.toggle('show-expansions');
         };
-        imgWrapper.appendChild(expBtn);
-      }
-
-      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
-        const medalBadge = document.createElement('div');
-        medalBadge.className = 'medal-icon-badge';
-        medalBadge.innerHTML = '🏆';
-        imgWrapper.appendChild(medalBadge);
+imgWrapper.appendChild(expBtn);
       }
 
       const img = document.createElement('img');
@@ -2295,31 +2288,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       img.loading = 'lazy';
       imgWrapper.appendChild(img);
 
-      const overlay = document.createElement('div');
-      overlay.className = 'expansions-overlay';
-      
-      const expHeader = document.createElement('div');
-      expHeader.className = 'expansions-header';
-      expHeader.innerHTML = `<span>Expansions</span>`;
-      
-      const closeExpBtn = document.createElement('button');
-      closeExpBtn.className = 'expansion-close-btn';
-      closeExpBtn.innerText = '✕ Close';
-      closeExpBtn.onclick = (e) => {
-        e.stopPropagation();
-        card.classList.remove('show-expansions');
-      };
-      expHeader.appendChild(closeExpBtn);
-      overlay.appendChild(expHeader);
+      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
+        const medalBadge = document.createElement('div');
+        medalBadge.className = 'medal-icon-badge';
+        medalBadge.innerText = '🏆';
+        medalBadge.title = 'Award Winner';
+        imgWrapper.appendChild(medalBadge);
+      }
 
-      const childExpansions = rawCollection.filter(g => g.is_expansion && String(g.parent_game_id) === String(game.id));
-      childExpansions.forEach(exp => {
-        const expDiv = document.createElement('div');
-        expDiv.className = 'expansion-item';
-        expDiv.innerHTML = `<div class="expansion-title">${exp.title}</div><div style="color:var(--text-muted);">${exp.year ? exp.year : ''}</div>`;
-        overlay.appendChild(expDiv);
-      });
-      imgWrapper.appendChild(overlay);
+      card.appendChild(imgWrapper);
 
       const content = document.createElement('div');
       content.className = 'card-content';
@@ -2332,650 +2309,104 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       const stats = document.createElement('div');
       stats.className = 'game-stats';
       stats.innerHTML = `
-        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
-        <div class="stat-badge">⏱️ ${game.playing_time}m</div>
+        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : `${game.min_players}-${game.max_players}`}</div>
+        <div class="stat-badge">⏱️ ${game.playing_time_raw}m</div>
         <div class="stat-badge">⚖️ ${game.weight.toFixed(1)}</div>
         <div class="stat-badge">📅 ${game.year || 'N/A'}</div>
       `;
       content.appendChild(stats);
-
-      card.appendChild(imgWrapper);
       card.appendChild(content);
 
-      card.addEventListener('click', () => openDetailModal(game));
+      if (hasExpansions) {
+        const overlay = document.createElement('div');
+        overlay.className = 'expansions-overlay';
+        
+        const expHeader = document.createElement('div');
+        expHeader.className = 'expansions-header';
+        expHeader.innerHTML = `<span>Expansions</span>`;
+        
+        const closeExpBtn = document.createElement('button');
+        closeExpBtn.className = 'expansion-close-btn';
+        closeExpBtn.innerText = '✕ Close';
+        closeExpBtn.onclick = (e) => {
+          e.stopPropagation();
+          card.classList.remove('show-expansions');
+        };
+        expHeader.appendChild(closeExpBtn);
+        overlay.appendChild(expHeader);
+
+        const childExpansions = rawCollection.filter(g => g.is_expansion && String(g.parent_game_id) === String(game.id));
+        childExpansions.forEach(exp => {
+          const expItem = document.createElement('div');
+          expItem.className = 'expansion-item';
+          expItem.innerHTML = `<div class="expansion-title">${exp.title}</div>`;
+          overlay.appendChild(expItem);
+        });
+
+        card.appendChild(overlay);
+      }
+
+      card.onclick = () => openDetailModal(game);
 
       return card;
     }
 
     function openDetailModal(game) {
       currentDetailGame = game;
-      let awardsHtml = '';
-      if (game.major_awards && game.major_awards.length > 0) {
-        awardsHtml += `<div style="margin-top:8px;"><strong>Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
-      }
-      if (game.minor_awards && game.minor_awards.length > 0) {
-        awardsHtml += `<div style="margin-top:4px;"><strong>Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
-      }
-
       detailModalContent.innerHTML = `
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
-          <img src="${game.image || game.thumbnail}" style="max-width:180px; height:auto; border-radius:8px; object-fit:contain;" />
-          <div style="flex:1; min-width:200px;">
-            <div class="modal-title">${game.title}</div>
-            <div><strong>Year:</strong> ${game.year || 'N/A'}</div>
-            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
-            <div><strong>Playtime:</strong> ${game.playing_time} mins</div>
-            <div><strong>Weight:</strong> ${game.weight.toFixed(1)} / 5.0</div>
-            <div><strong>BGG Rating:</strong> ${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-            <div><strong>Luke's Rating:</strong> ${game.user_rating ? game.user_rating.toFixed(1) : 'N/A'}</div>
+        <div class="modal-title">${game.title} (${game.year || 'N/A'})</div>
+        <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+          <img src="${game.image || game.thumbnail || ''}" style="max-width: 180px; max-height: 220px; object-fit: contain; border-radius: 8px;">
+          <div style="flex: 1; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px;">
             <div><strong>Publisher:</strong> ${game.publisher}</div>
             <div><strong>Designer:</strong> ${game.designer}</div>
+            <div><strong>Artist:</strong> ${game.artist}</div>
+            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
+            <div><strong>Playtime:</strong> ${game.playing_time_raw} mins</div>
+            <div><strong>Weight:</strong> ${game.weight.toFixed(2)} / 5</div>
+            <div><strong>BGG Rating:</strong> ${game.bgg_rating.toFixed(1)}</div>
+            <div><strong>Luke's Rating:</strong> ${game.user_rating.toFixed(1)}</div>
           </div>
         </div>
-        ${awardsHtml}
-        <div style="margin-top:14px; line-height:1.4; font-size:0.9rem; color:var(--text-muted);">${game.description}</div>
+        <p style="font-size: 0.88rem; line-height: 1.4; color: var(--text-muted);">${game.description}</p>
       `;
       detailModal.classList.add('open');
     }
 
     function closeDetailModal() { detailModal.classList.remove('open'); }
+    function closeLuckModal() { luckModal.classList.remove('open'); }
 
-    luckBtn.addEventListener('click', pickRandomGame);
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
+    luckBtn.addEventListener('click', () => {
+      if (currentlyFilteredGames.length === 0) return;
+      const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
+      modalContent.innerHTML = `
+        <div style="text-align: center;">
+          <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 200px; max-width: 100%; object-fit: contain; margin-bottom: 12px;">
+          <h2 style="color: var(--yellow); font-size: 1.4rem; font-weight: 800;">${randomGame.title}</h2>
+          <p style="color: var(--turquoise); font-weight: bold; margin-top: 6px;">${randomGame.min_players}-${randomGame.max_players} Players | ${randomGame.playing_time_raw} mins | Weight: ${randomGame.weight.toFixed(1)}</p>
+        </div>
+      `;
+      luckModal.classList.add('open');
+    });
+
+    modalTryAgainBtn.addEventListener('click', () => luckBtn.click());
     modalChangeFiltersBtn.addEventListener('click', () => {
       closeLuckModal();
       openSidebarFromExtras();
     });
 
-    function closeLuckModal() { luckModal.classList.remove('open'); }
-
-    function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<p style="text-align:center; color:var(--magenta);">No games match your active filters!</p>`;
-      } else {
-        const randIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const game = currentlyFilteredGames[randIndex];
-        modalContent.innerHTML = `
-          <div style="text-align:center;">
-            <img src="${game.image || game.thumbnail}" style="max-height:160px; object-fit:contain; border-radius:8px; margin-bottom:12px;" />
-            <h3 style="color:var(--yellow); font-size:1.3rem;">${game.title}</h3>
-            <p style="color:var(--turquoise); margin-top:6px;">⏱️ ${game.playing_time} mins | 👥 ${game.min_players}-${game.max_players} | ⚖️ ${game.weight.toFixed(1)}</p>
-          </div>
-        `;
-      }
-      luckModal.classList.add('open');
-    }
-
-    /* ==========================================================================
-       EXTRAS MODULE GAMES CODE (Tier Maker, Blind Ranking, Higher/Lower, Guess)
-       ========================================================================== */
-
-lukeBadge.innerText = game.user_rating.toFixed(1);
-        lukeBadge.title = "Luke's Rating";
-        badgeTopLeft.appendChild(lukeBadge);
-      }
-
-      imgWrapper.appendChild(badgeTopLeft);
-
-      const expList = games.filter(g => g.is_expansion && g.parent_game_id === game.id);
-      if (expList.length > 0) {
-        const expBtn = document.createElement('button');
-        expBtn.className = 'expansion-icon-btn';
-        expBtn.title = `${expList.length} Expansion(s) Owned`;
-        expBtn.innerHTML = `
-          <svg viewBox="0 0 24 24">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-          </svg>
-        `;
-        expBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          card.classList.toggle('show-expansions');
-        });
-        imgWrapper.appendChild(expBtn);
-      }
-
-      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
-        const medalBadge = document.createElement('div');
-        medalBadge.className = 'medal-icon-badge';
-        medalBadge.innerText = '🏅';
-        const allAwards = [...(game.major_awards || []), ...(game.minor_awards || [])].join(', ');
-        medalBadge.title = `Award Winner: ${allAwards}`;
-        imgWrapper.appendChild(medalBadge);
-      }
-
-      const img = document.createElement('img');
-      img.src = game.image || game.thumbnail || '';
-      img.alt = game.title;
-      img.loading = 'lazy';
-      imgWrapper.appendChild(img);
-
-      const overlay = document.createElement('div');
-      overlay.className = 'expansions-overlay';
-      
-      const overlayHeader = document.createElement('div');
-      overlayHeader.className = 'expansions-header';
-      overlayHeader.innerHTML = `<span>Expansions (${expList.length})</span>`;
-      
-      const closeExpBtn = document.createElement('button');
-      closeExpBtn.className = 'expansion-close-btn';
-      closeExpBtn.innerText = '✕ Close';
-      closeExpBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        card.classList.remove('show-expansions');
-      });
-      overlayHeader.appendChild(closeExpBtn);
-      overlay.appendChild(overlayHeader);
-
-      expList.forEach(exp => {
-        const expItem = document.createElement('div');
-        expItem.className = 'expansion-item';
-        expItem.innerHTML = `
-          <div class="expansion-title">${exp.title} (${exp.year})</div>
-          <div style="color: var(--text-muted); font-size: 0.7rem;">
-            Luke: ${exp.user_rating > 0 ? exp.user_rating : 'N/A'} | BGG: ${exp.bgg_rating > 0 ? exp.bgg_rating : 'N/A'}
-          </div>
-        `;
-        overlay.appendChild(expItem);
-      });
-
-      imgWrapper.appendChild(overlay);
-      card.appendChild(imgWrapper);
-
-      const content = document.createElement('div');
-      content.className = 'card-content';
-
-      const titleEl = document.createElement('div');
-      titleEl.className = 'game-title';
-      titleEl.innerText = game.title;
-      content.appendChild(titleEl);
-
-      const stats = document.createElement('div');
-      stats.className = 'game-stats';
-
-      const pCountText = game.min_players === game.max_players ? `${game.min_players}p` : `${game.min_players}-${game.max_players}p`;
-      const timeText = game.playing_time > 0 ? `${game.playing_time}m` : 'N/A';
-
-      stats.innerHTML = `
-        <div class="stat-badge">👥 ${pCountText}</div>
-        <div class="stat-badge">⏱️ ${timeText}</div>
-        <div class="stat-badge">⚖️ ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
-        <div class="stat-badge">📅 ${game.year > 0 ? game.year : 'N/A'}</div>
-      `;
-
-      content.appendChild(stats);
-      card.appendChild(content);
-
-      card.addEventListener('click', () => { openDetailModal(game); });
-
-      return card;
-    }
-
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      const expList = games.filter(g => g.is_expansion && g.parent_game_id === game.id);
-
-      let awardsHTML = '';
-      if (game.major_awards && game.major_awards.length > 0) {
-        awardsHTML += `<div style="margin-top:6px;"><strong>🏆 Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
-      }
-      if (game.minor_awards && game.minor_awards.length > 0) {
-        awardsHTML += `<div style="margin-top:4px;"><strong>🥇 Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
-      }
-
-      let expansionsHTML = '';
-      if (expList.length > 0) {
-        expansionsHTML = `
-          <div style="margin-top: 12px; border-top: 1px dashed var(--purple-border); padding-top: 8px;">
-            <strong style="color: var(--yellow);">📦 Expansions Owned (${expList.length}):</strong>
-            <ul style="margin-left: 18px; margin-top: 4px; color: var(--text-muted); font-size: 0.85rem;">
-              ${expList.map(e => `<li>${e.title} (${e.year})</li>`).join('')}
-            </ul>
-          </div>
-        `;
-      }
-
-      detailModalContent.innerHTML = `
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 200px; max-width: 250px;">
-            <img src="${game.image || game.thumbnail}" style="width: 100%; border-radius: 8px; border: 2px solid var(--purple-border);" />
-          </div>
-          <div style="flex: 2; min-width: 240px; display: flex; flex-direction: column; gap: 8px;">
-            <div class="modal-title" style="margin-bottom: 0;">${game.title} (${game.year})</div>
-            <div style="color: var(--turquoise); font-size: 0.9rem; font-weight: 700;">
-              By ${game.designer} | Published by ${game.publisher}
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
-              <span class="stat-badge">Luke's Rating: ${game.user_rating > 0 ? game.user_rating : 'N/A'}</span>
-              <span class="stat-badge">BGG Rating: ${game.bgg_rating > 0 ? game.bgg_rating : 'N/A'}</span>
-              <span class="stat-badge">Weight: ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</span>
-              <span class="stat-badge">Plays: ${game.plays_recorded}</span>
-            </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
-              <strong>Players:</strong> ${game.min_players}-${game.max_players} | <strong>Time:</strong> ${game.playing_time} mins
-            </div>
-            ${awardsHTML}
-            ${expansionsHTML}
-          </div>
-        </div>
-        <div style="margin-top: 16px; font-size: 0.9rem; line-height: 1.4; color: var(--text); border-top: 1px solid var(--purple-border); padding-top: 12px; max-height: 200px; overflow-y: auto;">
-          ${game.description || 'No description available.'}
-        </div>
-      `;
-      detailModal.classList.add('open');
-    }
-
-    function closeDetailModal() { detailModal.classList.remove('open'); }
-
-    luckBtn.addEventListener('click', pickRandomGame);
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
-    modalChangeFiltersBtn.addEventListener('click', () => {
-      closeLuckModal();
-      toolbar.classList.remove('collapsed');
-    });
-
-    function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta); font-weight:bold;">No games available under current filters!</div>`;
-      } else {
-        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const g = currentlyFilteredGames[randomIndex];
-        modalContent.innerHTML = `
-          <div style="text-align: center;">
-            <img src="${g.image || g.thumbnail}" style="max-height: 220px; max-width: 100%; object-fit: contain; border-radius: 8px; border: 2px solid var(--yellow); margin-bottom: 12px;">
-            <h2 style="color: var(--yellow); font-size: 1.4rem; font-weight: 900; margin-bottom: 6px;">${g.title}</h2>
-            <div style="color: var(--turquoise); font-size: 0.9rem; font-weight: 700; margin-bottom: 8px;">(${g.year}) • ${g.designer}</div>
-            <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-              <span class="stat-badge">👥 ${g.min_players === g.max_players ? g.min_players : g.min_players + '-' + g.max_players}p</span>
-              <span class="stat-badge">⏱️ ${g.playing_time}m</span>
-              <span class="stat-badge">⚖️ ${g.weight > 0 ? g.weight.toFixed(1) : 'N/A'}</span>
-            </div>
-          </div>
-        `;
-      }
-      luckModal.classList.add('open');
-    }
-
-    function closeLuckModal() { luckModal.classList.remove('open'); }
-
-    /* EXTRAS GAMES MODULE LOGIC */
-function getExtrasPool() {
-      return currentlyFilteredGames.length > 0 ? currentlyFilteredGames : games;
-    }
-
     function launchGame(gameType) {
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
-      container.innerHTML = '';
-
-      const pool = getExtrasPool();
-      if (pool.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta);">No games available in current filter selection!</div>
-        <button class="game-btn" onclick="returnToArcadeMenu()" style="margin:0 auto; display:block;">Back to Extras</button>`;
-        return;
-      }
-
-      if (gameType === 'tier_maker') setupTierMaker(container, pool);
-      else if (gameType === 'blind_ranking') setupBlindRanking(container, pool);
-      else if (gameType === 'guess_game') setupGuessGame(container, pool);
-      else if (gameType === 'higher_lower') setupHigherLower(container, pool);
-    }
-
-    /* 1. TIER MAKER */
-    function setupTierMaker(container, pool) {
-      let html = `
-        <div class="game-status-bar">
-          <span>📊 Tier Maker (${pool.length} Games)</span>
-          <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
-        </div>
-        <div style="margin-top: 10px;">
-          <div class="tier-row"><div class="tier-header tier-s" contenteditable="true">S</div><div class="tier-dropzone" data-tier="S"></div></div>
-          <div class="tier-row"><div class="tier-header tier-a" contenteditable="true">A</div><div class="tier-dropzone" data-tier="A"></div></div>
-          <div class="tier-row"><div class="tier-header tier-b" contenteditable="true">B</div><div class="tier-dropzone" data-tier="B"></div></div>
-          <div class="tier-row"><div class="tier-header tier-c" contenteditable="true">C</div><div class="tier-dropzone" data-tier="C"></div></div>
-          <div class="tier-row"><div class="tier-header tier-d" contenteditable="true">D</div><div class="tier-dropzone" data-tier="D"></div></div>
-          <div class="tier-row"><div class="tier-header tier-e" contenteditable="true">E</div><div class="tier-dropzone" data-tier="E"></div></div>
-        </div>
-        <div style="margin-top: 15px; background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 8px; padding: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-            <span style="font-weight: 800; color: var(--yellow); font-size: 0.9rem;">UNRANKED POOL</span>
-            <input type="text" id="tier-search-input" placeholder="🔍 Search games..." style="background: var(--bg); color: var(--text); border: 1px solid var(--purple-border); border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; outline: none; width: 180px;">
-          </div>
-          <div id="tier-pool" class="tier-dropzone" data-tier="pool" style="min-height: 100px; max-height: 200px; overflow-y: auto;"></div>
-        </div>
+      container.innerHTML = `
+        <button class="btn-primary" onclick="returnToArcadeMenu()" style="margin-bottom: 12px;">← Back to Extras</button>
+        <div style="padding: 20px; text-align: center; color: var(--yellow);">Launching ${gameType.replace('_', ' ').toUpperCase()}...</div>
       `;
-      container.innerHTML = html;
-
-      const poolZone = container.querySelector('#tier-pool');
-      pool.forEach(game => {
-        if (!game.image) return;
-        const item = document.createElement('div');
-        item.className = 'tier-item';
-        item.draggable = true;
-        item.dataset.gameId = game.id;
-        item.dataset.title = game.title.toLowerCase();
-        item.title = game.title;
-        item.innerHTML = `<img src="${game.image}" alt="${game.title}">`;
-        
-        item.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', game.id);
-        });
-        poolZone.appendChild(item);
-      });
-
-      const searchInput = container.querySelector('#tier-search-input');
-      searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        const poolItems = poolZone.querySelectorAll('.tier-item');
-        poolItems.forEach(item => {
-          const title = item.dataset.title || '';
-          item.style.display = title.includes(query) ? 'block' : 'none';
-        });
-      });
-
-      const dropzones = container.querySelectorAll('.tier-dropzone');
-      dropzones.forEach(zone => {
-        zone.addEventListener('dragover', (e) => e.preventDefault());
-        zone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          const gameId = e.dataTransfer.getData('text/plain');
-          const draggedEl = container.querySelector(`.tier-item[data-game-id="${gameId}"]`);
-          if (draggedEl) zone.appendChild(draggedEl);
-        });
-      });
-    }
-
-    /* 2. BLIND RANKING */
-    function setupBlindRanking(container, pool) {
-      if (pool.length < 10) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta);">You need at least 10 filtered games to play Blind Ranking!</div>
-        <button class="game-btn" onclick="returnToArcadeMenu()" style="margin:0 auto; display:block;">Back to Extras</button>`;
-        return;
-      }
-
-      const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 10);
-      let currentIndex = 0;
-      let slots = new Array(10).fill(null);
-
-      function render() {
-        const currentGame = shuffled[currentIndex];
-        let html = `
-          <div class="game-status-bar">
-            <span>🎲 Blind Ranking (${currentIndex + 1}/10)</span>
-            <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
-          </div>
-        `;
-
-        if (currentIndex < 10 && currentGame) {
-          html += `
-            <div style="display: flex; gap: 12px; align-items: center; background: var(--panel-bg); padding: 12px; border-radius: 8px; margin: 12px 0; border: 1px solid var(--purple-border);">
-              <img src="${currentGame.image}" style="width: 70px; height: 70px; object-fit: contain; border-radius: 6px;">
-              <div>
-                <div style="font-weight: 800; color: var(--yellow); font-size: 1.05rem;">${currentGame.title}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">${currentGame.year} • ${currentGame.designer}</div>
-              </div>
-            </div>
-          `;
-        } else {
-          html += `<div style="text-align: center; font-weight: 900; color: var(--turquoise); font-size: 1.2rem; margin: 15px 0;">🎉 Ranking Complete!</div>`;
-        }
-
-        html += `<div class="blind-grid-columns">`;
-        for (let i = 0; i < 10; i++) {
-          const filled = slots[i];
-          html += `
-            <div class="blind-slot" style="background: var(--panel-bg); border: 2px dashed ${filled ? 'var(--turquoise)' : 'var(--purple-border)'}; border-radius: 8px; padding: 8px; display: flex; align-items: center; gap: 8px; min-height: 50px;">
-              <span style="font-weight: 900; color: var(--yellow); width: 24px;">#${i + 1}</span>
-              ${filled ? `
-                <img src="${filled.image}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px;">
-                <span style="font-size: 0.8rem; font-weight: 700; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${filled.title}</span>
-              ` : (currentIndex < 10 ? `<button class="game-btn" style="padding: 4px 10px; font-size: 0.75rem;" onclick="assignBlindSlot(${i})">Assign Here</button>` : `<span style="font-size: 0.75rem; color: var(--text-muted);">Empty</span>`)}
-            </div>
-          `;
-        }
-        html += `</div>`;
-        container.innerHTML = html;
-      }
-
-      window.assignBlindSlot = function(index) {
-        if (slots[index] !== null || currentIndex >= 10) return;
-        slots[index] = shuffled[currentIndex];
-        currentIndex++;
-        render();
-      };
-
-      render();
-    }
-
-    /* 3. GUESS THE GAME */
-    function setupGuessGame(container, pool) {
-      const validPool = pool.filter(g => g.image);
-      if (validPool.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta);">No games with cover images available!</div>
-        <button class="game-btn" onclick="returnToArcadeMenu()" style="margin:0 auto; display:block;">Back to Extras</button>`;
-        return;
-      }
-
-      let currentGame = validPool[Math.floor(Math.random() * validPool.length)];
-      let mode = 'zoom';
-      let clueStep = 1;
-      let solved = false;
-
-      function render() {
-        let zoomLevel = Math.max(1, 9.0 - (clueStep - 1) * 2.0);
-        let blurPx = Math.max(0, 24 - (clueStep - 1) * 6);
-
-        let imgStyle = mode === 'zoom' 
-          ? `transform: scale(${zoomLevel}); transform-origin: center center; filter: none;`
-          : `filter: blur(${blurPx}px); transform: scale(1);`;
-
-        let html = `
-          <div class="game-status-bar">
-            <span>🔎 Guess the Game</span>
-            <div>
-              <button class="game-btn" style="padding: 3px 8px; font-size: 0.75rem; margin-right: 6px;" onclick="toggleGuessMode()">${mode === 'zoom' ? 'Switch to Blur Mode' : 'Switch to Zoom Mode'}</button>
-              <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
-            </div>
-          </div>
-
-          <div id="guess-message-box" style="margin-top: 10px;"></div>
-
-          <div style="display: flex; gap: 15px; margin-top: 12px; flex-wrap: wrap;">
-            <div style="width: 200px; height: 200px; background: #000; border-radius: 12px; border: 2px solid var(--turquoise); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;">
-              <img src="${currentGame.image}" style="max-width: 100%; max-height: 100%; object-fit: contain; transition: all 0.3s ease; ${solved ? 'transform: scale(1); filter: none;' : imgStyle}">
-            </div>
-
-            <div style="flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px;">
-              <div style="font-weight: 800; color: var(--yellow); font-size: 0.9rem;">CLUES (Step ${clueStep}/4)</div>
-              <div style="background: var(--panel-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--purple-border);">
-                <strong>Year:</strong> ${clueStep >= 1 ? currentGame.year : '🔒 Reveal at Step 1'}
-              </div>
-              <div style="background: var(--panel-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--purple-border);">
-                <strong>Complexity:</strong> ${clueStep >= 2 ? currentGame.weight.toFixed(1) + ' / 5.0' : '🔒 Reveal at Step 2'}
-              </div>
-              <div style="background: var(--panel-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--purple-border);">
-                <strong>Categories:</strong> ${clueStep >= 3 ? currentGame.categories.join(', ') : '🔒 Reveal at Step 3'}
-              </div>
-              <div style="background: var(--panel-bg); padding: 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--purple-border);">
-                <strong>Designer:</strong> ${clueStep >= 4 ? currentGame.designer : '🔒 Reveal at Step 4'}
-              </div>
-            </div>
-          </div>
-
-          <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
-            ${!solved ? `
-              <div class="autocomplete-wrapper">
-                <input type="text" id="guess-input" placeholder="Type game title..." style="width: 100%; background: var(--panel-bg); color: #fff; border: 2px solid var(--purple-border); padding: 8px 12px; border-radius: 8px; outline: none;">
-                <div id="guess-autocomplete" class="autocomplete-list" style="display:none;"></div>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button class="game-btn" style="flex: 1;" onclick="submitGuess()">Submit Guess</button>
-                <button class="game-btn" style="background: var(--purple-border);" onclick="nextClue()">Next Clue</button>
-              </div>
-            ` : `
-              <button class="game-btn" style="background: var(--turquoise); color: #0d0221; width: 100%; padding: 10px; font-size: 1rem;" onclick="resetGuessGame()">Play Next Game 🎲</button>
-            `}
-          </div>
-        `;
-        container.innerHTML = html;
-
-        if (!solved) {
-          const input = container.querySelector('#guess-input');
-          const list = container.querySelector('#guess-autocomplete');
-          input.addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase().trim();
-            if (!val) { list.style.display = 'none'; return; }
-            const matches = games.filter(g => g.title.toLowerCase().includes(val)).slice(0, 5);
-            if (matches.length === 0) { list.style.display = 'none'; return; }
-            list.innerHTML = matches.map(m => `<div class="autocomplete-item" onclick="selectGuess('${m.title.replace(/'/g, "\\'")}')">${m.title}</div>`).join('');
-            list.style.display = 'block';
-          });
-        }
-      }
-
-      window.toggleGuessMode = function() {
-        mode = mode === 'zoom' ? 'blur' : 'zoom';
-        render();
-      };
-
-      window.selectGuess = function(title) {
-        const input = container.querySelector('#guess-input');
-        if (input) input.value = title;
-        const list = container.querySelector('#guess-autocomplete');
-        if (list) list.style.display = 'none';
-      };
-
-      window.nextClue = function() {
-        if (clueStep < 4) clueStep++;
-        render();
-      };
-
-      window.submitGuess = function() {
-        const input = container.querySelector('#guess-input');
-        const msgBox = container.querySelector('#guess-message-box');
-        if (!input || !input.value.trim()) return;
-
-        if (input.value.trim().toLowerCase() === currentGame.title.toLowerCase()) {
-          solved = true;
-          render();
-          const newMsgBox = container.querySelector('#guess-message-box');
-          if (newMsgBox) {
-            newMsgBox.innerHTML = `<div style="background: rgba(0, 245, 212, 0.2); border: 2px solid var(--turquoise); color: var(--turquoise); padding: 10px; border-radius: 8px; font-weight: 800; text-align: center;">🎉 Correct! The game was ${currentGame.title}!</div>`;
-          }
-        } else {
-          if (msgBox) {
-            msgBox.innerHTML = `<div style="background: rgba(247, 37, 133, 0.2); border: 2px solid var(--magenta); color: var(--magenta); padding: 8px; border-radius: 8px; font-weight: 800; text-align: center;">❌ Incorrect! Try again or reveal the next clue.</div>`;
-          }
-        }
-      };
-
-      window.resetGuessGame = function() {
-        currentGame = validPool[Math.floor(Math.random() * validPool.length)];
-        clueStep = 1;
-        solved = false;
-        render();
-      };
-
-      render();
-    }
-
-    /* 4. HIGHER OR LOWER */
-    function setupHigherLower(container, pool) {
-      if (pool.length < 2) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta);">At least 2 games are required to play Higher or Lower!</div>
-        <button class="game-btn" onclick="returnToArcadeMenu()" style="margin:0 auto; display:block;">Back to Extras</button>`;
-        return;
-      }
-
-      let metrics = [
-        { key: 'weight', label: 'Weight / Complexity', fmt: v => v.toFixed(2) },
-        { key: 'bgg_rating', label: 'BGG Rating', fmt: v => v.toFixed(2) },
-        { key: 'user_rating', label: "Luke's Rating", fmt: v => v.toFixed(1) },
-        { key: 'playing_time', label: 'Playtime (Min)', fmt: v => v + ' mins' }
-      ];
-
-      let streak = 0;
-      let longestStreak = parseInt(localStorage.getItem('hl_longest_streak') || '0', 10);
-      let currentMetric = metrics[Math.floor(Math.random() * metrics.length)];
-      let leftGame = pool[Math.floor(Math.random() * pool.length)];
-      let rightGame = getDistinctGame(leftGame);
-
-      function getDistinctGame(other) {
-        let filtered = pool.filter(g => g.id !== other.id);
-        return filtered[Math.floor(Math.random() * filtered.length)];
-      }
-
-      function render(revealed = false, resultText = '') {
-        let html = `
-          <div class="game-status-bar">
-            <span>📈 Higher or Lower</span>
-            <span>Streak: <strong style="color:var(--yellow);">${streak}</strong> | Best: <strong style="color:var(--turquoise);">${longestStreak}</strong></span>
-            <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
-          </div>
-
-          <div style="text-align: center; font-size: 0.9rem; color: var(--text-muted); margin-top: 10px;">
-            Which game has a higher <strong style="color: var(--yellow);">${currentMetric.label}</strong>?
-          </div>
-
-          ${resultText ? `<div style="text-align: center; font-weight: 800; margin-top: 8px; color: ${resultText.includes('Correct') ? 'var(--turquoise)' : 'var(--magenta)'}">${resultText}</div>` : ''}
-
-          <div class="hl-container">
-            <div class="hl-card" onclick="${!revealed ? 'makeHLGuess(\'left\')' : ''}">
-              <img src="${leftGame.image}">
-              <div style="font-weight: 800; color: var(--yellow); font-size: 0.9rem;">${leftGame.title}</div>
-              <div style="font-size: 1.1rem; font-weight: 900; color: var(--turquoise); margin-top: 6px;">
-                ${currentMetric.fmt(leftGame[currentMetric.key])}
-              </div>
-            </div>
-
-            <div class="hl-card" onclick="${!revealed ? 'makeHLGuess(\'right\')' : ''}">
-              <img src="${rightGame.image}">
-              <div style="font-weight: 800; color: var(--yellow); font-size: 0.9rem;">${rightGame.title}</div>
-              <div style="font-size: 1.1rem; font-weight: 900; color: var(--turquoise); margin-top: 6px;">
-                ${revealed ? currentMetric.fmt(rightGame[currentMetric.key]) : '???'}
-              </div>
-            </div>
-          </div>
-        `;
-        container.innerHTML = html;
-      }
-
-      window.makeHLGuess = function(choice) {
-        let valLeft = leftGame[currentMetric.key];
-        let valRight = rightGame[currentMetric.key];
-        let isCorrect = (choice === 'left' && valLeft >= valRight) || (choice === 'right' && valRight >= valLeft);
-
-        if (isCorrect) {
-          streak++;
-          if (streak > longestStreak) {
-            longestStreak = streak;
-            localStorage.setItem('hl_longest_streak', longestStreak.toString());
-          }
-          render(true, '🎉 Correct!');
-          setTimeout(() => {
-            leftGame = rightGame;
-            rightGame = getDistinctGame(leftGame);
-            currentMetric = metrics[Math.floor(Math.random() * metrics.length)];
-            render();
-          }, 1500);
-        } else {
-          streak = 0;
-          render(true, '❌ Incorrect! Streak reset.');
-          setTimeout(() => {
-            leftGame = pool[Math.floor(Math.random() * pool.length)];
-            rightGame = getDistinctGame(leftGame);
-            currentMetric = metrics[Math.floor(Math.random() * metrics.length)];
-            render();
-          }, 2000);
-        }
-      };
-
-      render();
     }
   </script>
 </body>
 </html>
 """
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
