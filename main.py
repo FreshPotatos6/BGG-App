@@ -2415,16 +2415,15 @@ function getExtrasPool() {
     }
 
     function launchGame(gameType) {
+      const pool = getExtrasPool();
+      if (!pool || pool.length === 0) {
+        alert("No games available in current filter selection!");
+        return;
+      }
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
       container.innerHTML = '';
-
-      const pool = getExtrasPool();
-      if (!pool || pool.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--magenta);">No games available in pool! Reset or adjust your filters.</div>`;
-        return;
-      }
 
       if (gameType === 'tier_maker') renderTierMaker(container, pool);
       else if (gameType === 'blind_ranking') renderBlindRanking(container, pool);
@@ -2432,461 +2431,346 @@ function getExtrasPool() {
       else if (gameType === 'higher_lower') renderHigherLower(container, pool);
     }
 
-    /* ----------------------------------------------------
-       1. TIER MAKER (With Live Title Search)
-    ---------------------------------------------------- */
+    /* 1. TIER MAKER WITH SEARCH */
     function renderTierMaker(container, pool) {
-      const tiers = [
-        { label: 'S', class: 'tier-s' },
-        { label: 'A', class: 'tier-a' },
-        { label: 'B', class: 'tier-b' },
-        { label: 'C', class: 'tier-c' },
-        { label: 'D', class: 'tier-d' },
-        { label: 'E', class: 'tier-e' }
-      ];
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">📊 Tier Maker</h2>
-          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">📊 Tier Maker</h3>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back to Extras</button>
         </div>
-        <div style="max-height: 65vh; overflow-y: auto; padding-right: 4px;">
+        <div style="margin-bottom:12px;">
+          <input type="text" id="tier-search-input" class="global-search-input" placeholder="Search games to rank..." oninput="filterTierPool()">
+        </div>
+        <div id="tier-rows-container">
+          <div class="tier-row"><div class="tier-header tier-s" contenteditable="true">S</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-a" contenteditable="true">A</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-b" contenteditable="true">B</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-c" contenteditable="true">C</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-d" contenteditable="true">D</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-e" contenteditable="true">E</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTier(event)"></div></div>
+        </div>
+        <div style="margin-top:14px; font-weight:800; color:var(--turquoise);">UNRANKED POOL (${pool.length} Games)</div>
+        <div id="tier-pool-dropzone" class="tier-dropzone" style="min-height:90px; background:var(--panel-bg); border:2px dashed var(--purple-border); border-radius:8px; padding:8px; margin-top:6px;" ondragover="allowDrop(event)" ondrop="dropTier(event)">
+        </div>
       `;
 
-      tiers.forEach(t => {
-        html += `
-          <div class="tier-row">
-            <div class="tier-header ${t.class}" contenteditable="true">${t.label}</div>
-            <div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div>
-          </div>
-        `;
-      });
-
-      html += `
-        </div>
-        <div style="margin-top: 15px; border-top: 2px solid var(--purple-border); padding-top: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-            <span style="font-weight: bold; color: var(--turquoise); font-size: 0.9rem;">Unranked Pool (${pool.length} Games):</span>
-            <input type="text" id="tier-search-input" placeholder="🔍 Search pool..." oninput="filterTierPool()" style="background: var(--panel-bg); color: var(--text); border: 1px solid var(--purple-border); padding: 4px 10px; border-radius: 6px; font-size: 0.82rem; outline: none; width: 180px;">
-          </div>
-          <div id="tier-pool-dropzone" class="tier-dropzone" style="background: var(--panel-bg); min-height: 80px; max-height: 180px; overflow-y: auto; border: 1px dashed var(--turquoise); border-radius: 8px;" ondragover="allowDrop(event)" ondrop="dropTierItem(event)">
-      `;
-
+      const poolZone = document.getElementById('tier-pool-dropzone');
       pool.forEach(g => {
-        const imgSrc = g.thumbnail || g.image || '';
-        html += `
-          <div class="tier-item" id="tier-game-${g.id}" draggable="true" ondragstart="dragTierItem(event)" title="${g.title}" data-title="${g.title.toLowerCase()}">
-            <img src="${imgSrc}" alt="${g.title}">
-          </div>
-        `;
+        const item = document.createElement('div');
+        item.className = 'tier-item';
+        item.draggable = true;
+        item.id = 'tier-item-' + g.id;
+        item.dataset.title = g.title.toLowerCase();
+        item.ondragstart = (e) => { e.dataTransfer.setData("text/plain", item.id); };
+        item.title = g.title;
+        item.innerHTML = `<img src="${g.thumbnail || g.image}" alt="${g.title}">`;
+        poolZone.appendChild(item);
       });
-
-      html += `
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = html;
     }
 
     function filterTierPool() {
-      const q = (document.getElementById('tier-search-input')?.value || '').toLowerCase().trim();
+      const q = (document.getElementById('tier-search-input').value || '').toLowerCase().trim();
       const items = document.querySelectorAll('#tier-pool-dropzone .tier-item');
       items.forEach(item => {
-        const title = item.getAttribute('data-title') || '';
-        item.style.display = title.includes(q) ? 'inline-block' : 'none';
+        const title = item.dataset.title || '';
+        item.style.display = title.includes(q) ? 'block' : 'none';
       });
     }
 
-    function allowDrop(ev) {
+    function allowDrop(ev) { ev.preventDefault(); }
+    function dropTier(ev) {
       ev.preventDefault();
-    }
-
-    function dragTierItem(ev) {
-      ev.dataTransfer.setData("text", ev.currentTarget.id);
-    }
-
-    function dropTierItem(ev) {
-      ev.preventDefault();
-      const data = ev.dataTransfer.getData("text");
+      const data = ev.dataTransfer.getData("text/plain");
       const draggedEl = document.getElementById(data);
-      if (!draggedEl) return;
-      let targetZone = ev.target;
-      while (targetZone && !targetZone.classList.contains('tier-dropzone')) {
-        targetZone = targetZone.parentElement;
-      }
-      if (targetZone) {
-        targetZone.appendChild(draggedEl);
+      if (draggedEl) {
+        let dropTarget = ev.target;
+        if (!dropTarget.classList.contains('tier-dropzone')) {
+          dropTarget = dropTarget.closest('.tier-dropzone');
+        }
+        if (dropTarget) dropTarget.appendChild(draggedEl);
       }
     }
 
-    /* ----------------------------------------------------
-       2. BLIND RANKING (10 Drawn Games)
-    ---------------------------------------------------- */
+    /* 2. BLIND RANKING */
+    let blindCurrentIndex = 0;
     let blindQueue = [];
     let blindSlots = Array(10).fill(null);
-    let blindCurrentIndex = 0;
 
     function renderBlindRanking(container, pool) {
-      const shuffled = [...pool].sort(() => 0.5 - Math.random());
-      blindQueue = shuffled.slice(0, 10);
-      blindSlots = Array(10).fill(null);
+      blindQueue = [...pool].sort(() => 0.5 - Math.random()).slice(0, 10);
       blindCurrentIndex = 0;
-      updateBlindRankingView(container);
-    }
+      blindSlots = Array(10).fill(null);
 
-    function updateBlindRankingView(container) {
-      if (!container) container = document.getElementById('arcade-game-container');
-      const currentGame = blindQueue[blindCurrentIndex];
-      const isGameOver = blindCurrentIndex >= blindQueue.length;
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">🎲 Blind Ranking</h2>
-          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">🎲 Blind Ranking (1 to 10)</h3>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back to Extras</button>
+        </div>
+        <div id="blind-active-area" class="game-status-bar" style="flex-direction:column; gap:8px; text-align:center;">
+        </div>
+        <div class="blind-grid-columns" id="blind-slots-container">
         </div>
       `;
+      updateBlindUI();
+    }
 
-      if (isGameOver) {
-        html += `
-          <div style="text-align: center; padding: 20px; background: var(--panel-bg); border-radius: 12px; border: 2px solid var(--turquoise);">
-            <h3 style="color: var(--turquoise); margin-bottom: 10px;">🎉 Blind Ranking Complete!</h3>
-            <button class="game-btn" onclick="launchGame('blind_ranking')">Play Again</button>
+    function updateBlindUI() {
+      const activeArea = document.getElementById('blind-active-area');
+      const slotsContainer = document.getElementById('blind-slots-container');
+      if (!activeArea || !slotsContainer) return;
+
+      if (blindCurrentIndex < blindQueue.length) {
+        const currentGame = blindQueue[blindCurrentIndex];
+        activeArea.innerHTML = `
+          <div style="font-size:0.85rem; color:var(--text-muted);">Game ${blindCurrentIndex + 1} of 10</div>
+          <div style="display:flex; align-items:center; gap:12px; justify-content:center;">
+            <img src="${currentGame.thumbnail || currentGame.image}" style="height:60px; object-fit:contain; border-radius:4px;">
+            <div style="font-size:1.1rem; font-weight:900; color:var(--yellow);">${currentGame.title}</div>
           </div>
+          <div style="font-size:0.8rem; color:var(--turquoise);">Select an open slot below to rank this game!</div>
         `;
       } else {
-        const imgSrc = currentGame.image || currentGame.thumbnail || '';
-        html += `
-          <div style="display: flex; gap: 16px; align-items: center; background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--purple-border); margin-bottom: 12px;">
-            <img src="${imgSrc}" style="height: 90px; width: 90px; object-fit: contain; border-radius: 6px; background: #000;">
-            <div>
-              <div style="color: var(--turquoise); font-size: 0.8rem; font-weight: bold;">Game ${blindCurrentIndex + 1} of 10</div>
-              <h3 style="color: var(--yellow); font-size: 1.1rem; margin: 4px 0;">${currentGame.title}</h3>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">Assign this game to an open rank slot below!</div>
-            </div>
-          </div>
+        activeArea.innerHTML = `
+          <div style="font-size:1.2rem; font-weight:900; color:var(--yellow);">🎉 Ranking Complete!</div>
+          <button class="game-btn" onclick="launchGame('blind_ranking')" style="margin-top:4px;">Play Again 🎲</button>
         `;
       }
 
-      html += `<div class="blind-grid-columns">`;
-
+      slotsContainer.innerHTML = '';
       for (let i = 0; i < 10; i++) {
-        const filledGame = blindSlots[i];
-        const isOccupied = filledGame !== null;
-        html += `
-          <div style="display: flex; align-items: center; gap: 8px; background: var(--panel-bg); border: 1px solid ${isOccupied ? 'var(--purple-border)' : 'var(--turquoise)'}; padding: 6px 10px; border-radius: 6px;">
-            <span style="font-weight: 900; color: var(--yellow); width: 24px;">#${i + 1}</span>
-            <div style="flex: 1; font-size: 0.85rem; font-weight: bold; color: ${isOccupied ? '#fff' : 'var(--text-muted)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              ${isOccupied ? filledGame.title : '--- Empty ---'}
-            </div>
-            ${!isOccupied && !isGameOver ? `<button class="game-btn" style="padding: 3px 8px; font-size: 0.75rem;" onclick="placeBlindRank(${i})">Place</button>` : ''}
-          </div>
-        `;
+        const slotGame = blindSlots[i];
+        const slotBox = document.createElement('div');
+        slotBox.className = 'hl-card';
+        slotBox.style.width = '100%';
+        slotBox.style.padding = '8px';
+        slotBox.style.flexDirection = 'row';
+        slotBox.style.justify-content = 'flex-start';
+        slotBox.style.gap = '10px';
+
+        if (slotGame) {
+          slotBox.style.cursor = 'default';
+          slotBox.innerHTML = `
+            <div style="font-weight:900; font-size:1.2rem; color:var(--magenta); width:25px;">#${i + 1}</div>
+            <img src="${slotGame.thumbnail || slotGame.image}" style="height:40px; margin:0; width:40px; object-fit:contain;">
+            <div style="font-size:0.85rem; font-weight:800; color:var(--text); text-align:left; flex:1;">${slotGame.title}</div>
+          `;
+        } else {
+          slotBox.innerHTML = `
+            <div style="font-weight:900; font-size:1.2rem; color:var(--turquoise); width:25px;">#${i + 1}</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); flex:1; text-align:left;">-- Empty Slot --</div>
+          `;
+          if (blindCurrentIndex < blindQueue.length) {
+            slotBox.onclick = () => {
+              blindSlots[i] = blindQueue[blindCurrentIndex];
+              blindCurrentIndex++;
+              updateBlindUI();
+            };
+          }
+        }
+        slotsContainer.appendChild(slotBox);
       }
-
-      html += `</div>`;
-      container.innerHTML = html;
     }
 
-    function placeBlindRank(slotIndex) {
-      if (blindCurrentIndex >= blindQueue.length) return;
-      blindSlots[slotIndex] = blindQueue[blindCurrentIndex];
-      blindCurrentIndex++;
-      updateBlindRankingView();
-    }
-
-    /* ----------------------------------------------------
-       3. GUESS THE GAME (Self-Contained & Extreme Zoom)
-    ---------------------------------------------------- */
+    /* 3. GUESS THE GAME (INLINE FEEDBACK & VERY HIGH ZOOM) */
     let guessTarget = null;
-    let guessZoomLevel = 1;
-    let guessPoolRef = [];
-    let guessScore = 0;
+    let guessCluesRevealed = 1;
 
     function renderGuessGame(container, pool) {
-      guessPoolRef = pool;
-      startNewGuessRound(container);
-    }
+      guessTarget = pool[Math.floor(Math.random() * pool.length)];
+      guessCluesRevealed = 1;
 
-    function startNewGuessRound(container) {
-      if (!container) container = document.getElementById('arcade-game-container');
-      guessTarget = guessPoolRef[Math.floor(Math.random() * guessPoolRef.length)];
-      guessZoomLevel = 1;
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">🔎 Guess the Game</h2>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <span id="guess-score-display" style="color: var(--turquoise); font-weight: bold; font-size: 0.9rem;">Score: ${guessScore}</span>
-            <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
-          </div>
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">🔎 Guess the Game</h3>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back to Extras</button>
         </div>
-
-        <div style="background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 12px; padding: 14px; text-align: center;">
-          <div id="guess-image-frame" style="width: 200px; height: 200px; margin: 0 auto 12px auto; overflow: hidden; border-radius: 8px; border: 2px solid var(--turquoise); position: relative; background: #000;">
-            <img id="guess-img" src="${guessTarget.image || guessTarget.thumbnail || ''}" style="width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease; transform: scale(6); transform-origin: 35% 35%;">
+        <div class="game-board">
+          <div style="position:relative; height:240px; background:var(--card-bg); border:2px solid var(--purple-border); border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+            <div id="guess-img-wrapper" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <img id="guess-image-display" src="${guessTarget.image || guessTarget.thumbnail}" style="max-height:100%; transition:all 0.4s ease; transform:scale(8); transform-origin:center center;">
+            </div>
           </div>
 
-          <div id="guess-feedback" style="min-height: 24px; font-weight: bold; margin-bottom: 8px; color: var(--yellow); font-size: 0.9rem;">Zoom Level: Stage 1 / 4</div>
+          <div id="guess-inline-feedback" style="min-height:24px; font-weight:800; text-align:center; color:var(--turquoise);"></div>
 
-          <div class="autocomplete-wrapper" style="max-width: 320px; margin: 0 auto 10px auto;">
-            <input type="text" id="guess-input" placeholder="Type game title..." oninput="handleGuessAutocomplete(this)" style="width: 100%; background: var(--bg); color: var(--text); border: 2px solid var(--purple-border); padding: 8px; border-radius: 8px; outline: none; font-size: 0.85rem;">
-            <div id="guess-autocomplete" class="autocomplete-list" style="display: none;"></div>
+          <div class="autocomplete-wrapper">
+            <input type="text" id="guess-input" class="global-search-input" placeholder="Type game title..." autocomplete="off">
+            <div id="guess-autocomplete" class="autocomplete-list" style="display:none;"></div>
           </div>
 
-          <div style="display: flex; gap: 8px; justify-content: center; max-width: 320px; margin: 0 auto;">
-            <button class="game-btn" style="flex: 1; background: var(--turquoise); color: #000;" onclick="submitGuess()">Submit Guess</button>
-            <button id="guess-zoom-btn" class="game-btn" style="flex: 1;" onclick="zoomOutGuessImage()">Zoom Out</button>
+          <div style="display:flex; gap:8px;">
+            <button class="game-btn" style="flex:1;" onclick="submitGuess()">Submit Guess</button>
+            <button class="game-btn" style="flex:1; background:var(--yellow); color:#000;" onclick="revealNextClue()">Give Clue (${guessCluesRevealed}/4)</button>
+          </div>
+
+          <div id="guess-clues-box" style="background:var(--panel-bg); border:1px solid var(--purple-border); border-radius:8px; padding:10px; font-size:0.85rem; display:flex; flex-direction:column; gap:4px;">
+            <div style="color:var(--yellow); font-weight:800;">CLUES REVEALED:</div>
+            <div id="clue-1">• Published Year: ${guessTarget.year || 'Unknown'}</div>
+            <div id="clue-2" style="display:none;">• Weight: ${guessTarget.weight} / BGG Rating: ${guessTarget.bgg_rating}</div>
+            <div id="clue-3" style="display:none;">• Categories: ${(guessTarget.categories || []).join(', ')}</div>
+            <div id="clue-4" style="display:none;">• Designer: ${guessTarget.designer}</div>
           </div>
         </div>
       `;
 
-      container.innerHTML = html;
-    }
-
-    function zoomOutGuessImage() {
-      const img = document.getElementById('guess-img');
-      const feedback = document.getElementById('guess-feedback');
-      guessZoomLevel++;
-
-      if (guessZoomLevel === 2) {
-        img.style.transform = 'scale(3.8)';
-        img.style.transformOrigin = '40% 40%';
-        feedback.innerText = 'Zoom Level: Stage 2 / 4';
-      } else if (guessZoomLevel === 3) {
-        img.style.transform = 'scale(2.0)';
-        img.style.transformOrigin = 'center center';
-        feedback.innerText = 'Zoom Level: Stage 3 / 4';
-      } else {
-        img.style.transform = 'scale(1.0)';
-        img.style.transformOrigin = 'center center';
-        feedback.innerText = 'Zoom Level: Full View (Final Stage)';
-        const btn = document.getElementById('guess-zoom-btn');
-        if (btn) btn.disabled = true;
-      }
-    }
-
-    function handleGuessAutocomplete(inputEl) {
-      const val = inputEl.value.toLowerCase().trim();
-      const listEl = document.getElementById('guess-autocomplete');
-      if (!val) {
-        listEl.style.display = 'none';
-        return;
-      }
-
-      const matches = guessPoolRef.filter(g => g.title.toLowerCase().includes(val)).slice(0, 6);
-      if (matches.length === 0) {
-        listEl.style.display = 'none';
-        return;
-      }
-
-      listEl.innerHTML = '';
-      matches.forEach(m => {
-        const item = document.createElement('div');
-        item.className = 'autocomplete-item';
-        item.innerText = m.title;
-        item.onclick = () => {
-          inputEl.value = m.title;
-          listEl.style.display = 'none';
-        };
-        listEl.appendChild(item);
+      const input = document.getElementById('guess-input');
+      const autoBox = document.getElementById('guess-autocomplete');
+      input.addEventListener('input', () => {
+        const val = input.value.toLowerCase().trim();
+        if (!val) { autoBox.style.display = 'none'; return; }
+        const matches = pool.filter(g => g.title.toLowerCase().includes(val)).slice(0, 6);
+        if (matches.length === 0) { autoBox.style.display = 'none'; return; }
+        autoBox.innerHTML = '';
+        matches.forEach(m => {
+          const div = document.createElement('div');
+          div.className = 'autocomplete-item';
+          div.innerText = m.title;
+          div.onclick = () => { input.value = m.title; autoBox.style.display = 'none'; };
+          autoBox.appendChild(div);
+        });
+        autoBox.style.display = 'block';
       });
-      listEl.style.display = 'block';
+    }
+
+    function updateGuessZoom() {
+      const img = document.getElementById('guess-image-display');
+      if (!img) return;
+      if (guessCluesRevealed === 1) img.style.transform = 'scale(8)';
+      else if (guessCluesRevealed === 2) img.style.transform = 'scale(4.5)';
+      else if (guessCluesRevealed === 3) img.style.transform = 'scale(2.2)';
+      else img.style.transform = 'scale(1)';
+    }
+
+    function revealNextClue() {
+      if (guessCluesRevealed < 4) {
+        guessCluesRevealed++;
+        document.getElementById(`clue-${guessCluesRevealed}`).style.display = 'block';
+        updateGuessZoom();
+      }
     }
 
     function submitGuess() {
-      const input = document.getElementById('guess-input');
-      const feedback = document.getElementById('guess-feedback');
-      const scoreDisp = document.getElementById('guess-score-display');
-      const img = document.getElementById('guess-img');
-      if (!input || !guessTarget) return;
+      const val = (document.getElementById('guess-input').value || '').trim().toLowerCase();
+      const feedback = document.getElementById('guess-inline-feedback');
+      if (!val) return;
 
-      const userVal = input.value.toLowerCase().trim();
-      const actualVal = guessTarget.title.toLowerCase().trim();
-
-      img.style.transform = 'scale(1.0)';
-
-      if (userVal === actualVal) {
-        const points = Math.max(1, 5 - guessZoomLevel);
-        guessScore += points;
-        if (scoreDisp) scoreDisp.innerText = `Score: ${guessScore}`;
-        feedback.innerHTML = `<span style="color: var(--turquoise);">✓ Correct! It's ${guessTarget.title} (+${points} pts)</span>`;
+      if (val === guessTarget.title.toLowerCase()) {
+        const img = document.getElementById('guess-image-display');
+        if (img) img.style.transform = 'scale(1)';
+        feedback.style.color = 'var(--yellow)';
+        feedback.innerHTML = `🎉 Correct! The game was <b>${guessTarget.title}</b>! <button class="game-btn" onclick="launchGame('guess_game')" style="margin-left:8px; padding:4px 8px;">Next Game 🎲</button>`;
       } else {
-        feedback.innerHTML = `<span style="color: var(--magenta);">✕ Incorrect! It was ${guessTarget.title}</span>`;
+        feedback.style.color = 'var(--magenta)';
+        feedback.innerText = `❌ "${document.getElementById('guess-input').value}" is incorrect. Try again or reveal a clue!`;
+        revealNextClue();
       }
-
-      input.disabled = true;
-      setTimeout(() => {
-        startNewGuessRound();
-      }, 2200);
     }
 
-    /* ----------------------------------------------------
-       4. HIGHER OR LOWER (With Streak & Longest Streak)
-    ---------------------------------------------------- */
-    let hlCurrentStreak = 0;
-    let hlLongestStreak = 0;
-    let hlLeftGame = null;
-    let hlRightGame = null;
-    let hlCurrentMetric = 'weight';
-    let hlPoolRef = [];
-
-    const hlMetrics = [
-      { key: 'weight', label: 'Weight / Complexity', fmt: v => v.toFixed(2) },
-      { key: 'bgg_rating', label: 'BGG Rating', fmt: v => v.toFixed(1) },
-      { key: 'user_rating', label: "Luke's Rating", fmt: v => v.toFixed(1) },
-      { key: 'playing_time', label: 'Playtime (Min)', fmt: v => `${v} min` }
-    ];
+    /* 4. HIGHER OR LOWER WITH LONGEST STREAK */
+    let hlStreak = 0;
+    let hlLongestStreak = parseInt(localStorage.getItem('hl_longest_streak') || '0', 10);
+    let hlCardA = null;
+    let hlCardB = null;
+    let hlMetric = 'user_rating';
 
     function renderHigherLower(container, pool) {
-      hlPoolRef = pool;
-      hlCurrentStreak = 0;
-      setupHlRound(container, true);
-    }
-
-    function setupHlRound(container, resetBoth = false) {
-      if (!container) container = document.getElementById('arcade-game-container');
-      const metricObj = hlMetrics[Math.floor(Math.random() * hlMetrics.length)];
-      hlCurrentMetric = metricObj.key;
-
-      if (resetBoth || !hlLeftGame) {
-        hlLeftGame = hlPoolRef[Math.floor(Math.random() * hlPoolRef.length)];
+      if (pool.length < 2) {
+        container.innerHTML = `<div style="padding:20px; text-align:center;">Not enough games in current pool to play Higher/Lower!</div>`;
+        return;
       }
+      hlStreak = 0;
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      hlCardA = shuffled[0];
+      hlCardB = shuffled[1];
 
-      do {
-        hlRightGame = hlPoolRef[Math.floor(Math.random() * hlPoolRef.length)];
-      } while (hlRightGame.id === hlLeftGame.id && hlPoolRef.length > 1);
-
-      const metricLabel = metricObj.label;
-      const leftValFormatted = metricObj.fmt(hlLeftGame[hlCurrentMetric]);
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">📈 Higher or Lower</h2>
-          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">📈 Higher or Lower</h3>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back to Extras</button>
         </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--purple-border); margin-bottom: 12px;">
-          <span style="color: var(--turquoise); font-weight: 800; font-size: 0.88rem;">Metric: <span style="color: var(--yellow);">${metricLabel}</span></span>
-          <div style="font-weight: 800; font-size: 0.85rem;">
-            <span style="color: var(--turquoise); margin-right: 12px;">Streak: ${hlCurrentStreak}</span>
-            <span style="color: var(--yellow);">Best: ${hlLongestStreak}</span>
-          </div>
-        </div>
-
-        <div class="hl-container">
-          <div class="hl-card" style="cursor: default;">
-            <img src="${hlLeftGame.image || hlLeftGame.thumbnail || ''}">
-            <h4 style="color: var(--yellow); font-size: 0.95rem; margin-bottom: 6px;">${hlLeftGame.title}</h4>
-            <div style="font-size: 1.1rem; font-weight: 900; color: var(--turquoise);">${leftValFormatted}</div>
-          </div>
-
-          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: 900; color: var(--magenta); font-size: 1.2rem;">
-            VS
-          </div>
-
-          <div class="hl-card" style="cursor: default;">
-            <img src="${hlRightGame.image || hlRightGame.thumbnail || ''}">
-            <h4 style="color: var(--yellow); font-size: 0.95rem; margin-bottom: 8px;">${hlRightGame.title}</h4>
-            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-              <button class="game-btn" style="background: var(--turquoise); color: #000;" onclick="guessHigherLower('higher')">▲ Higher</button>
-              <button class="game-btn" style="background: var(--magenta); color: #fff;" onclick="guessHigherLower('lower')">▼ Lower</button>
-            </div>
+        <div class="game-status-bar">
+          <div>Streak: <span id="hl-streak" style="color:var(--yellow); font-size:1.1rem;">0</span></div>
+          <div>Longest Streak: <span id="hl-best-streak" style="color:var(--magenta); font-size:1.1rem;">${hlLongestStreak}</span></div>
+          <div>
+            <select id="hl-metric-select" onchange="changeHLMetric(this.value)" style="padding:2px 6px;">
+              <option value="user_rating" selected>Luke's Rating</option>
+              <option value="bgg_rating">BGG Rating</option>
+              <option value="weight">Weight</option>
+              <option value="playing_time">Playtime</option>
+              <option value="popularity_owned">Popularity</option>
+            </select>
           </div>
         </div>
-
-        <div id="hl-feedback" style="text-align: center; min-height: 24px; font-weight: bold; font-size: 0.9rem;"></div>
+        <div class="hl-container" id="hl-board">
+        </div>
       `;
-
-      container.innerHTML = html;
+      updateHLBoard(pool);
     }
 
-    function guessHigherLower(guess) {
-      const leftVal = hlLeftGame[hlCurrentMetric];
-      const rightVal = hlRightGame[hlCurrentMetric];
-      const feedback = document.getElementById('hl-feedback');
+    function changeHLMetric(val) {
+      hlMetric = val;
+      const pool = getExtrasPool();
+      updateHLBoard(pool);
+    }
 
-      let correct = false;
-      if (guess === 'higher' && rightVal >= leftVal) correct = true;
-      if (guess === 'lower' && rightVal <= leftVal) correct = true;
+    function getHLMetricLabel() {
+      if (hlMetric === 'user_rating') return "Luke's Rating";
+      if (hlMetric === 'bgg_rating') return "BGG Rating";
+      if (hlMetric === 'weight') return "Weight";
+      if (hlMetric === 'playing_time') return "Playtime (Min)";
+      if (hlMetric === 'popularity_owned') return "Popularity";
+      return hlMetric;
+    }
 
-      const metricObj = hlMetrics.find(m => m.key === hlCurrentMetric);
-      const rightFmt = metricObj.fmt(rightVal);
+    function updateHLBoard(pool) {
+      const board = document.getElementById('hl-board');
+      if (!board) return;
+      const metricLabel = getHLMetricLabel();
+      const valA = hlCardA[hlMetric];
 
+      board.innerHTML = `
+        <div class="hl-card" style="cursor:default;">
+          <img src="${hlCardA.thumbnail || hlCardA.image}">
+          <div style="font-weight:900; color:var(--yellow); font-size:1.05rem;">${hlCardA.title}</div>
+          <div style="margin-top:8px; font-size:0.85rem; color:var(--turquoise);">${metricLabel}:</div>
+          <div style="font-size:1.4rem; font-weight:900; color:var(--yellow);">${valA}</div>
+        </div>
+
+        <div class="hl-card" style="cursor:default;">
+          <img src="${hlCardB.thumbnail || hlCardB.image}">
+          <div style="font-weight:900; color:var(--yellow); font-size:1.05rem;">${hlCardB.title}</div>
+          <div style="margin-top:8px; font-size:0.85rem; color:var(--turquoise);">${metricLabel} is...</div>
+          <div style="display:flex; flex-direction:column; gap:8px; width:100%; margin-top:10px;">
+            <button class="game-btn" style="background:var(--turquoise); color:#000;" onclick="guessHL(true)">HIGHER ▲</button>
+            <button class="game-btn" style="background:var(--magenta); color:#fff;" onclick="guessHL(false)">LOWER ▼</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function guessHL(isHigher) {
+      const pool = getExtrasPool();
+      const valA = parseFloat(hlCardA[hlMetric]) || 0;
+      const valB = parseFloat(hlCardB[hlMetric]) || 0;
+
+      const correct = isHigher ? valB >= valA : valB <= valA;
       if (correct) {
-        hlCurrentStreak++;
-        if (hlCurrentStreak > hlLongestStreak) {
-          hlLongestStreak = hlCurrentStreak;
+        hlStreak++;
+        if (hlStreak > hlLongestStreak) {
+          hlLongestStreak = hlStreak;
+          localStorage.setItem('hl_longest_streak', hlLongestStreak.toString());
         }
-        if (feedback) feedback.innerHTML = `<span style="color: var(--turquoise);">✓ Correct! ${hlRightGame.title} is ${rightFmt}.</span>`;
-        hlLeftGame = hlRightGame;
-        setTimeout(() => setupHlRound(null, false), 1400);
+        hlCardA = hlCardB;
+        const available = pool.filter(g => g.id !== hlCardA.id);
+        hlCardB = available[Math.floor(Math.random() * available.length)];
+        
+        document.getElementById('hl-streak').innerText = hlStreak;
+        document.getElementById('hl-best-streak').innerText = hlLongestStreak;
+        updateHLBoard(pool);
       } else {
-        hlCurrentStreak = 0;
-        if (feedback) feedback.innerHTML = `<span style="color: var(--magenta);">✕ Wrong! ${hlRightGame.title} is ${rightFmt}. Streak reset.</span>`;
-        setTimeout(() => setupHlRound(null, true), 1800);
+        alert(`Wrong! ${hlCardB.title} had a ${getHLMetricLabel()} of ${valB} (vs ${valA}). Game Over! Final Streak: ${hlStreak}`);
+        renderHigherLower(document.getElementById('arcade-game-container'), pool);
       }
-    }
-
-    function closeDetailModal() { detailModal.classList.remove('open'); }
-    function closeLuckModal() { luckModal.classList.remove('open'); }
-
-    luckBtn.addEventListener('click', pickRandomGame);
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
-    modalChangeFiltersBtn.addEventListener('click', () => {
-      closeLuckModal();
-      toolbar.classList.remove('collapsed');
-    });
-
-    function pickRandomGame() {
-      if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<p style="text-align:center; color: var(--magenta);">No games available under current filters!</p>`;
-      } else {
-        const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
-        modalContent.innerHTML = `
-          <div style="text-align: center;">
-            <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 220px; object-fit: contain; margin-bottom: 12px; border-radius: 8px;">
-            <h2 style="color: var(--yellow); font-size: 1.5rem; margin-bottom: 8px;">${randomGame.title}</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">${randomGame.playing_time} mins | ${randomGame.min_players}-${randomGame.max_players} Players | Weight: ${randomGame.weight}</p>
-          </div>
-        `;
-      }
-      luckModal.classList.add('open');
-    }
-
-    function openDetailModal(game) {
-      currentDetailGame = game;
-      let awardsHtml = '';
-      if (game.major_awards && game.major_awards.length > 0) {
-        awardsHtml += `<div style="margin-top: 6px;"><strong style="color: var(--yellow);">🏆 Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
-      }
-      if (game.minor_awards && game.minor_awards.length > 0) {
-        awardsHtml += `<div style="margin-top: 4px;"><strong style="color: var(--turquoise);">🎖️ Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
-      }
-
-      detailModalContent.innerHTML = `
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-          <img src="${game.image || game.thumbnail}" style="max-width: 200px; max-height: 200px; object-fit: contain; border-radius: 8px;">
-          <div style="flex: 1; min-width: 220px;">
-            <h2 class="modal-title" style="margin-bottom: 6px;">${game.title} (${game.year})</h2>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
-              <div><strong>Designer:</strong> ${game.designer}</div>
-              <div><strong>Publisher:</strong> ${game.publisher}</div>
-              <div><strong>Artist:</strong> ${game.artist}</div>
-            </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-              <span class="stat-badge">BGG: ${game.bgg_rating}</span>
-              <span class="stat-badge" style="color: var(--yellow);">Luke: ${game.user_rating}</span>
-              <span class="stat-badge">Weight: ${game.weight}</span>
-            </div>
-          </div>
-        </div>
-        ${awardsHtml}
-        <div style="margin-top: 12px; font-size: 0.85rem; line-height: 1.4; max-height: 200px; overflow-y: auto; background: var(--panel-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--purple-border);">
-          ${game.description}
-        </div>
-      `;
-      detailModal.classList.add('open');
     }
   </script>
 </body>
