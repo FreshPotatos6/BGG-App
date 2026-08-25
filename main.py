@@ -2274,45 +2274,52 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         const expBtn = document.createElement('button');
         expBtn.className = 'expansion-icon-btn';
         expBtn.title = 'View Expansions';
-        expBtn.innerHTML = `<svg viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><path d="M256 54.99c-27 0-46.418 14.287-57.633 32.23-10.03 16.047-14.203 34.66-15.017 50.962-30.608 15.135-64.515 30.394-91.815 45.994-14.32 8.183-26.805 16.414-36.203 25.26C45.934 218.28 39 228.24 39 239.99c0 5 2.44 9.075 5.19 12.065 2.754 2.99 6.054 5.312 9.812 7.48 7.515 4.336 16.99 7.95 27.412 11.076 15.483 4.646 32.823 8.1 47.9 9.577-14.996 25.84-34.953 49.574-52.447 72.315C56.65 378.785 39 403.99 39 431.99c0 4-.044 7.123.31 10.26.355 3.137 1.256 7.053 4.41 10.156 3.155 3.104 7.017 3.938 10.163 4.28 3.146.345 6.315.304 10.38.304h111.542c8.097 0 14.026.492 20.125-3.43 6.1-3.92 8.324-9.275 12.67-17.275l.088-.16.08-.166s9.723-19.77 21.324-39.388c5.8-9.808 12.097-19.576 17.574-26.498 2.74-3.46 5.304-6.204 7.15-7.754.564-.472.82-.56 1.184-.76.363.2.62.288 1.184.76 1.846 1.55 4.41 4.294 7.15 7.754 5.477 6.922 11.774 16.69 17.574 26.498 11.6 19.618 21.324 39.387 21.324 39.387l.08.165.088.16c4.346 8 6.55 13.323 12.61 17.254 6.058 3.93 11.974 3.45 19.957 3.45H448c4 0 7.12.043 10.244-.304 3.123-.347 6.998-1.21 10.12-4.332 3.12-3.122 3.984-6.997 4.33-10.12.348-3.122.306-6.244.306-10.244 0-28-17.65-53.205-37.867-79.488-17.493-22.74-37.45-46.474-52.447-72.315 15.077-1.478 32.417-4.93 47.9-9.576 10.422-3.125 19.897-6.74 27.412-11.075 3.758-2.168 7.058-4.49 9.81-7.48 2.753-2.99 5.192-7.065 5.192-12.065 0-11.75-6.934-21.71-16.332-30.554-9.398-8.846-21.883-17.077-36.203-25.26-27.3-15.6-61.207-30.86-91.815-45.994-.814-16.3-4.988-34.915-15.017-50.96C302.418 69.276 283 54.99 256 54.99"/></svg>`;
-        expBtn.addEventListener('click', (e) => {
+        expBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        expBtn.onclick = (e) => {
           e.stopPropagation();
           card.classList.toggle('show-expansions');
-        });
+        };
         imgWrapper.appendChild(expBtn);
       }
 
-      if (game.major_awards && game.major_awards.length > 0) {
+      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
-        medalBadge.innerText = '🏅';
-        medalBadge.title = game.major_awards.join(', ');
+        medalBadge.innerHTML = '🏆';
         imgWrapper.appendChild(medalBadge);
       }
 
       const img = document.createElement('img');
-      img.src = game.image || game.thumbnail || 'https://via.placeholder.com/200x200?text=No+Image';
+      img.src = game.image || game.thumbnail || '';
       img.alt = game.title;
-      img.loading = "lazy";
+      img.loading = 'lazy';
       imgWrapper.appendChild(img);
-      card.appendChild(imgWrapper);
 
-      const expOverlay = document.createElement('div');
-      expOverlay.className = 'expansions-overlay';
-      expOverlay.innerHTML = `
-        <div class="expansions-header">
-          <span>📦 Expansions</span>
-          <button class="expansion-close-btn" onclick="event.stopPropagation(); this.closest('.game-card').classList.remove('show-expansions');">✕ Close</button>
-        </div>
-      `;
+      const overlay = document.createElement('div');
+      overlay.className = 'expansions-overlay';
+      
+      const expHeader = document.createElement('div');
+      expHeader.className = 'expansions-header';
+      expHeader.innerHTML = `<span>Expansions</span>`;
+      
+      const closeExpBtn = document.createElement('button');
+      closeExpBtn.className = 'expansion-close-btn';
+      closeExpBtn.innerText = '✕ Close';
+      closeExpBtn.onclick = (e) => {
+        e.stopPropagation();
+        card.classList.remove('show-expansions');
+      };
+      expHeader.appendChild(closeExpBtn);
+      overlay.appendChild(expHeader);
+
       const childExpansions = rawCollection.filter(g => g.is_expansion && String(g.parent_game_id) === String(game.id));
       childExpansions.forEach(exp => {
-        const expItem = document.createElement('div');
-        expItem.className = 'expansion-item';
-        expItem.innerHTML = `<div class="expansion-title">${exp.title}</div><div style="color:var(--text-muted)">Year: ${exp.year || 'N/A'}</div>`;
-        expOverlay.appendChild(expItem);
+        const expDiv = document.createElement('div');
+        expDiv.className = 'expansion-item';
+        expDiv.innerHTML = `<div class="expansion-title">${exp.title}</div><div style="color:var(--text-muted);">${exp.year ? exp.year : ''}</div>`;
+        overlay.appendChild(expDiv);
       });
-      card.appendChild(expOverlay);
+      imgWrapper.appendChild(overlay);
 
       const content = document.createElement('div');
       content.className = 'card-content';
@@ -2324,29 +2331,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const stats = document.createElement('div');
       stats.className = 'game-stats';
-
-      const playerStat = document.createElement('div');
-      playerStat.className = 'stat-badge';
-      playerStat.innerText = game.min_players === game.max_players ? `${game.min_players} P` : `${game.min_players}-${game.max_players} P`;
-
-      const weightStat = document.createElement('div');
-      weightStat.className = 'stat-badge';
-      weightStat.innerText = game.weight > 0 ? `⚙️ ${game.weight.toFixed(1)}` : '⚙️ N/A';
-
-      const timeStat = document.createElement('div');
-      timeStat.className = 'stat-badge';
-      timeStat.innerText = game.playing_time > 0 ? `⏱️ ${game.playing_time}m` : '⏱️ N/A';
-
-      const yearStat = document.createElement('div');
-      yearStat.className = 'stat-badge';
-      yearStat.innerText = game.year > 0 ? `📅 ${game.year}` : '📅 N/A';
-
-      stats.appendChild(playerStat);
-      stats.appendChild(weightStat);
-      stats.appendChild(timeStat);
-      stats.appendChild(yearStat);
+      stats.innerHTML = `
+        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
+        <div class="stat-badge">⏱️ ${game.playing_time}m</div>
+        <div class="stat-badge">⚖️ ${game.weight.toFixed(1)}</div>
+        <div class="stat-badge">📅 ${game.year || 'N/A'}</div>
+      `;
       content.appendChild(stats);
 
+      card.appendChild(imgWrapper);
       card.appendChild(content);
 
       card.addEventListener('click', () => openDetailModal(game));
@@ -2358,39 +2351,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       currentDetailGame = game;
       let awardsHtml = '';
       if (game.major_awards && game.major_awards.length > 0) {
-        awardsHtml += `<div style="margin-top:6px; color:var(--yellow); font-size:0.85rem;"><strong>🏅 Major:</strong> ${game.major_awards.join(', ')}</div>`;
+        awardsHtml += `<div style="margin-top:8px;"><strong>Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
       }
       if (game.minor_awards && game.minor_awards.length > 0) {
-        awardsHtml += `<div style="margin-top:4px; color:var(--text-muted); font-size:0.85rem;"><strong>🎖️ Minor:</strong> ${game.minor_awards.join(', ')}</div>`;
+        awardsHtml += `<div style="margin-top:4px;"><strong>Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
       }
 
       detailModalContent.innerHTML = `
-        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
-          <img src="${game.image || game.thumbnail}" style="max-width:140px; height:auto; object-fit:contain; border-radius:8px;" />
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+          <img src="${game.image || game.thumbnail}" style="max-width:180px; height:auto; border-radius:8px; object-fit:contain;" />
           <div style="flex:1; min-width:200px;">
-            <h2 style="color:var(--yellow); font-size:1.4rem; font-weight:900;">${game.title}</h2>
-            <div style="color:var(--turquoise); font-size:0.9rem; margin-bottom:6px;">${game.year ? '(' + game.year + ')' : ''}</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"><strong>Designer:</strong> ${game.designer}</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"><strong>Publisher:</strong> ${game.publisher}</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px;"><strong>Artist:</strong> ${game.artist}</div>
-            ${awardsHtml}
+            <div class="modal-title">${game.title}</div>
+            <div><strong>Year:</strong> ${game.year || 'N/A'}</div>
+            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
+            <div><strong>Playtime:</strong> ${game.playing_time} mins</div>
+            <div><strong>Weight:</strong> ${game.weight.toFixed(1)} / 5.0</div>
+            <div><strong>BGG Rating:</strong> ${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
+            <div><strong>Luke's Rating:</strong> ${game.user_rating ? game.user_rating.toFixed(1) : 'N/A'}</div>
+            <div><strong>Publisher:</strong> ${game.publisher}</div>
+            <div><strong>Designer:</strong> ${game.designer}</div>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin-bottom:12px;">
-          <div class="stat-badge">BGG: ${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-          <div class="stat-badge">Luke: ${game.user_rating ? game.user_rating.toFixed(1) : 'N/A'}</div>
-          <div class="stat-badge">Weight: ${game.weight ? game.weight.toFixed(1) : 'N/A'}</div>
-          <div class="stat-badge">Time: ${game.playing_time} min</div>
-          <div class="stat-badge">Players: ${game.min_players}-${game.max_players}</div>
-          <div class="stat-badge">Plays: ${game.plays_recorded}</div>
-        </div>
-        <div style="font-size:0.85rem; line-height:1.4; color:var(--text); background:var(--panel-bg); padding:10px; border-radius:8px; border:1px solid var(--purple-border); max-height:160px; overflow-y:auto; margin-bottom:12px;">
-          ${game.description}
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:4px;">
-          ${(game.categories || []).map(c => `<span style="background:var(--card-bg); border:1px solid var(--turquoise); color:var(--turquoise); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${c}</span>`).join('')}
-          ${(game.mechanics || []).map(m => `<span style="background:var(--card-bg); border:1px solid var(--magenta); color:var(--magenta); padding:2px 6px; border-radius:4px; font-size:0.75rem;">${m}</span>`).join('')}
-        </div>
+        ${awardsHtml}
+        <div style="margin-top:14px; line-height:1.4; font-size:0.9rem; color:var(--text-muted);">${game.description}</div>
       `;
       detailModal.classList.add('open');
     }
@@ -2404,30 +2387,46 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       openSidebarFromExtras();
     });
 
+    function closeLuckModal() { luckModal.classList.remove('open'); }
+
     function pickRandomGame() {
       if (currentlyFilteredGames.length === 0) {
-        modalContent.innerHTML = `<div style="text-align:center; padding:20px; color:var(--magenta); font-weight:bold;">No games match your current filters!</div>`;
+        modalContent.innerHTML = `<p style="text-align:center; color:var(--magenta);">No games match your active filters!</p>`;
       } else {
-        const randomIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
-        const g = currentlyFilteredGames[randomIndex];
+        const randIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+        const game = currentlyFilteredGames[randIndex];
         modalContent.innerHTML = `
           <div style="text-align:center;">
-            <img src="${g.image || g.thumbnail}" style="max-height:180px; max-width:100%; object-fit:contain; border-radius:8px; margin-bottom:10px;" />
-            <h3 style="color:var(--yellow); font-size:1.3rem; font-weight:900;">${g.title}</h3>
-            <div style="color:var(--turquoise); font-size:0.9rem; margin-top:4px;">${g.min_players}-${g.max_players} Players | ⏱️ ${g.playing_time} min | ⚙️ ${g.weight ? g.weight.toFixed(1) : 'N/A'}</div>
+            <img src="${game.image || game.thumbnail}" style="max-height:160px; object-fit:contain; border-radius:8px; margin-bottom:12px;" />
+            <h3 style="color:var(--yellow); font-size:1.3rem;">${game.title}</h3>
+            <p style="color:var(--turquoise); margin-top:6px;">⏱️ ${game.playing_time} mins | 👥 ${game.min_players}-${game.max_players} | ⚖️ ${game.weight.toFixed(1)}</p>
           </div>
         `;
       }
       luckModal.classList.add('open');
     }
 
-    function closeLuckModal() { luckModal.classList.remove('open'); }
+    /* ==========================================================================
+       EXTRAS MODULE GAMES CODE (Tier Maker, Blind Ranking, Higher/Lower, Guess)
+       ========================================================================== */
 
-    /* ==================== EXTRAS MODULE ==================== */
-    let currentGameMode = '';
-    let extrasState = {};
+    function getExtrasPool() {
+      return currentlyFilteredGames.length > 0 ? currentlyFilteredGames : games;
+    }
 
-    function launchGame(gameKey) {
+    function renderExtrasHeader(title, hasFilterBtn = true) {
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid var(--purple-border); padding-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="btn-primary" onclick="returnToArcadeMenu()" style="padding: 4px 8px; font-size: 0.8rem;">◀ Back</button>
+            <span style="font-weight: 900; color: var(--yellow); font-size: 1.1rem; text-transform: uppercase;">${title}</span>
+          </div>
+          ${hasFilterBtn ? `<button class="btn-primary" onclick="openSidebarFromExtras()" style="padding: 4px 10px; font-size: 0.8rem;">⚙️ Filters</button>` : ''}
+        </div>
+      `;
+    }
+
+function launchGame(gameKey) {
       currentGameMode = gameKey;
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
