@@ -851,6 +851,152 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       color: #0d0221;
     }
 
+    .expansion-icon-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.2s ease;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .expansion-icon-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--turquoise);
+      filter: drop-shadow(0 0 4px rgba(0, 245, 212, 0.8));
+    }
+    .expansion-icon-btn:hover {
+      transform: scale(1.2);
+    }
+
+    .medal-icon-badge {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: transparent;
+      color: var(--yellow);
+      width: 28px;
+      height: 28px;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      box-shadow: none;
+      font-size: 1.2rem;
+      z-index: 10;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+
+    .card-content {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .game-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1.2;
+    }
+
+    .game-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--purple-border);
+      font-size: 0.8rem;
+    }
+
+    .game-card.top-rated .game-stats {
+      border-top: 1px solid var(--yellow);
+    }
+
+    .stat-badge {
+      background: var(--panel-bg);
+      color: var(--turquoise);
+      padding: 4px 6px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 600;
+      border: 1px solid var(--purple-border);
+    }
+
+    .expansions-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(21, 8, 51, 0.98);
+      backdrop-filter: blur(4px);
+      z-index: 25;
+      padding: 12px;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-radius: 12px;
+    }
+    .game-card.show-expansions .expansions-overlay {
+      display: flex;
+    }
+
+    .expansions-header {
+      font-size: 0.8rem;
+      font-weight: 900;
+      color: var(--yellow);
+      text-transform: uppercase;
+      border-bottom: 2px dashed var(--magenta);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      white-space: nowrap;
+      gap: 4px;
+    }
+
+    .expansion-close-btn {
+      background: var(--magenta);
+      color: #fff;
+      border: 1px solid var(--turquoise);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .expansion-close-btn:hover {
+      background: var(--turquoise);
+      color: #0d0221;
+    }
+
+    .expansion-item {
+      background: var(--panel-bg);
+      border: 1px solid var(--purple-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+    }
+
+    .expansion-title {
+      font-weight: 800;
+      color: var(--turquoise);
+      margin-bottom: 2px;
+    }
+
     .modal-overlay {
       display: none;
       position: fixed;
@@ -963,85 +1109,132 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       flex: 1;
     }
 
-    /* Tier Maker Styles */
-    .tier-list-container {
+    /* Extras Specific UI Components */
+    .game-board {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
       margin-top: 10px;
     }
+
+    .game-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-bg);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--purple-border);
+      font-weight: 700;
+      color: var(--turquoise);
+    }
+
+    .game-btn {
+      background: var(--magenta);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .game-btn:hover { background: var(--turquoise); color: #000; }
+
+    /* Higher / Lower */
+    .hl-container { display: flex; gap: 10px; align-items: center; justify-content: space-around; margin: 15px 0; }
+    .hl-card { background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 10px; padding: 12px; width: 45%; text-align: center; }
+    .hl-card img { height: 110px; object-fit: contain; margin-bottom: 8px; }
+
+    /* Blind Ranking Column Grid */
+    .blind-grid-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    /* Tier Maker Styles */
     .tier-row {
       display: flex;
+      min-height: 70px;
       background: var(--panel-bg);
-      border: 2px solid var(--purple-border);
-      border-radius: 8px;
-      min-height: 80px;
+      border: 1px solid var(--purple-border);
+      border-radius: 6px;
+      margin-bottom: 8px;
       overflow: hidden;
     }
-    .tier-label {
+    .tier-header {
       width: 70px;
+      min-width: 70px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 900;
-      font-size: 1.2rem;
       color: #0d0221;
-      text-transform: uppercase;
+      font-size: 1.2rem;
+      outline: none;
       padding: 4px;
-      cursor: pointer;
-      user-select: none;
-      flex-shrink: 0;
+      text-align: center;
     }
+    .tier-s { background: #ff7f7f; }
+    .tier-a { background: #ffbf7f; }
+    .tier-b { background: #ffff7f; }
+    .tier-c { background: #7fff7f; }
+    .tier-d { background: #7fbfff; }
+    .tier-e { background: #ff7fff; }
     .tier-dropzone {
       flex: 1;
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      padding: 8px;
-      min-height: 80px;
+      gap: 6px;
+      padding: 6px;
       align-items: center;
-      background: rgba(13, 2, 33, 0.4);
+      min-height: 70px;
     }
-    .tier-pool {
-      margin-top: 15px;
-      padding: 12px;
-      background: var(--panel-bg);
-      border: 2px dashed var(--turquoise);
-      border-radius: 8px;
-      min-height: 100px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .drag-game-img {
-      width: 65px;
-      height: 65px;
-      object-fit: contain;
-      background: var(--card-bg);
-      border: 2px solid var(--purple-border);
-      border-radius: 6px;
+    .tier-item {
+      width: 55px;
+      height: 55px;
+      background: #000;
+      border-radius: 4px;
+      border: 1px solid var(--purple-border);
       cursor: grab;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-      padding: 2px;
+      position: relative;
     }
-    .drag-game-img:hover {
-      transform: scale(1.1);
-      border-color: var(--yellow);
-      z-index: 10;
-    }
-    .tier-title-input {
-      background: var(--panel-bg);
-      color: var(--yellow);
-      border: 2px solid var(--purple-border);
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: 800;
+    .tier-item img {
       width: 100%;
-      margin-bottom: 10px;
+      height: 100%;
+      object-fit: contain;
     }
+
+    /* Extras Filtering Panel */
+    .extras-filter-bar {
+      background: var(--panel-bg);
+      border: 1px solid var(--purple-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .extras-filter-bar input, .extras-filter-bar select {
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    /* Auto Suggest Input Dropdown */
+    .autocomplete-wrapper { position: relative; width: 100%; }
+    .autocomplete-list {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--card-bg); border: 2px solid var(--turquoise);
+      border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto;
+      z-index: 120;
+    }
+    .autocomplete-item {
+      padding: 8px 12px; cursor: pointer; color: var(--text); font-size: 0.85rem;
+    }
+    .autocomplete-item:hover { background: var(--purple-border); color: var(--yellow); }
 
     .btn-text-play-desktop { display: inline; }
     .btn-text-play-mobile { display: none; }
@@ -1159,7 +1352,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     <div class="header-right-column">
       <div class="header-actions-top">
-        <button id="play-games-btn" class="btn-play" title="Extras Module"><span class="btn-icon">🎁 </span><span>Extras</span></button>
+        <button id="play-games-btn" class="btn-play" title="Extras"><span class="btn-icon">🎮 </span><span>Extras</span></button>
         <button id="luck-btn" class="btn-luck" title="Pick Game"><span class="btn-icon">🎲 </span><span class="btn-text-play-desktop">Pick Game</span><span class="btn-text-play-mobile">Pick</span></button>
         <button id="toggle-filters-btn" class="btn-primary" title="Filters"><span class="btn-icon">⚙️ </span>Filters</button>
         <button id="header-clear-btn" class="btn-clear-filters" title="Reset to Page Load"><span class="btn-text-clear-desktop">Clear Filters</span><span class="btn-text-clear-mobile">Clear</span></button>
@@ -1499,17 +1692,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Extras Overlay Modal -->
+  <!-- Extras Arcade Overlay Modal -->
   <div id="games-arcade-modal" class="modal-overlay">
-    <div class="modal-card" style="position: relative; max-width: 850px;">
+    <div class="modal-card" style="position: relative; max-width: 800px;">
       <div class="modal-close-x" onclick="closeGamesArcadeModal()">✕</div>
       <div id="arcade-view-launcher">
-        <div class="modal-title">🎁 Extras</div>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Interactive suites and minigames powered by your collection filters!</p>
+        <div class="modal-title">👾 Extras Module</div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Test your board game knowledge or create custom rank lists using your collection!</p>
         <div class="arcade-grid">
           <div class="arcade-card" onclick="launchGame('tier_maker')">
             <h3>📊 Tier Maker</h3>
-            <p>Drag and drop collection titles into editable custom ranking tiers.</p>
+            <p>Drag and drop games into customizable tiers (S, A, B, C, D, E) to make your own custom tier lists.</p>
           </div>
           <div class="arcade-card" onclick="launchGame('blind_ranking')">
             <h3>🎲 Blind Ranking</h3>
@@ -2085,12 +2278,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         imgWrapper.appendChild(expBtn);
       }
 
-      const img = document.createElement('img');
-      img.src = game.thumbnail || game.image || 'https://via.placeholder.com/150';
-      img.alt = game.title;
-      img.loading = "lazy";
-      imgWrapper.appendChild(img);
-
       if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
         const medalBadge = document.createElement('div');
         medalBadge.className = 'medal-icon-badge';
@@ -2098,7 +2285,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         imgWrapper.appendChild(medalBadge);
       }
 
+      const img = document.createElement('img');
+      img.src = game.image || game.thumbnail || '';
+      img.alt = game.title;
+      img.loading = 'lazy';
+      imgWrapper.appendChild(img);
       card.appendChild(imgWrapper);
+
+      const expOverlay = document.createElement('div');
+      expOverlay.className = 'expansions-overlay';
+      
+      const expHeader = document.createElement('div');
+      expHeader.className = 'expansions-header';
+      expHeader.innerHTML = `<span>Expansions (${expansionsForGame.length})</span>`;
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'expansion-close-btn';
+      closeBtn.innerText = '✕ Close';
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        card.classList.remove('show-expansions');
+      });
+      expHeader.appendChild(closeBtn);
+      expOverlay.appendChild(expHeader);
+
+      expansionsForGame.forEach(exp => {
+        const expItem = document.createElement('div');
+        expItem.className = 'expansion-item';
+        expItem.innerHTML = `<div class="expansion-title">${exp.title}</div>`;
+        expOverlay.appendChild(expItem);
+      });
+      card.appendChild(expOverlay);
 
       const content = document.createElement('div');
       content.className = 'card-content';
@@ -2110,42 +2327,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
       const stats = document.createElement('div');
       stats.className = 'game-stats';
-      stats.innerHTML = `
-        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
-        <div class="stat-badge">⚙️ ${game.weight > 0 ? game.weight.toFixed(1) : 'N/A'}</div>
-        <div class="stat-badge">⏱️ ${game.playing_time > 0 ? game.playing_time + 'm' : 'N/A'}</div>
-        <div class="stat-badge">📅 ${game.year > 0 ? game.year : 'N/A'}</div>
-      `;
+
+      const pStat = document.createElement('div');
+      pStat.className = 'stat-badge';
+      pStat.innerText = game.min_players === game.max_players ? `${game.min_players} P` : `${game.min_players}-${game.max_players} P`;
+      stats.appendChild(pStat);
+
+      const wStat = document.createElement('div');
+      wStat.className = 'stat-badge';
+      wStat.innerText = `⚙️ ${game.weight.toFixed(1)}`;
+      stats.appendChild(wStat);
+
+      const tStat = document.createElement('div');
+      tStat.className = 'stat-badge';
+      tStat.innerText = `⏱️ ${game.playing_time}m`;
+      stats.appendChild(tStat);
+
+      const yStat = document.createElement('div');
+      yStat.className = 'stat-badge';
+      yStat.innerText = game.year > 0 ? `📅 ${game.year}` : '📅 N/A';
+      stats.appendChild(yStat);
+
       content.appendChild(stats);
       card.appendChild(content);
-
-      if (expansionsForGame.length > 0) {
-        const overlay = document.createElement('div');
-        overlay.className = 'expansions-overlay';
-
-        const expHeader = document.createElement('div');
-        expHeader.className = 'expansions-header';
-        expHeader.innerHTML = `<span>Expansions (${expansionsForGame.length})</span>`;
-        
-        const closeExpBtn = document.createElement('button');
-        closeExpBtn.className = 'expansion-close-btn';
-        closeExpBtn.innerText = '✕ Close';
-        closeExpBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          card.classList.remove('show-expansions');
-        });
-        expHeader.appendChild(closeExpBtn);
-        overlay.appendChild(expHeader);
-
-        expansionsForGame.forEach(exp => {
-          const expItem = document.createElement('div');
-          expItem.className = 'expansion-item';
-          expItem.innerHTML = `<div class="expansion-title">${exp.title}</div>`;
-          overlay.appendChild(expItem);
-        });
-
-        card.appendChild(overlay);
-      }
 
       card.addEventListener('click', () => openDetailModal(game));
 
@@ -2156,30 +2360,29 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       currentDetailGame = game;
       let awardsHTML = '';
       if (game.major_awards && game.major_awards.length > 0) {
-        awardsHTML += `<div style="margin-top: 8px;"><strong>Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
+        awardsHTML += `<div style="margin-top:6px;"><strong>Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
       }
       if (game.minor_awards && game.minor_awards.length > 0) {
-        awardsHTML += `<div style="margin-top: 4px;"><strong>Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
+        awardsHTML += `<div style="margin-top:6px;"><strong>Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
       }
 
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.title}</div>
-        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;">
-          <img src="${game.image || game.thumbnail}" style="max-width: 180px; max-height: 220px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border);">
-          <div style="flex: 1; min-width: 200px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <img src="${game.image || game.thumbnail || ''}" style="max-width: 200px; max-height: 200px; object-fit: contain; border-radius: 8px;" />
+          <div style="flex: 1; min-width: 200px;">
+            <h2 style="color: var(--yellow); font-size: 1.4rem; margin-bottom: 8px;">${game.title}</h2>
             <div><strong>Publisher:</strong> ${game.publisher}</div>
             <div><strong>Designer:</strong> ${game.designer}</div>
             <div><strong>Artist:</strong> ${game.artist}</div>
-            <div><strong>Weight / Complexity:</strong> ${game.weight > 0 ? game.weight.toFixed(2) : 'N/A'} / 5</div>
-            <div><strong>BGG Rating:</strong> ${game.bgg_rating > 0 ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
-            <div><strong>Luke's Rating:</strong> ${game.user_rating > 0 ? game.user_rating : 'N/A'}</div>
-            <div><strong>Playtime:</strong> ${game.playing_time} minutes</div>
-            <div><strong>Player Count:</strong> ${game.min_players} - ${game.max_players}</div>
-            <div><strong>Plays Recorded:</strong> ${game.plays_recorded}</div>
+            <div><strong>Weight:</strong> ${game.weight.toFixed(1)} / 5.0</div>
+            <div><strong>Playtime:</strong> ${game.playing_time} mins</div>
+            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
+            <div><strong>BGG Rating:</strong> ${game.bgg_rating}</div>
+            <div><strong>Luke's Rating:</strong> ${game.user_rating}</div>
+            ${awardsHTML}
           </div>
         </div>
-        ${awardsHTML}
-        <div style="margin-top: 12px; font-size: 0.85rem; max-height: 180px; overflow-y: auto; background: var(--panel-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--purple-border);">
+        <div style="margin-top: 14px; border-top: 1px solid var(--purple-border); padding-top: 10px; font-size: 0.9rem; color: var(--text-muted); max-height: 200px; overflow-y: auto;">
           ${game.description}
         </div>
       `;
@@ -2190,406 +2393,317 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
     luckBtn.addEventListener('click', () => {
       if (currentlyFilteredGames.length === 0) {
-        alert("No games match your current filter settings!");
-        return;
+        modalContent.innerHTML = `<div style="text-align: center; color: var(--magenta); font-weight: bold;">No games match your current filter settings!</div>`;
+      } else {
+        const randIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+        const g = currentlyFilteredGames[randIndex];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${g.image || g.thumbnail || ''}" style="max-height: 220px; object-fit: contain; margin-bottom: 12px; border-radius: 8px;" />
+            <h2 style="color: var(--yellow);">${g.title}</h2>
+            <div style="color: var(--turquoise); font-weight: bold; margin-top: 4px;">Complexity: ${g.weight.toFixed(1)} | Playtime: ${g.playing_time}m</div>
+          </div>
+        `;
       }
-      pickRandomGame();
       luckModal.classList.add('open');
     });
 
-    function pickRandomGame() {
-      const game = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
-      modalContent.innerHTML = `
-        <div style="text-align: center;">
-          <h2 style="color: var(--yellow); margin-bottom: 12px;">${game.title}</h2>
-          <img src="${game.image || game.thumbnail}" style="max-width: 200px; max-height: 220px; object-fit: contain; border-radius: 8px; border: 2px solid var(--purple-border); margin-bottom: 12px;">
-          <div style="display: flex; justify-content: center; gap: 12px; font-size: 0.85rem;">
-            <span class="stat-badge">👥 ${game.min_players}-${game.max_players}</span>
-            <span class="stat-badge">⚙️ ${game.weight.toFixed(1)}</span>
-            <span class="stat-badge">⏱️ ${game.playing_time}m</span>
-          </div>
-        </div>
-      `;
-    }
-
     function closeLuckModal() { luckModal.classList.remove('open'); }
-    modalTryAgainBtn.addEventListener('click', pickRandomGame);
+
+    modalTryAgainBtn.addEventListener('click', () => { luckBtn.click(); });
     modalChangeFiltersBtn.addEventListener('click', () => {
       closeLuckModal();
       if (toolbar.classList.contains('collapsed')) toggleSidebar();
     });
 
     /* --- EXTRAS MODULE IMPLEMENTATION --- */
-    function launchGame(gameKey) {
-      if (!currentlyFilteredGames || currentlyFilteredGames.length === 0) {
-        alert("No games match your current filter criteria! Adjust your sidebar filters first.");
-        return;
-      }
+    let currentArcadeGame = null;
+    let arcadeState = {};
+    let extrasFilteredGames = [];
 
+    function getExtrasFilteredGames() {
+      const pubVal = document.getElementById('extras-filter-pub') ? document.getElementById('extras-filter-pub').value : "";
+      const minWeight = document.getElementById('extras-filter-weight') ? parseFloat(document.getElementById('extras-filter-weight').value) : 0;
+      const playedOnly = document.getElementById('extras-filter-played') ? document.getElementById('extras-filter-played').value : "all";
+
+      return games.filter(g => {
+        if (pubVal && g.publisher !== pubVal) return false;
+        if (minWeight && g.weight < minWeight) return false;
+        if (playedOnly === "played" && g.plays_recorded === 0) return false;
+        if (playedOnly === "unplayed" && g.plays_recorded > 0) return false;
+        return true;
+      });
+    }
+
+    function renderExtrasFilterBar() {
+      const pubs = Array.from(new Set(games.map(g => g.publisher).filter(p => p && p !== "Unknown"))).sort();
+      let options = `<option value="">All Publishers</option>`;
+      pubs.forEach(p => { options += `<option value="${p}">${p}</option>`; });
+
+      return `
+        <div class="extras-filter-bar">
+          <label style="font-size: 0.8rem; font-weight: bold; color: var(--yellow);">Filter Collection:</label>
+          <select id="extras-filter-pub" onchange="onExtrasFilterChange()">
+            ${options}
+          </select>
+          <select id="extras-filter-weight" onchange="onExtrasFilterChange()">
+            <option value="0">All Weights</option>
+            <option value="2.0">Weight >= 2.0</option>
+            <option value="3.0">Weight >= 3.0</option>
+            <option value="4.0">Weight >= 4.0</option>
+          </select>
+          <select id="extras-filter-played" onchange="onExtrasFilterChange()">
+            <option value="all">All Games</option>
+            <option value="played">Played Only</option>
+            <option value="unplayed">Unplayed Only</option>
+          </select>
+        </div>
+      `;
+    }
+
+    function onExtrasFilterChange() {
+      extrasFilteredGames = getExtrasFilteredGames();
+      if (currentArcadeGame) launchGame(currentArcadeGame);
+    }
+
+    function launchGame(gameKey) {
+      currentArcadeGame = gameKey;
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
       container.innerHTML = '';
+      extrasFilteredGames = getExtrasFilteredGames();
 
-      const backBtn = document.createElement('button');
-      backBtn.className = 'game-btn';
-      backBtn.style.marginBottom = '12px';
-      backBtn.innerText = '← Back to Extras Menu';
-      backBtn.onclick = returnToArcadeMenu;
-      container.appendChild(backBtn);
+      if (extrasFilteredGames.length < 5) {
+        container.innerHTML = `
+          ${renderExtrasFilterBar()}
+          <div style="text-align: center; padding: 30px; color: var(--magenta);">
+            <h3>Not enough games match your selected filters!</h3>
+            <p style="margin-top: 8px;">Please loosen your filters above to play.</p>
+            <button class="game-btn" style="margin-top: 15px;" onclick="returnToArcadeMenu()">← Back to Extras Menu</button>
+          </div>
+        `;
+        return;
+      }
 
-      if (gameKey === 'tier_maker') renderTierMaker(container);
-      else if (gameKey === 'blind_ranking') renderBlindRanking(container);
-      else if (gameKey === 'guess_game') renderGuessGame(container);
-      else if (gameKey === 'higher_lower') renderHigherLower(container);
+      if (gameKey === 'tier_maker') setupTierMaker(container);
+      else if (gameKey === 'blind_ranking') setupBlindRanking(container);
+      else if (gameKey === 'guess_game') setupGuessGame(container);
+      else if (gameKey === 'higher_lower') setupHigherLower(container);
     }
 
     /* 1. Tier Maker Module */
-    function renderTierMaker(container) {
-      const defaultTiers = [
-        { label: 'S', color: '#ff7f7f' },
-        { label: 'A', color: '#ffbf7f' },
-        { label: 'B', color: '#ffdf7f' },
-        { label: 'C', color: '#ffff7f' },
-        { label: 'D', color: '#bfff7f' },
-        { label: 'E', color: '#7fff7f' }
-      ];
-
-      const headerDiv = document.createElement('div');
-      headerDiv.innerHTML = `
-        <input type="text" class="tier-title-input" value="My Collection Tier List" placeholder="Tier List Title...">
+    function setupTierMaker(container) {
+      container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <input type="text" id="tier-list-title" value="My Custom Tier List" style="font-size: 1.2rem; font-weight: 900; color: var(--yellow); background: transparent; border: 1px dashed var(--purple-border); padding: 4px; border-radius: 4px;">
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Menu</button>
+        </div>
+        ${renderExtrasFilterBar()}
+        <div id="tier-rows-container">
+          <div class="tier-row"><div class="tier-header tier-s" contenteditable="true">S</div><div class="tier-dropzone" data-tier="S"></div></div>
+          <div class="tier-row"><div class="tier-header tier-a" contenteditable="true">A</div><div class="tier-dropzone" data-tier="A"></div></div>
+          <div class="tier-row"><div class="tier-header tier-b" contenteditable="true">B</div><div class="tier-dropzone" data-tier="B"></div></div>
+          <div class="tier-row"><div class="tier-header tier-c" contenteditable="true">C</div><div class="tier-dropzone" data-tier="C"></div></div>
+          <div class="tier-row"><div class="tier-header tier-d" contenteditable="true">D</div><div class="tier-dropzone" data-tier="D"></div></div>
+          <div class="tier-row"><div class="tier-header tier-e" contenteditable="true">E</div><div class="tier-dropzone" data-tier="E"></div></div>
+        </div>
+        <div style="margin-top: 12px; font-weight: bold; color: var(--turquoise); font-size: 0.9rem;">Unassigned Games Pool:</div>
+        <div class="tier-dropzone" id="tier-unassigned" style="background: rgba(0,0,0,0.3); border: 2px dashed var(--purple-border); min-height: 90px; border-radius: 8px; margin-top: 6px;"></div>
       `;
-      container.appendChild(headerDiv);
 
-      const listContainer = document.createElement('div');
-      listContainer.className = 'tier-list-container';
+      const pool = document.getElementById('tier-unassigned');
+      extrasFilteredGames.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'tier-item';
+        item.draggable = true;
+        item.id = `tier-game-${g.id}`;
+        item.title = g.title;
+        item.innerHTML = `<img src="${g.thumbnail || g.image}" alt="${g.title}">`;
 
-      defaultTiers.forEach(t => {
-        const row = document.createElement('div');
-        row.className = 'tier-row';
-
-        const label = document.createElement('div');
-        label.className = 'tier-label';
-        label.style.backgroundColor = t.color;
-        label.innerText = t.label;
-        label.contentEditable = "true";
-
-        const dropzone = document.createElement('div');
-        dropzone.className = 'tier-dropzone';
-        setupDropzone(dropzone);
-
-        row.appendChild(label);
-        row.appendChild(dropzone);
-        listContainer.appendChild(row);
-      });
-
-      container.appendChild(listContainer);
-
-      const poolTitle = document.createElement('div');
-      poolTitle.style.marginTop = '15px';
-      poolTitle.style.fontWeight = '800';
-      poolTitle.style.color = 'var(--yellow)';
-      poolTitle.innerText = `Filtered Games Pool (${currentlyFilteredGames.length} Available)`;
-      container.appendChild(poolTitle);
-
-      const pool = document.createElement('div');
-      pool.className = 'tier-pool';
-      setupDropzone(pool);
-
-      currentlyFilteredGames.forEach((game, idx) => {
-        const img = document.createElement('img');
-        img.className = 'drag-game-img';
-        img.src = game.thumbnail || game.image || 'https://via.placeholder.com/150';
-        img.alt = game.title;
-        img.title = game.title;
-        img.id = `tier-game-${idx}`;
-        img.draggable = true;
-
-        img.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', img.id);
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', item.id);
         });
-
-        pool.appendChild(img);
+        pool.appendChild(item);
       });
 
-      container.appendChild(pool);
-    }
-
-    function setupDropzone(zone) {
-      zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.style.borderColor = 'var(--yellow)';
-      });
-
-      zone.addEventListener('dragleave', () => {
-        zone.style.borderColor = '';
-      });
-
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.style.borderColor = '';
-        const id = e.dataTransfer.getData('text/plain');
-        const draggedEl = document.getElementById(id);
-        if (draggedEl) {
-          zone.appendChild(draggedEl);
-        }
+      const dropzones = container.querySelectorAll('.tier-dropzone');
+      dropzones.forEach(dz => {
+        dz.addEventListener('dragover', (e) => e.preventDefault());
+        dz.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const id = e.dataTransfer.getData('text/plain');
+          const draggedEl = document.getElementById(id);
+          if (draggedEl) dz.appendChild(draggedEl);
+        });
       });
     }
 
-    /* 2. Blind Ranking Game */
-    function renderBlindRanking(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let drawn = pool.slice(0, 10);
-      let currentIndex = 0;
-      let slots = new Array(10).fill(null);
+    /* 2. Blind Ranking Module */
+    function setupBlindRanking(container) {
+      const pool = [...extrasFilteredGames].sort(() => Math.random() - 0.5).slice(0, 10);
+      arcadeState = { pool: pool, currentIndex: 0, ranks: new Array(10).fill(null) };
 
-      const board = document.createElement('div');
-      board.className = 'game-board';
-
-      const statusBar = document.createElement('div');
-      statusBar.className = 'game-status-bar';
-      statusBar.innerHTML = `<span>Rank Games 1-10 Blindly</span><span id="blind-progress">Card 1 / 10</span>`;
-      board.appendChild(statusBar);
-
-      const gameDisplay = document.createElement('div');
-      gameDisplay.style.textAlign = 'center';
-      gameDisplay.style.padding = '12px';
-      gameDisplay.style.background = 'var(--panel-bg)';
-      gameDisplay.style.borderRadius = '8px';
-      
-      const img = document.createElement('img');
-      img.style.height = '140px';
-      img.style.objectFit = 'contain';
-      const title = document.createElement('div');
-      title.style.fontWeight = '900';
-      title.style.color = 'var(--yellow)';
-      title.style.marginTop = '8px';
-
-      gameDisplay.appendChild(img);
-      gameDisplay.appendChild(title);
-      board.appendChild(gameDisplay);
-
-      const columnsGrid = document.createElement('div');
-      columnsGrid.className = 'blind-grid-columns';
-
-      const col1 = document.createElement('div');
-      col1.style.display = 'flex';
-      col1.style.flexDirection = 'column';
-      col1.style.gap = '6px';
-
-      const col2 = document.createElement('div');
-      col2.style.display = 'flex';
-      col2.style.flexDirection = 'column';
-      col2.style.gap = '6px';
-
-      for (let i = 0; i < 10; i++) {
-        const btn = document.createElement('button');
-        btn.style.width = '100%';
-        btn.style.textAlign = 'left';
-        btn.style.padding = '8px';
-        btn.innerText = `${i + 1}. [ Empty ]`;
-        btn.onclick = () => assignRank(i);
-
-        if (i < 5) col1.appendChild(btn);
-        else col2.appendChild(btn);
-      }
-
-      columnsGrid.appendChild(col1);
-      columnsGrid.appendChild(col2);
-      board.appendChild(columnsGrid);
-      container.appendChild(board);
-
-      function updateCard() {
-        if (currentIndex < drawn.length) {
-          const currentGame = drawn[currentIndex];
-          img.src = currentGame.image || currentGame.thumbnail;
-          title.innerText = currentGame.title;
-          document.getElementById('blind-progress').innerText = `Card ${currentIndex + 1} / 10`;
-        } else {
-          gameDisplay.innerHTML = `<h3 style="color:var(--turquoise);">Final Blind Rankings Complete!</h3>`;
-        }
-      }
-
-      function assignRank(index) {
-        if (slots[index] !== null || currentIndex >= drawn.length) return;
-        slots[index] = drawn[currentIndex];
-
-        const allBtns = columnsGrid.querySelectorAll('button');
-        allBtns[index].innerText = `${index + 1}. ${drawn[currentIndex].title}`;
-        allBtns[index].disabled = true;
-        allBtns[index].style.opacity = '0.7';
-
-        currentIndex++;
-        updateCard();
-      }
-
-      updateCard();
-    }
-
-    /* 3. Guess the Game */
-    function renderGuessGame(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let currentGame = pool[0];
-      let clueStage = 0;
-
-      const board = document.createElement('div');
-      board.className = 'game-board';
-
-      const imgWrapper = document.createElement('div');
-      imgWrapper.style.textAlign = 'center';
-      imgWrapper.style.background = 'var(--panel-bg)';
-      imgWrapper.style.padding = '12px';
-      imgWrapper.style.borderRadius = '8px';
-
-      const img = document.createElement('img');
-      img.src = currentGame.image || currentGame.thumbnail;
-      img.style.height = '180px';
-      img.style.objectFit = 'contain';
-      img.style.filter = 'blur(12px)';
-      img.style.transition = 'filter 0.3s ease';
-      imgWrapper.appendChild(img);
-      board.appendChild(imgWrapper);
-
-      const clueBox = document.createElement('div');
-      clueBox.style.background = 'var(--panel-bg)';
-      clueBox.style.padding = '10px';
-      clueBox.style.borderRadius = '6px';
-      clueBox.style.fontSize = '0.88rem';
-      clueBox.innerHTML = `<strong>Clue 1:</strong> Played / Complexity - ${currentGame.weight.toFixed(1)} / 5 | Year: ${currentGame.year}`;
-      board.appendChild(clueBox);
-
-      const autoWrapper = document.createElement('div');
-      autoWrapper.className = 'autocomplete-wrapper';
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'global-search-input';
-      input.placeholder = 'Type game title...';
-
-      const suggestions = document.createElement('div');
-      suggestions.className = 'autocomplete-list';
-
-      input.addEventListener('input', () => {
-        const val = input.value.toLowerCase().trim();
-        suggestions.innerHTML = '';
-        if (!val) return;
-
-        currentlyFilteredGames
-          .filter(g => g.title.toLowerCase().includes(val))
-          .slice(0, 5)
-          .forEach(g => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            item.innerText = g.title;
-            item.onclick = () => {
-              input.value = g.title;
-              suggestions.innerHTML = '';
-              checkAnswer();
-            };
-            suggestions.appendChild(item);
-          });
-      });
-
-      autoWrapper.appendChild(input);
-      autoWrapper.appendChild(suggestions);
-      board.appendChild(autoWrapper);
-
-      const actions = document.createElement('div');
-      actions.style.display = 'flex';
-      actions.style.gap = '8px';
-
-      const submitBtn = document.createElement('button');
-      submitBtn.className = 'game-btn';
-      submitBtn.style.flex = '1';
-      submitBtn.innerText = 'Submit Guess';
-      submitBtn.onclick = checkAnswer;
-
-      const clueBtn = document.createElement('button');
-      clueBtn.className = 'btn-luck';
-      clueBtn.style.flex = '1';
-      clueBtn.innerText = 'More Clues / Unblur';
-      clueBtn.onclick = revealMore;
-
-      actions.appendChild(submitBtn);
-      actions.appendChild(clueBtn);
-      board.appendChild(actions);
-      container.appendChild(board);
-
-      function revealMore() {
-        clueStage++;
-        if (clueStage === 1) {
-          img.style.filter = 'blur(6px)';
-          clueBox.innerHTML += `<br><strong>Clue 2:</strong> Publisher: ${currentGame.publisher}`;
-        } else if (clueStage === 2) {
-          img.style.filter = 'none';
-          clueBox.innerHTML += `<br><strong>Clue 3:</strong> Designer: ${currentGame.designer}`;
-        }
-      }
-
-      function checkAnswer() {
-        if (input.value.toLowerCase().trim() === currentGame.title.toLowerCase().trim()) {
-          img.style.filter = 'none';
-          alert(`🎉 Correct! It's ${currentGame.title}`);
-          renderGuessGame(container);
-        } else {
-          alert('❌ Incorrect! Try again or reveal more clues.');
-        }
-      }
-    }
-
-    /* 4. Higher or Lower */
-    function renderHigherLower(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let gameA = pool[0];
-      let gameB = pool[1];
-      let score = 0;
-
-      const board = document.createElement('div');
-      board.className = 'game-board';
-
-      const statusBar = document.createElement('div');
-      statusBar.className = 'game-status-bar';
-      statusBar.innerHTML = `<span>Higher or Lower (Weight)</span><span id="hl-score">Score: 0</span>`;
-      board.appendChild(statusBar);
-
-      const hlContainer = document.createElement('div');
-      hlContainer.className = 'hl-container';
-
-      const cardA = document.createElement('div');
-      cardA.className = 'hl-card';
-      cardA.innerHTML = `
-        <img src="${gameA.image || gameA.thumbnail}">
-        <div style="font-weight:800; color:var(--yellow);">${gameA.title}</div>
-        <div style="font-size: 1.1rem; color: var(--turquoise); font-weight:900;">Weight: ${gameA.weight.toFixed(1)}</div>
+      container.innerHTML = `
+        <div class="game-status-bar">
+          <span>🎲 Blind Ranking</span>
+          <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
+        </div>
+        ${renderExtrasFilterBar()}
+        <div id="blind-active-card" style="text-align: center; margin-top: 10px;"></div>
+        <div class="blind-grid-columns" id="blind-slots-container"></div>
       `;
+      renderBlindCurrentCard();
+      renderBlindSlots();
+    }
 
-      const cardB = document.createElement('div');
-      cardB.className = 'hl-card';
-      cardB.innerHTML = `
-        <img src="${gameB.image || gameB.thumbnail}">
-        <div style="font-weight:800; color:var(--yellow);">${gameB.title}</div>
-        <div style="margin-top: 8px; display:flex; flex-direction:column; gap:6px;">
-          <button class="game-btn" onclick="guessHL(true)">Higher ▲</button>
-          <button class="btn-primary" onclick="guessHL(false)">Lower ▼</button>
+    function renderBlindCurrentCard() {
+      const cardDiv = document.getElementById('blind-active-card');
+      if (arcadeState.currentIndex >= arcadeState.pool.length) {
+        cardDiv.innerHTML = `<h3 style="color: var(--yellow);">🎉 Ranking Complete!</h3>`;
+        return;
+      }
+      const g = arcadeState.pool[arcadeState.currentIndex];
+      cardDiv.innerHTML = `
+        <div style="background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 8px; padding: 10px; display: inline-block;">
+          <img src="${g.image || g.thumbnail}" style="height: 100px; object-fit: contain;">
+          <h4 style="color: var(--yellow); margin-top: 4px;">${g.title}</h4>
         </div>
       `;
+    }
 
-      hlContainer.appendChild(cardA);
-      hlContainer.appendChild(cardB);
-      board.appendChild(hlContainer);
-      container.appendChild(board);
+    function renderBlindSlots() {
+      const slotsDiv = document.getElementById('blind-slots-container');
+      slotsDiv.innerHTML = '';
+      for (let i = 0; i < 10; i++) {
+        const slot = document.createElement('div');
+        slot.style.cssText = "background: var(--panel-bg); border: 1px solid var(--purple-border); padding: 8px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;";
+        const filled = arcadeState.ranks[i];
+        slot.innerHTML = `
+          <span style="font-weight: 900; color: var(--magenta);">#${i + 1}</span>
+          <span>${filled ? filled.title : '--- Empty ---'}</span>
+          ${!filled && arcadeState.currentIndex < 10 ? `<button class="game-btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="assignBlindRank(${i})">Place</button>` : ''}
+        `;
+        slotsDiv.appendChild(slot);
+      }
+    }
 
-      window.guessHL = function(isHigher) {
-        const correct = isHigher ? gameB.weight >= gameA.weight : gameB.weight <= gameA.weight;
-        if (correct) {
-          score++;
-          alert(`Correct! ${gameB.title} has a weight of ${gameB.weight.toFixed(1)}`);
-          renderHigherLower(container);
-        } else {
-          alert(`Game Over! ${gameB.title} had a weight of ${gameB.weight.toFixed(1)}. Final Score: ${score}`);
-          renderHigherLower(container);
-        }
-      };
+    function assignBlindRank(index) {
+      if (arcadeState.ranks[index] !== null) return;
+      arcadeState.ranks[index] = arcadeState.pool[arcadeState.currentIndex];
+      arcadeState.currentIndex++;
+      renderBlindCurrentCard();
+      renderBlindSlots();
+    }
+
+    /* 3. Guess The Game Module */
+    function setupGuessGame(container) {
+      const target = extrasFilteredGames[Math.floor(Math.random() * extrasFilteredGames.length)];
+      arcadeState = { target: target, cluesShown: 1 };
+
+      container.innerHTML = `
+        <div class="game-status-bar">
+          <span>🔎 Guess the Game</span>
+          <button class="game-btn" onclick="returnToArcadeMenu()">Exit</button>
+        </div>
+        ${renderExtrasFilterBar()}
+        <div style="text-align: center; margin-top: 10px;">
+          <img src="${target.image || target.thumbnail}" id="guess-img" style="height: 140px; object-fit: contain; filter: blur(12px); transition: filter 0.3s ease;">
+          <div id="guess-clues" style="margin-top: 10px; text-align: left; background: var(--panel-bg); padding: 10px; border-radius: 8px; font-size: 0.85rem;"></div>
+          <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
+            <input type="text" id="guess-input" placeholder="Type game title..." style="padding: 6px; border-radius: 6px; border: 1px solid var(--purple-border); background: var(--bg); color: #fff; width: 60%;">
+            <button class="game-btn" onclick="submitGuess()">Submit</button>
+            <button class="game-btn" style="background: var(--purple-border);" onclick="revealMoreClues()">Clue</button>
+          </div>
+          <div id="guess-feedback" style="margin-top: 8px; font-weight: bold;"></div>
+        </div>
+      `;
+      updateGuessClues();
+    }
+
+    function updateGuessClues() {
+      const g = arcadeState.target;
+      const clues = [
+        `<strong>Year:</strong> ${g.year}`,
+        `<strong>Weight:</strong> ${g.weight.toFixed(1)}`,
+        `<strong>Publisher:</strong> ${g.publisher}`,
+        `<strong>Categories:</strong> ${g.categories.join(', ')}`
+      ];
+      document.getElementById('guess-clues').innerHTML = clues.slice(0, arcadeState.cluesShown).join('<br>');
+      const blurVal = Math.max(0, 12 - (arcadeState.cluesShown - 1) * 4);
+      document.getElementById('guess-img').style.filter = `blur(${blurVal}px)`;
+    }
+
+    function revealMoreClues() {
+      if (arcadeState.cluesShown < 4) {
+        arcadeState.cluesShown++;
+        updateGuessClues();
+      }
+    }
+
+    function submitGuess() {
+      const input = document.getElementById('guess-input').value.toLowerCase().trim();
+      const targetTitle = arcadeState.target.title.toLowerCase().trim();
+      const feedback = document.getElementById('guess-feedback');
+
+      if (input === targetTitle || targetTitle.includes(input) && input.length > 3) {
+        feedback.style.color = 'var(--turquoise)';
+        feedback.innerText = `🎉 Correct! It was ${arcadeState.target.title}!`;
+        document.getElementById('guess-img').style.filter = 'none';
+      } else {
+        feedback.style.color = 'var(--magenta)';
+        feedback.innerText = '❌ Incorrect, try again!';
+      }
+    }
+
+    /* 4. Higher or Lower Module */
+    function setupHigherLower(container) {
+      const g1 = extrasFilteredGames[Math.floor(Math.random() * extrasFilteredGames.length)];
+      let g2 = extrasFilteredGames[Math.floor(Math.random() * extrasFilteredGames.length)];
+      while (g1.id === g2.id) {
+        g2 = extrasFilteredGames[Math.floor(Math.random() * extrasFilteredGames.length)];
+      }
+
+      arcadeState = { g1: g1, g2: g2, score: 0 };
+
+      container.innerHTML = `
+        <div class="game-status-bar">
+          <span>📈 Higher or Lower (Weight)</span>
+          <span>Score: <span id="hl-score">0</span></span>
+        </div>
+        ${renderExtrasFilterBar()}
+        <div class="hl-container">
+          <div class="hl-card">
+            <img src="${g1.image || g1.thumbnail}">
+            <h4>${g1.title}</h4>
+            <div style="font-weight: 900; color: var(--yellow); margin-top: 6px;">Weight: ${g1.weight.toFixed(1)}</div>
+          </div>
+          <div style="font-size: 1.2rem; font-weight: 900; color: var(--magenta);">VS</div>
+          <div class="hl-card">
+            <img src="${g2.image || g2.thumbnail}">
+            <h4>${g2.title}</h4>
+            <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+              <button class="game-btn" onclick="guessHL(true)">Higher ▲</button>
+              <button class="game-btn" style="background: var(--purple-border);" onclick="guessHL(false)">Lower ▼</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function guessHL(isHigher) {
+      const g1W = arcadeState.g1.weight;
+      const g2W = arcadeState.g2.weight;
+      const correct = (isHigher && g2W >= g1W) || (!isHigher && g2W <= g1W);
+
+      if (correct) {
+        arcadeState.score++;
+        setupHigherLower(document.getElementById('arcade-game-container'));
+        document.getElementById('hl-score').innerText = arcadeState.score;
+      } else {
+        alert(`Game Over! ${arcadeState.g2.title} has a weight of ${arcadeState.g2.weight.toFixed(1)}. Final Score: ${arcadeState.score}`);
+        returnToArcadeMenu();
+      }
     }
   </script>
 </body>
@@ -2597,4 +2711,4 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True, port=5000)
