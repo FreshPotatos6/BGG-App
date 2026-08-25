@@ -2279,7 +2279,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           e.stopPropagation();
           card.classList.toggle('show-expansions');
         };
-imgWrapper.appendChild(expBtn);
+        imgWrapper.appendChild(expBtn);
+      }
+
+      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
+        const medalBadge = document.createElement('div');
+        medalBadge.className = 'medal-icon-badge';
+        medalBadge.innerHTML = '🏆';
+        imgWrapper.appendChild(medalBadge);
       }
 
       const img = document.createElement('img');
@@ -2288,15 +2295,31 @@ imgWrapper.appendChild(expBtn);
       img.loading = 'lazy';
       imgWrapper.appendChild(img);
 
-      if ((game.major_awards && game.major_awards.length > 0) || (game.minor_awards && game.minor_awards.length > 0)) {
-        const medalBadge = document.createElement('div');
-        medalBadge.className = 'medal-icon-badge';
-        medalBadge.innerText = '🏆';
-        medalBadge.title = 'Award Winner';
-        imgWrapper.appendChild(medalBadge);
-      }
+      const overlay = document.createElement('div');
+      overlay.className = 'expansions-overlay';
+      
+      const expHeader = document.createElement('div');
+      expHeader.className = 'expansions-header';
+      expHeader.innerHTML = `<span>Expansions</span>`;
+      
+      const closeExpBtn = document.createElement('button');
+      closeExpBtn.className = 'expansion-close-btn';
+      closeExpBtn.innerText = '✕ Close';
+      closeExpBtn.onclick = (e) => {
+        e.stopPropagation();
+        card.classList.remove('show-expansions');
+      };
+      expHeader.appendChild(closeExpBtn);
+      overlay.appendChild(expHeader);
 
-      card.appendChild(imgWrapper);
+      const childExpansions = rawCollection.filter(g => g.is_expansion && String(g.parent_game_id) === String(game.id));
+      childExpansions.forEach(exp => {
+        const expDiv = document.createElement('div');
+        expDiv.className = 'expansion-item';
+        expDiv.innerHTML = `<div class="expansion-title">${exp.title}</div><div style="color:var(--text-muted);">${exp.year ? exp.year : ''}</div>`;
+        overlay.appendChild(expDiv);
+      });
+      imgWrapper.appendChild(overlay);
 
       const content = document.createElement('div');
       content.className = 'card-content';
@@ -2309,104 +2332,566 @@ imgWrapper.appendChild(expBtn);
       const stats = document.createElement('div');
       stats.className = 'game-stats';
       stats.innerHTML = `
-        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : `${game.min_players}-${game.max_players}`}</div>
-        <div class="stat-badge">⏱️ ${game.playing_time_raw}m</div>
+        <div class="stat-badge">👥 ${game.min_players === game.max_players ? game.min_players : game.min_players + '-' + game.max_players}</div>
+        <div class="stat-badge">⏱️ ${game.playing_time}m</div>
         <div class="stat-badge">⚖️ ${game.weight.toFixed(1)}</div>
         <div class="stat-badge">📅 ${game.year || 'N/A'}</div>
       `;
       content.appendChild(stats);
+
+      card.appendChild(imgWrapper);
       card.appendChild(content);
 
-      if (hasExpansions) {
-        const overlay = document.createElement('div');
-        overlay.className = 'expansions-overlay';
-        
-        const expHeader = document.createElement('div');
-        expHeader.className = 'expansions-header';
-        expHeader.innerHTML = `<span>Expansions</span>`;
-        
-        const closeExpBtn = document.createElement('button');
-        closeExpBtn.className = 'expansion-close-btn';
-        closeExpBtn.innerText = '✕ Close';
-        closeExpBtn.onclick = (e) => {
-          e.stopPropagation();
-          card.classList.remove('show-expansions');
-        };
-        expHeader.appendChild(closeExpBtn);
-        overlay.appendChild(expHeader);
-
-        const childExpansions = rawCollection.filter(g => g.is_expansion && String(g.parent_game_id) === String(game.id));
-        childExpansions.forEach(exp => {
-          const expItem = document.createElement('div');
-          expItem.className = 'expansion-item';
-          expItem.innerHTML = `<div class="expansion-title">${exp.title}</div>`;
-          overlay.appendChild(expItem);
-        });
-
-        card.appendChild(overlay);
-      }
-
-      card.onclick = () => openDetailModal(game);
+      card.addEventListener('click', () => openDetailModal(game));
 
       return card;
     }
 
     function openDetailModal(game) {
       currentDetailGame = game;
+      let awardsHtml = '';
+      if (game.major_awards && game.major_awards.length > 0) {
+        awardsHtml += `<div style="margin-top:8px;"><strong>Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
+      }
+      if (game.minor_awards && game.minor_awards.length > 0) {
+        awardsHtml += `<div style="margin-top:4px;"><strong>Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
+      }
+
       detailModalContent.innerHTML = `
-        <div class="modal-title">${game.title} (${game.year || 'N/A'})</div>
-        <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
-          <img src="${game.image || game.thumbnail || ''}" style="max-width: 180px; max-height: 220px; object-fit: contain; border-radius: 8px;">
-          <div style="flex: 1; font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+          <img src="${game.image || game.thumbnail}" style="max-width:180px; height:auto; border-radius:8px; object-fit:contain;" />
+          <div style="flex:1; min-width:200px;">
+            <div class="modal-title">${game.title}</div>
+            <div><strong>Year:</strong> ${game.year || 'N/A'}</div>
+            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
+            <div><strong>Playtime:</strong> ${game.playing_time} mins</div>
+            <div><strong>Weight:</strong> ${game.weight.toFixed(1)} / 5.0</div>
+            <div><strong>BGG Rating:</strong> ${game.bgg_rating ? game.bgg_rating.toFixed(1) : 'N/A'}</div>
+            <div><strong>Luke's Rating:</strong> ${game.user_rating ? game.user_rating.toFixed(1) : 'N/A'}</div>
             <div><strong>Publisher:</strong> ${game.publisher}</div>
             <div><strong>Designer:</strong> ${game.designer}</div>
-            <div><strong>Artist:</strong> ${game.artist}</div>
-            <div><strong>Players:</strong> ${game.min_players} - ${game.max_players}</div>
-            <div><strong>Playtime:</strong> ${game.playing_time_raw} mins</div>
-            <div><strong>Weight:</strong> ${game.weight.toFixed(2)} / 5</div>
-            <div><strong>BGG Rating:</strong> ${game.bgg_rating.toFixed(1)}</div>
-            <div><strong>Luke's Rating:</strong> ${game.user_rating.toFixed(1)}</div>
           </div>
         </div>
-        <p style="font-size: 0.88rem; line-height: 1.4; color: var(--text-muted);">${game.description}</p>
+        ${awardsHtml}
+        <div style="margin-top:14px; line-height:1.4; font-size:0.9rem; color:var(--text-muted);">${game.description}</div>
       `;
       detailModal.classList.add('open');
     }
 
     function closeDetailModal() { detailModal.classList.remove('open'); }
-    function closeLuckModal() { luckModal.classList.remove('open'); }
 
-    luckBtn.addEventListener('click', () => {
-      if (currentlyFilteredGames.length === 0) return;
-      const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
-      modalContent.innerHTML = `
-        <div style="text-align: center;">
-          <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 200px; max-width: 100%; object-fit: contain; margin-bottom: 12px;">
-          <h2 style="color: var(--yellow); font-size: 1.4rem; font-weight: 800;">${randomGame.title}</h2>
-          <p style="color: var(--turquoise); font-weight: bold; margin-top: 6px;">${randomGame.min_players}-${randomGame.max_players} Players | ${randomGame.playing_time_raw} mins | Weight: ${randomGame.weight.toFixed(1)}</p>
-        </div>
-      `;
-      luckModal.classList.add('open');
-    });
-
-    modalTryAgainBtn.addEventListener('click', () => luckBtn.click());
+    luckBtn.addEventListener('click', pickRandomGame);
+    modalTryAgainBtn.addEventListener('click', pickRandomGame);
     modalChangeFiltersBtn.addEventListener('click', () => {
       closeLuckModal();
       openSidebarFromExtras();
     });
 
+    function closeLuckModal() { luckModal.classList.remove('open'); }
+
+    function pickRandomGame() {
+      if (currentlyFilteredGames.length === 0) {
+        modalContent.innerHTML = `<p style="text-align:center; color:var(--magenta);">No games match your active filters!</p>`;
+      } else {
+        const randIndex = Math.floor(Math.random() * currentlyFilteredGames.length);
+        const game = currentlyFilteredGames[randIndex];
+        modalContent.innerHTML = `
+          <div style="text-align:center;">
+            <img src="${game.image || game.thumbnail}" style="max-height:160px; object-fit:contain; border-radius:8px; margin-bottom:12px;" />
+            <h3 style="color:var(--yellow); font-size:1.3rem;">${game.title}</h3>
+            <p style="color:var(--turquoise); margin-top:6px;">⏱️ ${game.playing_time} mins | 👥 ${game.min_players}-${game.max_players} | ⚖️ ${game.weight.toFixed(1)}</p>
+          </div>
+        `;
+      }
+      luckModal.classList.add('open');
+    }
+
+    /* ==========================================================================
+       EXTRAS MODULE GAMES CODE (Tier Maker, Blind Ranking, Higher/Lower, Guess)
+       ========================================================================== */
+
+function getExtrasPool() {
+      return currentlyFilteredGames.length > 0 ? currentlyFilteredGames : games;
+    }
+
     function launchGame(gameType) {
       document.getElementById('arcade-view-launcher').style.display = 'none';
       const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
-      container.innerHTML = `
-        <button class="btn-primary" onclick="returnToArcadeMenu()" style="margin-bottom: 12px;">← Back to Extras</button>
-        <div style="padding: 20px; text-align: center; color: var(--yellow);">Launching ${gameType.replace('_', ' ').toUpperCase()}...</div>
+      container.innerHTML = '';
+
+      const pool = getExtrasPool();
+      if (!pool || pool.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--magenta);">No games available in pool! Reset or adjust your filters.</div>`;
+        return;
+      }
+
+      if (gameType === 'tier_maker') renderTierMaker(container, pool);
+      else if (gameType === 'blind_ranking') renderBlindRanking(container, pool);
+      else if (gameType === 'guess_game') renderGuessGame(container, pool);
+      else if (gameType === 'higher_lower') renderHigherLower(container, pool);
+    }
+
+    /* ----------------------------------------------------
+       1. TIER MAKER (With Live Title Search)
+    ---------------------------------------------------- */
+    function renderTierMaker(container, pool) {
+      const tiers = [
+        { label: 'S', class: 'tier-s' },
+        { label: 'A', class: 'tier-a' },
+        { label: 'B', class: 'tier-b' },
+        { label: 'C', class: 'tier-c' },
+        { label: 'D', class: 'tier-d' },
+        { label: 'E', class: 'tier-e' }
+      ];
+
+      let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">📊 Tier Maker</h2>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+        </div>
+        <div style="max-height: 65vh; overflow-y: auto; padding-right: 4px;">
       `;
+
+      tiers.forEach(t => {
+        html += `
+          <div class="tier-row">
+            <div class="tier-header ${t.class}" contenteditable="true">${t.label}</div>
+            <div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+        <div style="margin-top: 15px; border-top: 2px solid var(--purple-border); padding-top: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-weight: bold; color: var(--turquoise); font-size: 0.9rem;">Unranked Pool (${pool.length} Games):</span>
+            <input type="text" id="tier-search-input" placeholder="🔍 Search pool..." oninput="filterTierPool()" style="background: var(--panel-bg); color: var(--text); border: 1px solid var(--purple-border); padding: 4px 10px; border-radius: 6px; font-size: 0.82rem; outline: none; width: 180px;">
+          </div>
+          <div id="tier-pool-dropzone" class="tier-dropzone" style="background: var(--panel-bg); min-height: 80px; max-height: 180px; overflow-y: auto; border: 1px dashed var(--turquoise); border-radius: 8px;" ondragover="allowDrop(event)" ondrop="dropTierItem(event)">
+      `;
+
+      pool.forEach(g => {
+        const imgSrc = g.thumbnail || g.image || '';
+        html += `
+          <div class="tier-item" id="tier-game-${g.id}" draggable="true" ondragstart="dragTierItem(event)" title="${g.title}" data-title="${g.title.toLowerCase()}">
+            <img src="${imgSrc}" alt="${g.title}">
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function filterTierPool() {
+      const q = (document.getElementById('tier-search-input')?.value || '').toLowerCase().trim();
+      const items = document.querySelectorAll('#tier-pool-dropzone .tier-item');
+      items.forEach(item => {
+        const title = item.getAttribute('data-title') || '';
+        item.style.display = title.includes(q) ? 'inline-block' : 'none';
+      });
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function dragTierItem(ev) {
+      ev.dataTransfer.setData("text", ev.currentTarget.id);
+    }
+
+    function dropTierItem(ev) {
+      ev.preventDefault();
+      const data = ev.dataTransfer.getData("text");
+      const draggedEl = document.getElementById(data);
+      if (!draggedEl) return;
+      let targetZone = ev.target;
+      while (targetZone && !targetZone.classList.contains('tier-dropzone')) {
+        targetZone = targetZone.parentElement;
+      }
+      if (targetZone) {
+        targetZone.appendChild(draggedEl);
+      }
+    }
+
+    /* ----------------------------------------------------
+       2. BLIND RANKING (10 Drawn Games)
+    ---------------------------------------------------- */
+    let blindQueue = [];
+    let blindSlots = Array(10).fill(null);
+    let blindCurrentIndex = 0;
+
+    function renderBlindRanking(container, pool) {
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      blindQueue = shuffled.slice(0, 10);
+      blindSlots = Array(10).fill(null);
+      blindCurrentIndex = 0;
+      updateBlindRankingView(container);
+    }
+
+    function updateBlindRankingView(container) {
+      if (!container) container = document.getElementById('arcade-game-container');
+      const currentGame = blindQueue[blindCurrentIndex];
+      const isGameOver = blindCurrentIndex >= blindQueue.length;
+
+      let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">🎲 Blind Ranking</h2>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+        </div>
+      `;
+
+      if (isGameOver) {
+        html += `
+          <div style="text-align: center; padding: 20px; background: var(--panel-bg); border-radius: 12px; border: 2px solid var(--turquoise);">
+            <h3 style="color: var(--turquoise); margin-bottom: 10px;">🎉 Blind Ranking Complete!</h3>
+            <button class="game-btn" onclick="launchGame('blind_ranking')">Play Again</button>
+          </div>
+        `;
+      } else {
+        const imgSrc = currentGame.image || currentGame.thumbnail || '';
+        html += `
+          <div style="display: flex; gap: 16px; align-items: center; background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--purple-border); margin-bottom: 12px;">
+            <img src="${imgSrc}" style="height: 90px; width: 90px; object-fit: contain; border-radius: 6px; background: #000;">
+            <div>
+              <div style="color: var(--turquoise); font-size: 0.8rem; font-weight: bold;">Game ${blindCurrentIndex + 1} of 10</div>
+              <h3 style="color: var(--yellow); font-size: 1.1rem; margin: 4px 0;">${currentGame.title}</h3>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Assign this game to an open rank slot below!</div>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `<div class="blind-grid-columns">`;
+
+      for (let i = 0; i < 10; i++) {
+        const filledGame = blindSlots[i];
+        const isOccupied = filledGame !== null;
+        html += `
+          <div style="display: flex; align-items: center; gap: 8px; background: var(--panel-bg); border: 1px solid ${isOccupied ? 'var(--purple-border)' : 'var(--turquoise)'}; padding: 6px 10px; border-radius: 6px;">
+            <span style="font-weight: 900; color: var(--yellow); width: 24px;">#${i + 1}</span>
+            <div style="flex: 1; font-size: 0.85rem; font-weight: bold; color: ${isOccupied ? '#fff' : 'var(--text-muted)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${isOccupied ? filledGame.title : '--- Empty ---'}
+            </div>
+            ${!isOccupied && !isGameOver ? `<button class="game-btn" style="padding: 3px 8px; font-size: 0.75rem;" onclick="placeBlindRank(${i})">Place</button>` : ''}
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function placeBlindRank(slotIndex) {
+      if (blindCurrentIndex >= blindQueue.length) return;
+      blindSlots[slotIndex] = blindQueue[blindCurrentIndex];
+      blindCurrentIndex++;
+      updateBlindRankingView();
+    }
+
+    /* ----------------------------------------------------
+       3. GUESS THE GAME (Self-Contained & Extreme Zoom)
+    ---------------------------------------------------- */
+    let guessTarget = null;
+    let guessZoomLevel = 1;
+    let guessPoolRef = [];
+    let guessScore = 0;
+
+    function renderGuessGame(container, pool) {
+      guessPoolRef = pool;
+      startNewGuessRound(container);
+    }
+
+    function startNewGuessRound(container) {
+      if (!container) container = document.getElementById('arcade-game-container');
+      guessTarget = guessPoolRef[Math.floor(Math.random() * guessPoolRef.length)];
+      guessZoomLevel = 1;
+
+      let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">🔎 Guess the Game</h2>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="guess-score-display" style="color: var(--turquoise); font-weight: bold; font-size: 0.9rem;">Score: ${guessScore}</span>
+            <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+          </div>
+        </div>
+
+        <div style="background: var(--panel-bg); border: 2px solid var(--purple-border); border-radius: 12px; padding: 14px; text-align: center;">
+          <div id="guess-image-frame" style="width: 200px; height: 200px; margin: 0 auto 12px auto; overflow: hidden; border-radius: 8px; border: 2px solid var(--turquoise); position: relative; background: #000;">
+            <img id="guess-img" src="${guessTarget.image || guessTarget.thumbnail || ''}" style="width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease; transform: scale(6); transform-origin: 35% 35%;">
+          </div>
+
+          <div id="guess-feedback" style="min-height: 24px; font-weight: bold; margin-bottom: 8px; color: var(--yellow); font-size: 0.9rem;">Zoom Level: Stage 1 / 4</div>
+
+          <div class="autocomplete-wrapper" style="max-width: 320px; margin: 0 auto 10px auto;">
+            <input type="text" id="guess-input" placeholder="Type game title..." oninput="handleGuessAutocomplete(this)" style="width: 100%; background: var(--bg); color: var(--text); border: 2px solid var(--purple-border); padding: 8px; border-radius: 8px; outline: none; font-size: 0.85rem;">
+            <div id="guess-autocomplete" class="autocomplete-list" style="display: none;"></div>
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: center; max-width: 320px; margin: 0 auto;">
+            <button class="game-btn" style="flex: 1; background: var(--turquoise); color: #000;" onclick="submitGuess()">Submit Guess</button>
+            <button id="guess-zoom-btn" class="game-btn" style="flex: 1;" onclick="zoomOutGuessImage()">Zoom Out</button>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function zoomOutGuessImage() {
+      const img = document.getElementById('guess-img');
+      const feedback = document.getElementById('guess-feedback');
+      guessZoomLevel++;
+
+      if (guessZoomLevel === 2) {
+        img.style.transform = 'scale(3.8)';
+        img.style.transformOrigin = '40% 40%';
+        feedback.innerText = 'Zoom Level: Stage 2 / 4';
+      } else if (guessZoomLevel === 3) {
+        img.style.transform = 'scale(2.0)';
+        img.style.transformOrigin = 'center center';
+        feedback.innerText = 'Zoom Level: Stage 3 / 4';
+      } else {
+        img.style.transform = 'scale(1.0)';
+        img.style.transformOrigin = 'center center';
+        feedback.innerText = 'Zoom Level: Full View (Final Stage)';
+        const btn = document.getElementById('guess-zoom-btn');
+        if (btn) btn.disabled = true;
+      }
+    }
+
+    function handleGuessAutocomplete(inputEl) {
+      const val = inputEl.value.toLowerCase().trim();
+      const listEl = document.getElementById('guess-autocomplete');
+      if (!val) {
+        listEl.style.display = 'none';
+        return;
+      }
+
+      const matches = guessPoolRef.filter(g => g.title.toLowerCase().includes(val)).slice(0, 6);
+      if (matches.length === 0) {
+        listEl.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      matches.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.innerText = m.title;
+        item.onclick = () => {
+          inputEl.value = m.title;
+          listEl.style.display = 'none';
+        };
+        listEl.appendChild(item);
+      });
+      listEl.style.display = 'block';
+    }
+
+    function submitGuess() {
+      const input = document.getElementById('guess-input');
+      const feedback = document.getElementById('guess-feedback');
+      const scoreDisp = document.getElementById('guess-score-display');
+      const img = document.getElementById('guess-img');
+      if (!input || !guessTarget) return;
+
+      const userVal = input.value.toLowerCase().trim();
+      const actualVal = guessTarget.title.toLowerCase().trim();
+
+      img.style.transform = 'scale(1.0)';
+
+      if (userVal === actualVal) {
+        const points = Math.max(1, 5 - guessZoomLevel);
+        guessScore += points;
+        if (scoreDisp) scoreDisp.innerText = `Score: ${guessScore}`;
+        feedback.innerHTML = `<span style="color: var(--turquoise);">✓ Correct! It's ${guessTarget.title} (+${points} pts)</span>`;
+      } else {
+        feedback.innerHTML = `<span style="color: var(--magenta);">✕ Incorrect! It was ${guessTarget.title}</span>`;
+      }
+
+      input.disabled = true;
+      setTimeout(() => {
+        startNewGuessRound();
+      }, 2200);
+    }
+
+    /* ----------------------------------------------------
+       4. HIGHER OR LOWER (With Streak & Longest Streak)
+    ---------------------------------------------------- */
+    let hlCurrentStreak = 0;
+    let hlLongestStreak = 0;
+    let hlLeftGame = null;
+    let hlRightGame = null;
+    let hlCurrentMetric = 'weight';
+    let hlPoolRef = [];
+
+    const hlMetrics = [
+      { key: 'weight', label: 'Weight / Complexity', fmt: v => v.toFixed(2) },
+      { key: 'bgg_rating', label: 'BGG Rating', fmt: v => v.toFixed(1) },
+      { key: 'user_rating', label: "Luke's Rating", fmt: v => v.toFixed(1) },
+      { key: 'playing_time', label: 'Playtime (Min)', fmt: v => `${v} min` }
+    ];
+
+    function renderHigherLower(container, pool) {
+      hlPoolRef = pool;
+      hlCurrentStreak = 0;
+      setupHlRound(container, true);
+    }
+
+    function setupHlRound(container, resetBoth = false) {
+      if (!container) container = document.getElementById('arcade-game-container');
+      const metricObj = hlMetrics[Math.floor(Math.random() * hlMetrics.length)];
+      hlCurrentMetric = metricObj.key;
+
+      if (resetBoth || !hlLeftGame) {
+        hlLeftGame = hlPoolRef[Math.floor(Math.random() * hlPoolRef.length)];
+      }
+
+      do {
+        hlRightGame = hlPoolRef[Math.floor(Math.random() * hlPoolRef.length)];
+      } while (hlRightGame.id === hlLeftGame.id && hlPoolRef.length > 1);
+
+      const metricLabel = metricObj.label;
+      const leftValFormatted = metricObj.fmt(hlLeftGame[hlCurrentMetric]);
+
+      let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h2 style="color: var(--yellow); font-weight: 900; text-transform: uppercase;">📈 Higher or Lower</h2>
+          <button class="game-btn" onclick="returnToArcadeMenu()">← Back</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--purple-border); margin-bottom: 12px;">
+          <span style="color: var(--turquoise); font-weight: 800; font-size: 0.88rem;">Metric: <span style="color: var(--yellow);">${metricLabel}</span></span>
+          <div style="font-weight: 800; font-size: 0.85rem;">
+            <span style="color: var(--turquoise); margin-right: 12px;">Streak: ${hlCurrentStreak}</span>
+            <span style="color: var(--yellow);">Best: ${hlLongestStreak}</span>
+          </div>
+        </div>
+
+        <div class="hl-container">
+          <div class="hl-card" style="cursor: default;">
+            <img src="${hlLeftGame.image || hlLeftGame.thumbnail || ''}">
+            <h4 style="color: var(--yellow); font-size: 0.95rem; margin-bottom: 6px;">${hlLeftGame.title}</h4>
+            <div style="font-size: 1.1rem; font-weight: 900; color: var(--turquoise);">${leftValFormatted}</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: 900; color: var(--magenta); font-size: 1.2rem;">
+            VS
+          </div>
+
+          <div class="hl-card" style="cursor: default;">
+            <img src="${hlRightGame.image || hlRightGame.thumbnail || ''}">
+            <h4 style="color: var(--yellow); font-size: 0.95rem; margin-bottom: 8px;">${hlRightGame.title}</h4>
+            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+              <button class="game-btn" style="background: var(--turquoise); color: #000;" onclick="guessHigherLower('higher')">▲ Higher</button>
+              <button class="game-btn" style="background: var(--magenta); color: #fff;" onclick="guessHigherLower('lower')">▼ Lower</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="hl-feedback" style="text-align: center; min-height: 24px; font-weight: bold; font-size: 0.9rem;"></div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function guessHigherLower(guess) {
+      const leftVal = hlLeftGame[hlCurrentMetric];
+      const rightVal = hlRightGame[hlCurrentMetric];
+      const feedback = document.getElementById('hl-feedback');
+
+      let correct = false;
+      if (guess === 'higher' && rightVal >= leftVal) correct = true;
+      if (guess === 'lower' && rightVal <= leftVal) correct = true;
+
+      const metricObj = hlMetrics.find(m => m.key === hlCurrentMetric);
+      const rightFmt = metricObj.fmt(rightVal);
+
+      if (correct) {
+        hlCurrentStreak++;
+        if (hlCurrentStreak > hlLongestStreak) {
+          hlLongestStreak = hlCurrentStreak;
+        }
+        if (feedback) feedback.innerHTML = `<span style="color: var(--turquoise);">✓ Correct! ${hlRightGame.title} is ${rightFmt}.</span>`;
+        hlLeftGame = hlRightGame;
+        setTimeout(() => setupHlRound(null, false), 1400);
+      } else {
+        hlCurrentStreak = 0;
+        if (feedback) feedback.innerHTML = `<span style="color: var(--magenta);">✕ Wrong! ${hlRightGame.title} is ${rightFmt}. Streak reset.</span>`;
+        setTimeout(() => setupHlRound(null, true), 1800);
+      }
+    }
+
+    function closeDetailModal() { detailModal.classList.remove('open'); }
+    function closeLuckModal() { luckModal.classList.remove('open'); }
+
+    luckBtn.addEventListener('click', pickRandomGame);
+    modalTryAgainBtn.addEventListener('click', pickRandomGame);
+    modalChangeFiltersBtn.addEventListener('click', () => {
+      closeLuckModal();
+      toolbar.classList.remove('collapsed');
+    });
+
+    function pickRandomGame() {
+      if (currentlyFilteredGames.length === 0) {
+        modalContent.innerHTML = `<p style="text-align:center; color: var(--magenta);">No games available under current filters!</p>`;
+      } else {
+        const randomGame = currentlyFilteredGames[Math.floor(Math.random() * currentlyFilteredGames.length)];
+        modalContent.innerHTML = `
+          <div style="text-align: center;">
+            <img src="${randomGame.image || randomGame.thumbnail}" style="max-height: 220px; object-fit: contain; margin-bottom: 12px; border-radius: 8px;">
+            <h2 style="color: var(--yellow); font-size: 1.5rem; margin-bottom: 8px;">${randomGame.title}</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">${randomGame.playing_time} mins | ${randomGame.min_players}-${randomGame.max_players} Players | Weight: ${randomGame.weight}</p>
+          </div>
+        `;
+      }
+      luckModal.classList.add('open');
+    }
+
+    function openDetailModal(game) {
+      currentDetailGame = game;
+      let awardsHtml = '';
+      if (game.major_awards && game.major_awards.length > 0) {
+        awardsHtml += `<div style="margin-top: 6px;"><strong style="color: var(--yellow);">🏆 Major Awards:</strong> ${game.major_awards.join(', ')}</div>`;
+      }
+      if (game.minor_awards && game.minor_awards.length > 0) {
+        awardsHtml += `<div style="margin-top: 4px;"><strong style="color: var(--turquoise);">🎖️ Minor Awards:</strong> ${game.minor_awards.join(', ')}</div>`;
+      }
+
+      detailModalContent.innerHTML = `
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+          <img src="${game.image || game.thumbnail}" style="max-width: 200px; max-height: 200px; object-fit: contain; border-radius: 8px;">
+          <div style="flex: 1; min-width: 220px;">
+            <h2 class="modal-title" style="margin-bottom: 6px;">${game.title} (${game.year})</h2>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+              <div><strong>Designer:</strong> ${game.designer}</div>
+              <div><strong>Publisher:</strong> ${game.publisher}</div>
+              <div><strong>Artist:</strong> ${game.artist}</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <span class="stat-badge">BGG: ${game.bgg_rating}</span>
+              <span class="stat-badge" style="color: var(--yellow);">Luke: ${game.user_rating}</span>
+              <span class="stat-badge">Weight: ${game.weight}</span>
+            </div>
+          </div>
+        </div>
+        ${awardsHtml}
+        <div style="margin-top: 12px; font-size: 0.85rem; line-height: 1.4; max-height: 200px; overflow-y: auto; background: var(--panel-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--purple-border);">
+          ${game.description}
+        </div>
+      `;
+      detailModal.classList.add('open');
     }
   </script>
 </body>
 </html>
 """
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
