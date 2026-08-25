@@ -2410,419 +2410,435 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        EXTRAS MODULE GAMES CODE (Tier Maker, Blind Ranking, Higher/Lower, Guess)
        ========================================================================== */
 
-    function getExtrasPool() {
+function getExtrasPool() {
       return currentlyFilteredGames.length > 0 ? currentlyFilteredGames : games;
     }
 
-    function renderExtrasHeader(title, hasFilterBtn = true) {
-      return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid var(--purple-border); padding-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button class="btn-primary" onclick="returnToArcadeMenu()" style="padding: 4px 8px; font-size: 0.8rem;">◀ Back</button>
-            <span style="font-weight: 900; color: var(--yellow); font-size: 1.1rem; text-transform: uppercase;">${title}</span>
-          </div>
-          ${hasFilterBtn ? `<button class="btn-primary" onclick="openSidebarFromExtras()" style="padding: 4px 10px; font-size: 0.8rem;">⚙️ Filters</button>` : ''}
-        </div>
-      `;
-    }
+    /* EXTRAS ARCADE ENGINE */
+    let currentArcadeGame = null;
+    let arcadeState = {};
 
-function launchGame(gameKey) {
-      const container = document.getElementById('arcade-game-container');
+    function launchGame(gameType) {
+      currentArcadeGame = gameType;
       document.getElementById('arcade-view-launcher').style.display = 'none';
+      const container = document.getElementById('arcade-game-container');
       container.style.display = 'block';
       container.innerHTML = '';
 
-      if (currentlyFilteredGames.length < 2 && gameKey !== 'tier_maker') {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 20px;">
-            <p style="color: var(--magenta); font-weight: bold;">Not enough games in your current filter selection to play this game!</p>
-            <button class="btn-primary" onclick="closeGamesArcadeModal(); openSidebarFromExtras();" style="margin-top: 15px;">Open Filters</button>
-            <button class="game-btn" onclick="returnToArcadeMenu()" style="margin-top: 15px; margin-left: 10px;">Back to Menu</button>
-          </div>
-        `;
+      if (gameType === 'tier_maker') initTierMaker(container);
+      else if (gameType === 'blind_ranking') initBlindRanking(container);
+      else if (gameType === 'guess_game') initGuessGameSetup(container);
+      else if (gameType === 'higher_lower') initHigherLower(container);
+    }
+
+    /* 1. TIER MAKER */
+    function initTierMaker(container) {
+      const pool = getExtrasPool();
+      if (pool.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-muted)">No games available in current filter pool!</p>`;
         return;
       }
 
-      if (gameKey === 'tier_maker') renderTierMaker(container);
-      else if (gameKey === 'blind_ranking') renderBlindRanking(container);
-      else if (gameKey === 'guess_game') renderGuessGame(container);
-      else if (gameKey === 'higher_lower') renderHigherLower(container);
-    }
-
-    /* -------------------------------------------------------------
-       EXTRAS: 1. TIER MAKER
-    ------------------------------------------------------------- */
-    function renderTierMaker(container) {
-      let tierGames = [...currentlyFilteredGames];
-      
-      let html = `
-        <div class="game-status-bar">
-          <span>📊 Tier Maker (${tierGames.length} Games)</span>
-          <div>
-            <button class="game-btn" onclick="openSidebarFromExtras(); closeGamesArcadeModal();" style="background: var(--purple-border); color: #fff; margin-right: 6px;">⚙️ Filters</button>
-            <button class="game-btn" onclick="returnToArcadeMenu()">Menu</button>
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">📊 Tier Maker</h3>
+          <div style="display:flex; gap:6px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⚙️ Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⬅ Exit</button>
           </div>
         </div>
-        <div class="game-board">
-          <div id="tier-rows-container">
-            <div class="tier-row"><div class="tier-header tier-s" contenteditable="true">S</div><div class="tier-dropzone" data-tier="S"></div></div>
-            <div class="tier-row"><div class="tier-header tier-a" contenteditable="true">A</div><div class="tier-dropzone" data-tier="A"></div></div>
-            <div class="tier-row"><div class="tier-header tier-b" contenteditable="true">B</div><div class="tier-dropzone" data-tier="B"></div></div>
-            <div class="tier-row"><div class="tier-header tier-c" contenteditable="true">C</div><div class="tier-dropzone" data-tier="C"></div></div>
-            <div class="tier-row"><div class="tier-header tier-d" contenteditable="true">D</div><div class="tier-dropzone" data-tier="D"></div></div>
-            <div class="tier-row"><div class="tier-header tier-e" contenteditable="true">E</div><div class="tier-dropzone" data-tier="E"></div></div>
-          </div>
+        
+        <div id="tier-rows-container">
+          <div class="tier-row"><div class="tier-header tier-s" contenteditable="true">S</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-a" contenteditable="true">A</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-b" contenteditable="true">B</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-c" contenteditable="true">C</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-d" contenteditable="true">D</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+          <div class="tier-row"><div class="tier-header tier-e" contenteditable="true">E</div><div class="tier-dropzone" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div></div>
+        </div>
 
-          <div style="margin-top: 10px;">
-            <span style="font-size: 0.8rem; font-weight: bold; color: var(--yellow);">UNRANKED POOL:</span>
-            <div class="tier-dropzone" id="tier-pool" style="background: rgba(0,0,0,0.3); border: 2px dashed var(--purple-border); border-radius: 8px; margin-top: 4px;"></div>
-          </div>
+        <div style="margin-top:12px; background:var(--panel-bg); padding:10px; border-radius:8px; border:1px solid var(--purple-border);">
+          <div style="font-size:0.8rem; font-weight:bold; color:var(--turquoise); margin-bottom:8px;">UNRANKED POOL (${pool.length} Games)</div>
+          <div id="tier-pool" class="tier-dropzone" style="min-height:90px;" ondragover="allowDrop(event)" ondrop="dropTierItem(event)"></div>
         </div>
       `;
-      container.innerHTML = html;
 
-      const pool = document.getElementById('tier-pool');
-      tierGames.forEach(game => {
+      const poolZone = document.getElementById('tier-pool');
+      pool.forEach(g => {
         const item = document.createElement('div');
         item.className = 'tier-item';
         item.draggable = true;
-        item.id = `tier-game-${game.id}`;
-        item.title = game.title;
-        item.innerHTML = `<img src="${game.thumbnail || game.image}" alt="${game.title}">`;
-        
-        item.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', item.id);
-        });
-
-        pool.appendChild(item);
-      });
-
-      const dropzones = container.querySelectorAll('.tier-dropzone');
-      dropzones.forEach(dz => {
-        dz.addEventListener('dragover', (e) => e.preventDefault());
-        dz.addEventListener('drop', (e) => {
-          e.preventDefault();
-          const id = e.dataTransfer.getData('text/plain');
-          const draggedEl = document.getElementById(id);
-          if (draggedEl) dz.appendChild(draggedEl);
-        });
+        item.id = `tier-item-${g.id}`;
+        item.title = g.title;
+        item.ondragstart = (e) => e.dataTransfer.setData('text/plain', item.id);
+        item.innerHTML = `<img src="${g.thumbnail || g.image}" alt="${g.title}">`;
+        poolZone.appendChild(item);
       });
     }
 
-    /* -------------------------------------------------------------
-       EXTRAS: 2. BLIND RANKING
-    ------------------------------------------------------------- */
+    function allowDrop(e) { e.preventDefault(); }
+    function dropTierItem(e) {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const draggedEl = document.getElementById(id);
+      if (draggedEl && e.currentTarget.classList.contains('tier-dropzone')) {
+        e.currentTarget.appendChild(draggedEl);
+      }
+    }
+
+    /* 2. BLIND RANKING */
+    function initBlindRanking(container) {
+      const pool = [...getExtrasPool()];
+      if (pool.length < 10) {
+        container.innerHTML = `<div style="text-align:center; padding:20px;">
+          <p style="color:var(--text-muted); margin-bottom:12px;">You need at least 10 games in your active filter to play Blind Ranking!</p>
+          <div style="display:flex; justify-content:center; gap:8px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary">⚙️ Change Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary">⬅ Arcade Menu</button>
+          </div>
+        </div>`;
+        return;
+      }
+
+      // Shuffle pool
+      const shuffled = pool.sort(() => 0.5 - Math.random()).slice(0, 10);
+      arcadeState = {
+        queue: shuffled,
+        currentIndex: 0,
+        slots: Array(10).fill(null)
+      };
+
+      renderBlindRanking(container);
+    }
+
     function renderBlindRanking(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let drawnGames = pool.slice(0, 10);
-      let currentIndex = 0;
-      let slots = new Array(10).fill(null);
+      const state = arcadeState;
+      const currentGame = state.queue[state.currentIndex];
+      const isComplete = state.currentIndex >= 10;
 
-      function updateUI() {
-        let isComplete = currentIndex >= drawnGames.length;
-        let currentGame = !isComplete ? drawnGames[currentIndex] : null;
-
-        let leftSlotsHtml = '';
-        let rightSlotsHtml = '';
-
-        for (let i = 0; i < 10; i++) {
-          let gameInSlot = slots[i];
-          let numDisplay = i + 1;
-          let slotContent = gameInSlot 
-            ? `<div style="display:flex; align-items:center; gap:8px;"><img src="${gameInSlot.thumbnail || gameInSlot.image}" style="height:32px; width:32px; object-fit:contain;"> <span style="font-size:0.8rem; font-weight:bold; color:var(--yellow);">${gameInSlot.title}</span></div>`
-            : `<span style="font-size:0.8rem; color:var(--text-muted);">Empty Rank #${numDisplay}</span>`;
-
-          let disabledAttr = (gameInSlot || isComplete) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
-          let slotBtnHtml = `<button onclick="placeBlindRank(${i})" ${disabledAttr} style="text-align:left; padding:6px 10px; width:100%; border:1px solid var(--purple-border); background:var(--panel-bg);">${numDisplay}. ${slotContent}</button>`;
-
-          if (i < 5) leftSlotsHtml += slotBtnHtml;
-          else rightSlotsHtml += slotBtnHtml;
-        }
-
-        let html = `
-          <div class="game-status-bar">
-            <span>🎲 Blind Ranking (10 Games)</span>
-            <div>
-              <button class="game-btn" onclick="openSidebarFromExtras(); closeGamesArcadeModal();" style="background: var(--purple-border); color: #fff; margin-right: 6px;">⚙️ Filters</button>
-              <button class="game-btn" onclick="returnToArcadeMenu()">Menu</button>
-            </div>
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">🎲 Blind Ranking</h3>
+          <div style="display:flex; gap:6px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⚙️ Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⬅ Exit</button>
           </div>
-          <div class="game-board">
-            ${!isComplete ? `
-              <div style="background:var(--panel-bg); border:2px solid var(--turquoise); border-radius:10px; padding:12px; text-align:center;">
-                <span style="font-size:0.85rem; color:var(--text-muted);">GAME ${currentIndex + 1} OF 10 TO RANK:</span>
-                <h3 style="color:var(--yellow); margin:6px 0;">${currentGame.title}</h3>
-                <img src="${currentGame.image || currentGame.thumbnail}" style="height:120px; object-fit:contain; border-radius:6px; margin-bottom:8px;">
-                <p style="font-size:0.8rem; color:var(--text-muted);">Choose a rank slot (1 to 10) below!</p>
-              </div>
-            ` : `
-              <div style="background:var(--panel-bg); border:2px solid var(--yellow); border-radius:10px; padding:12px; text-align:center;">
-                <h3 style="color:var(--yellow);">🎉 Ranking Complete!</h3>
-                <button class="game-btn" onclick="launchGame('blind_ranking')" style="margin-top:8px;">Play Again</button>
-              </div>
-            `}
+        </div>
+      `;
 
-            <div class="blind-grid-columns">
-              <div style="display:flex; flex-direction:column; gap:6px;">${leftSlotsHtml}</div>
-              <div style="display:flex; flex-direction:column; gap:6px;">${rightSlotsHtml}</div>
-            </div>
+      if (!isComplete) {
+        html += `
+          <div style="background:var(--panel-bg); border:2px solid var(--turquoise); border-radius:10px; padding:10px; text-align:center; margin-bottom:12px;">
+            <div style="font-size:0.8rem; color:var(--turquoise); font-weight:bold; margin-bottom:4px;">GAME ${state.currentIndex + 1} OF 10</div>
+            <img src="${currentGame.image}" style="height:110px; object-fit:contain; border-radius:6px; margin-bottom:6px;">
+            <div style="font-size:1rem; font-weight:bold; color:var(--yellow);">${currentGame.title}</div>
           </div>
         `;
-        container.innerHTML = html;
+      } else {
+        html += `
+          <div style="background:var(--panel-bg); border:2px solid var(--magenta); border-radius:10px; padding:10px; text-align:center; margin-bottom:12px;">
+            <div style="font-size:1.1rem; font-weight:900; color:var(--yellow);">🎉 RANKING COMPLETE!</div>
+            <button onclick="initBlindRanking(document.getElementById('arcade-game-container'))" class="btn-play" style="margin-top:8px;">Play Again</button>
+          </div>
+        `;
       }
 
-      window.placeBlindRank = function(index) {
-        if (slots[index] !== null || currentIndex >= drawnGames.length) return;
-        slots[index] = drawnGames[currentIndex];
-        currentIndex++;
-        updateUI();
-      };
+      html += `<div class="blind-grid-columns"><div>`;
+      for (let i = 0; i < 5; i++) html += renderBlindSlot(i);
+      html += `</div><div>`;
+      for (let i = 5; i < 10; i++) html += renderBlindSlot(i);
+      html += `</div></div>`;
 
-      updateUI();
+      container.innerHTML = html;
     }
 
-    /* -------------------------------------------------------------
-       EXTRAS: 3. GUESS THE GAME
-    ------------------------------------------------------------- */
+    function renderBlindSlot(index) {
+      const game = arcadeState.slots[index];
+      const disabled = game !== null || arcadeState.currentIndex >= 10;
+      return `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; background:var(--panel-bg); border:1px solid var(--purple-border); border-radius:6px; padding:4px 8px;">
+          <span style="font-weight:900; color:var(--magenta); width:20px;">#${index + 1}</span>
+          <div style="flex:1; font-size:0.85rem; font-weight:bold; color:${game ? 'var(--yellow)' : 'var(--text-muted)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${game ? game.title : 'Empty Slot'}
+          </div>
+          ${!disabled ? `<button onclick="assignBlindSlot(${index})" class="game-btn" style="padding:2px 8px; font-size:0.75rem;">Place</button>` : ''}
+        </div>
+      `;
+    }
+
+    function assignBlindSlot(index) {
+      if (arcadeState.slots[index] !== null) return;
+      arcadeState.slots[index] = arcadeState.queue[arcadeState.currentIndex];
+      arcadeState.currentIndex++;
+      renderBlindRanking(document.getElementById('arcade-game-container'));
+    }
+
+    /* 3. GUESS THE GAME */
+    function initGuessGameSetup(container) {
+      const pool = getExtrasPool();
+      if (pool.length === 0) {
+        container.innerHTML = `<p style="color:var(--text-muted)">No games in current filter pool!</p>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">🔎 Guess the Game</h3>
+          <div style="display:flex; gap:6px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⚙️ Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⬅ Exit</button>
+          </div>
+        </div>
+
+        <div style="background:var(--panel-bg); border:2px solid var(--purple-border); border-radius:12px; padding:20px; text-align:center;">
+          <h4 style="color:var(--turquoise); margin-bottom:12px;">Select Visual Clue Mode</h4>
+          <div style="display:flex; gap:12px; justify-content:center; margin-bottom:16px;">
+            <button onclick="startGuessGame('blur')" class="btn-play" style="flex:1; max-width:180px; padding:12px;">💧 Blur Mode</button>
+            <button onclick="startGuessGame('zoom')" class="btn-play" style="flex:1; max-width:180px; padding:12px;">🔍 Zoom Mode</button>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-muted);">Blur starts blurry and clarifies over time. Zoom starts closely cropped and steadily zooms out.</p>
+        </div>
+      `;
+    }
+
+    function startGuessGame(mode) {
+      const pool = [...getExtrasPool()];
+      const target = pool[Math.floor(Math.random() * pool.length)];
+
+      arcadeState = {
+        target: target,
+        mode: mode,
+        clueStep: 1,
+        resolved: false
+      };
+
+      renderGuessGame(document.getElementById('arcade-game-container'));
+    }
+
     function renderGuessGame(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let targetGame = pool[0];
-      let clueStage = 1;
-      let gameMode = 'blur'; // 'blur' or 'zoom'
-      let gameOver = false;
+      const state = arcadeState;
+      const g = state.target;
 
-      function updateUI() {
-        let clue1 = "1. Image Clue Only";
-        let clue2 = clueStage >= 2 ? `2. Player Count: ${targetGame.min_players} - ${targetGame.max_players}` : "2. Player Count: 🔒 Locked";
-        let clue3 = clueStage >= 3 ? `3. Year Published: ${targetGame.year || 'Unknown'}` : "3. Year Published: 🔒 Locked";
-        let clue4 = clueStage >= 4 ? `4. Playtime: ${targetGame.playing_time_raw || targetGame.playing_time} min` : "4. Playtime: 🔒 Locked";
-        let clue5 = clueStage >= 5 ? `5. Weight: ${targetGame.weight.toFixed(1)} / 5.0` : "5. Weight: 🔒 Locked";
-        let clue6 = clueStage >= 6 ? `6. BGG Rating: ${targetGame.bgg_rating.toFixed(1)}` : "6. BGG Rating: 🔒 Locked";
-
-        let imageStyle = "";
-        if (!gameOver) {
-          if (gameMode === 'blur') {
-            let blurAmount = Math.max(0, 24 - (clueStage - 1) * 4.5);
-            imageStyle = `filter: blur(${blurAmount}px); transition: filter 0.3s ease;`;
-          } else {
-            let scaleAmount = Math.max(1, 3.8 - (clueStage - 1) * 0.55);
-            imageStyle = `transform: scale(${scaleAmount}); transition: transform 0.3s ease;`;
-          }
-        } else {
-          imageStyle = "filter: none; transform: scale(1); transition: all 0.3s ease;";
-        }
-
-        let html = `
-          <div class="game-status-bar">
-            <span>🔎 Guess the Game</span>
-            <div>
-              <button class="game-btn" onclick="openSidebarFromExtras(); closeGamesArcadeModal();" style="background: var(--purple-border); color: #fff; margin-right: 6px;">⚙️ Filters</button>
-              <button class="game-btn" onclick="returnToArcadeMenu()">Menu</button>
-            </div>
-          </div>
-          <div class="game-board">
-            <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 6px;">
-              <button class="game-btn" onclick="setGuessMode('blur')" style="background:${gameMode === 'blur' ? 'var(--turquoise)' : 'var(--panel-bg)'}; color:${gameMode === 'blur' ? '#000' : '#fff'}; flex:1;">Blur Mode</button>
-              <button class="game-btn" onclick="setGuessMode('zoom')" style="background:${gameMode === 'zoom' ? 'var(--turquoise)' : 'var(--panel-bg)'}; color:${gameMode === 'zoom' ? '#000' : '#fff'}; flex:1;">Zoom Mode</button>
-            </div>
-
-            <div style="background:var(--panel-bg); border:2px solid var(--purple-border); border-radius:10px; padding:12px; text-align:center;">
-              <div style="width:100%; height:180px; overflow:hidden; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#000;">
-                <img id="guess-target-img" src="${targetGame.image || targetGame.thumbnail}" style="max-height:100%; max-width:100%; object-fit:contain; ${imageStyle}">
-              </div>
-            </div>
-
-            <div style="background:var(--panel-bg); border:1px solid var(--purple-border); border-radius:8px; padding:10px; font-size:0.85rem; display:flex; flex-direction:column; gap:4px;">
-              <div style="color:var(--yellow); font-weight:bold;">CLUES REVEALED (${clueStage}/6):</div>
-              <div style="color:${clueStage >= 1 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue1}</div>
-              <div style="color:${clueStage >= 2 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue2}</div>
-              <div style="color:${clueStage >= 3 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue3}</div>
-              <div style="color:${clueStage >= 4 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue4}</div>
-              <div style="color:${clueStage >= 5 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue5}</div>
-              <div style="color:${clueStage >= 6 ? 'var(--turquoise)' : 'var(--text-muted)'};">${clue6}</div>
-            </div>
-
-            ${!gameOver ? `
-              <div class="autocomplete-wrapper">
-                <input type="text" id="guess-input" placeholder="Type game title..." style="width:100%; padding:8px 12px; background:var(--panel-bg); color:#fff; border:2px solid var(--purple-border); border-radius:8px; outline:none;">
-                <div id="guess-autocomplete" class="autocomplete-list" style="display:none;"></div>
-              </div>
-
-              <div style="display:flex; gap:8px;">
-                <button class="game-btn" onclick="revealNextClue()" ${clueStage >= 6 ? 'disabled style="opacity:0.5;"' : ''} style="flex:1;">Next Clue</button>
-                <button class="game-btn" onclick="giveUpGuess()" style="background:var(--magenta); flex:1;">Give Up</button>
-              </div>
-            ` : `
-              <div id="guess-result-banner" style="text-align:center; padding:10px; background:var(--panel-bg); border:2px solid var(--turquoise); border-radius:8px;">
-                <h3 style="color:var(--yellow);">${targetGame.title}</h3>
-                <button class="game-btn" onclick="launchGame('guess_game')" style="margin-top:8px;">Play Again</button>
-              </div>
-            `}
-          </div>
-        `;
-        container.innerHTML = html;
-
-        if (!gameOver) {
-          const input = document.getElementById('guess-input');
-          const autoList = document.getElementById('guess-autocomplete');
-
-          input.addEventListener('input', () => {
-            const val = input.value.toLowerCase().trim();
-            if (!val) { autoList.style.display = 'none'; return; }
-            
-            const matches = currentlyFilteredGames.filter(g => g.title.toLowerCase().includes(val)).slice(0, 6);
-            if (matches.length === 0) { autoList.style.display = 'none'; return; }
-
-            autoList.innerHTML = '';
-            matches.forEach(g => {
-              const item = document.createElement('div');
-              item.className = 'autocomplete-item';
-              item.innerText = g.title;
-              item.addEventListener('click', () => {
-                input.value = g.title;
-                autoList.style.display = 'none';
-                checkGuess(g.title);
-              });
-              autoList.appendChild(item);
-            });
-            autoList.style.display = 'block';
-          });
+      let modeStyle = '';
+      if (!state.resolved) {
+        if (state.mode === 'blur') {
+          const blurAmt = Math.max(0, 24 - (state.clueStep - 1) * 4);
+          modeStyle = `filter: blur(${blurAmt}px);`;
+        } else if (state.mode === 'zoom') {
+          const scaleAmt = Math.max(1, 4 - (state.clueStep - 1) * 0.6);
+          modeStyle = `transform: scale(${scaleAmt}); transform-origin: center center;`;
         }
       }
 
-      window.setGuessMode = function(mode) {
-        gameMode = mode;
-        updateUI();
-      };
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">🔎 Guess the Game</h3>
+          <div style="display:flex; gap:6px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⚙️ Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⬅ Exit</button>
+          </div>
+        </div>
 
-      window.revealNextClue = function() {
-        if (clueStage < 6) {
-          clueStage++;
-          updateUI();
-        }
-      };
+        <div style="background:var(--panel-bg); border:2px solid var(--purple-border); border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+          <div style="height:160px; overflow:hidden; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#000; margin-bottom:10px; position:relative;">
+            <img src="${g.image}" style="max-height:100%; max-width:100%; object-fit:contain; transition:all 0.3s ease; ${modeStyle}">
+          </div>
 
-      window.giveUpGuess = function() {
-        gameOver = true;
-        updateUI();
-      };
+          <div class="autocomplete-wrapper" style="margin-bottom:8px;">
+            <input type="text" id="guess-input" class="dropdown-search" placeholder="Type game title..." ${state.resolved ? 'disabled' : ''} oninput="handleGuessAutocomplete(this.value)">
+            <div id="guess-autocomplete" class="autocomplete-list" style="display:none;"></div>
+          </div>
 
-      function checkGuess(guessedTitle) {
-        if (guessedTitle.toLowerCase().trim() === targetGame.title.toLowerCase().trim()) {
-          gameOver = true;
-          updateUI();
-          const banner = document.getElementById('guess-result-banner');
-          if (banner) {
-            banner.innerHTML = `<h3 style="color:var(--turquoise);">🎉 Correct! It was ${targetGame.title}!</h3><button class="game-btn" onclick="launchGame('guess_game')" style="margin-top:8px;">Play Again</button>`;
-          }
-        }
-      }
+          ${!state.resolved ? `
+            <div style="display:flex; gap:8px;">
+              <button onclick="nextGuessClue()" class="btn-primary" style="flex:1;">💡 Next Clue (${state.clueStep}/6)</button>
+              <button onclick="giveUpGuessing()" class="btn-luck" style="padding:6px 12px;">Give Up</button>
+            </div>
+          ` : `
+            <div style="margin-top:8px;">
+              <div style="font-size:1.1rem; font-weight:900; color:var(--turquoise); margin-bottom:6px;">${g.title} (${g.year})</div>
+              <button onclick="initGuessGameSetup(document.getElementById('arcade-game-container'))" class="btn-play">Play Again</button>
+            </div>
+          `}
+        </div>
 
-      updateUI();
+        <div style="background:var(--panel-bg); border:1px solid var(--purple-border); border-radius:8px; padding:10px;">
+          <div style="font-size:0.8rem; font-weight:bold; color:var(--turquoise); margin-bottom:6px; text-transform:uppercase;">UNLOCKED CLUES</div>
+          <ul style="list-style-type:none; font-size:0.85rem; color:var(--text); padding:0; display:flex; flex-direction:column; gap:4px;">
+            <li>1. Image view</li>
+            ${state.clueStep >= 2 ? `<li style="color:var(--yellow)">2. Player Count: ${g.min_players} - ${g.max_players} players</li>` : ''}
+            ${state.clueStep >= 3 ? `<li style="color:var(--yellow)">3. Year Published: ${g.year}</li>` : ''}
+            ${state.clueStep >= 4 ? `<li style="color:var(--yellow)">4. Playtime: ${g.playing_time} min</li>` : ''}
+            ${state.clueStep >= 5 ? `<li style="color:var(--yellow)">5. Weight / Complexity: ${g.weight.toFixed(1)} / 5</li>` : ''}
+            ${state.clueStep >= 6 ? `<li style="color:var(--yellow)">6. BGG Rating: ${g.bgg_rating.toFixed(1)}</li>` : ''}
+          </ul>
+        </div>
+      `;
+
+      container.innerHTML = html;
     }
 
-    /* -------------------------------------------------------------
-       EXTRAS: 4. HIGHER OR LOWER
-    ------------------------------------------------------------- */
+    function handleGuessAutocomplete(val) {
+      const list = document.getElementById('guess-autocomplete');
+      if (!val.trim()) { list.style.display = 'none'; return; }
+
+      const query = val.toLowerCase();
+      const pool = getExtrasPool();
+      const matches = pool.filter(g => g.title.toLowerCase().includes(query)).slice(0, 5);
+
+      if (matches.length === 0) { list.style.display = 'none'; return; }
+
+      list.innerHTML = '';
+      matches.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.innerText = g.title;
+        item.onclick = () => submitGuess(g.title);
+        list.appendChild(item);
+      });
+      list.style.display = 'block';
+    }
+
+    function submitGuess(title) {
+      if (arcadeState.resolved) return;
+      if (title.toLowerCase() === arcadeState.target.title.toLowerCase()) {
+        arcadeState.resolved = true;
+        renderGuessGame(document.getElementById('arcade-game-container'));
+      } else {
+        alert("Not quite right! Try another clue or guess again.");
+      }
+    }
+
+    function nextGuessClue() {
+      if (arcadeState.clueStep < 6) arcadeState.clueStep++;
+      renderGuessGame(document.getElementById('arcade-game-container'));
+    }
+
+    function giveUpGuessing() {
+      arcadeState.resolved = true;
+      renderGuessGame(document.getElementById('arcade-game-container'));
+    }
+
+    /* 4. HIGHER OR LOWER */
+    function initHigherLower(container) {
+      const pool = [...getExtrasPool()];
+      if (pool.length < 2) {
+        container.innerHTML = `<p style="color:var(--text-muted)">Need at least 2 games in pool to play Higher or Lower!</p>`;
+        return;
+      }
+
+      const shuffle = pool.sort(() => 0.5 - Math.random());
+      arcadeState = {
+        pool: shuffle,
+        game1: shuffle[0],
+        game2: shuffle[1],
+        score: 0,
+        metric: 'bgg_rating',
+        revealed: false
+      };
+
+      renderHigherLower(container);
+    }
+
     function renderHigherLower(container) {
-      let pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-      let gameA = pool[0];
-      let gameB = pool[1];
-      let score = 0;
-      let metric = 'bgg_rating'; // 'bgg_rating', 'user_rating', 'weight', 'playing_time'
-
-      function getMetricLabel() {
-        if (metric === 'bgg_rating') return 'BGG Rating';
-        if (metric === 'user_rating') return "Luke's Rating";
-        if (metric === 'weight') return 'Weight / Complexity';
-        if (metric === 'playing_time') return 'Playtime';
-        return '';
-      }
-
-      function getMetricValue(game) {
-        if (metric === 'playing_time') return game.playing_time;
-        if (metric === 'weight') return game.weight;
-        if (metric === 'user_rating') return game.user_rating;
-        return game.bgg_rating;
-      }
-
-      function updateUI(showAnswer = false, guessedCorrectly = false) {
-        let label = getMetricLabel();
-
-        let html = `
-          <div class="game-status-bar">
-            <span>📈 Higher or Lower (Score: ${score})</span>
-            <div>
-              <button class="game-btn" onclick="openSidebarFromExtras(); closeGamesArcadeModal();" style="background: var(--purple-border); color: #fff; margin-right: 6px;">⚙️ Filters</button>
-              <button class="game-btn" onclick="returnToArcadeMenu()">Menu</button>
-            </div>
-          </div>
-          <div class="game-board">
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--panel-bg); padding:8px 12px; border-radius:8px; border:1px solid var(--purple-border);">
-              <span style="font-size:0.85rem; font-weight:bold; color:var(--yellow);">Compare By:</span>
-              <select id="hl-metric-select" style="padding:4px 8px; font-size:0.8rem;">
-                <option value="bgg_rating" ${metric === 'bgg_rating' ? 'selected' : ''}>BGG Rating</option>
-                <option value="user_rating" ${metric === 'user_rating' ? 'selected' : ''}>Luke's Rating</option>
-                <option value="weight" ${metric === 'weight' ? 'selected' : ''}>Weight / Complexity</option>
-                <option value="playing_time" ${metric === 'playing_time' ? 'selected' : ''}>Playtime</option>
-              </select>
-            </div>
-
-            <p style="text-align:center; font-size:0.9rem; font-weight:bold; color:var(--turquoise); margin-top:4px;">
-              Which game has a higher <span style="color:var(--yellow);">${label}</span>?
-            </p>
-
-            <div class="hl-container">
-              <div class="hl-card" onclick="makeHLSelection('A')">
-                <img src="${gameA.image || gameA.thumbnail}">
-                <h4 style="color:var(--yellow); font-size:0.95rem;">${gameA.title}</h4>
-                ${showAnswer ? `<div style="margin-top:6px; font-weight:bold; color:var(--turquoise);">${getMetricValue(gameA)}</div>` : ''}
-              </div>
-
-              <div class="hl-card" onclick="makeHLSelection('B')">
-                <img src="${gameB.image || gameB.thumbnail}">
-                <h4 style="color:var(--yellow); font-size:0.95rem;">${gameB.title}</h4>
-                ${showAnswer ? `<div style="margin-top:6px; font-weight:bold; color:var(--turquoise);">${getMetricValue(gameB)}</div>` : ''}
-              </div>
-            </div>
-
-            ${showAnswer ? `
-              <div style="text-align:center; padding:10px; background:var(--panel-bg); border:2px solid ${guessedCorrectly ? 'var(--turquoise)' : 'var(--magenta)'}; border-radius:8px;">
-                <h3 style="color:${guessedCorrectly ? 'var(--turquoise)' : 'var(--magenta)'};">${guessedCorrectly ? '🎉 Correct!' : '❌ Incorrect!'}</h3>
-                <button class="game-btn" onclick="nextHLRound()" style="margin-top:8px;">Next Round</button>
-              </div>
-            ` : ''}
-          </div>
-        `;
-        container.innerHTML = html;
-
-        document.getElementById('hl-metric-select').addEventListener('change', (e) => {
-          metric = e.target.value;
-          updateUI();
-        });
-      }
-
-      window.makeHLSelection = function(choice) {
-        let valA = getMetricValue(gameA);
-        let valB = getMetricValue(gameB);
-        let isCorrect = false;
-
-        if (choice === 'A' && valA >= valB) isCorrect = true;
-        if (choice === 'B' && valB >= valA) isCorrect = true;
-
-        if (isCorrect) score++;
-        updateUI(true, isCorrect);
+      const state = arcadeState;
+      const metricLabels = {
+        'bgg_rating': 'BGG Rating',
+        'user_rating': "Luke's Rating",
+        'weight': 'Weight (Complexity)',
+        'playing_time': 'Playtime (Minutes)',
+        'year': 'Year Published'
       };
 
-      window.nextHLRound = function() {
-        pool = [...currentlyFilteredGames].sort(() => 0.5 - Math.random());
-        gameA = pool[0];
-        gameB = pool[1];
-        updateUI(false);
-      };
+      let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="color:var(--yellow); text-transform:uppercase;">📈 Higher or Lower</h3>
+          <div style="display:flex; gap:6px;">
+            <button onclick="openSidebarFromExtras()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⚙️ Filters</button>
+            <button onclick="returnToArcadeMenu()" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;">⬅ Exit</button>
+          </div>
+        </div>
 
-      updateUI();
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--panel-bg); padding:8px 12px; border-radius:8px; margin-bottom:12px;">
+          <div style="font-size:0.85rem; font-weight:bold; color:var(--turquoise);">STREAK: ${state.score}</div>
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; margin-right:4px;">Compare Metric:</label>
+            <select id="hl-metric-select" onchange="changeHLMetric(this.value)" style="padding:4px; font-size:0.8rem;">
+              <option value="bgg_rating" ${state.metric==='bgg_rating'?'selected':''}>BGG Rating</option>
+              <option value="user_rating" ${state.metric==='user_rating'?'selected':''}>Luke's Rating</option>
+              <option value="weight" ${state.metric==='weight'?'selected':''}>Weight</option>
+              <option value="playing_time" ${state.metric==='playing_time'?'selected':''}>Playtime</option>
+              <option value="year" ${state.metric==='year'?'selected':''}>Year Published</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hl-container">
+          <div class="hl-card">
+            <img src="${state.game1.image}" alt="${state.game1.title}">
+            <div style="font-size:0.9rem; font-weight:bold; color:var(--yellow);">${state.game1.title}</div>
+            <div style="font-size:1.1rem; font-weight:900; color:var(--turquoise); margin-top:6px;">${formatMetricVal(state.game1[state.metric], state.metric)}</div>
+          </div>
+
+          <div class="hl-card">
+            <img src="${state.game2.image}" alt="${state.game2.title}">
+            <div style="font-size:0.9rem; font-weight:bold; color:var(--yellow); margin-bottom:6px;">${state.game2.title}</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">is</div>
+
+            ${!state.revealed ? `
+              <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                <button onclick="makeHLGuess(true)" class="btn-play" style="padding:8px;">HIGHER ▲</button>
+                <button onclick="makeHLGuess(false)" class="btn-primary" style="padding:8px;">LOWER ▼</button>
+              </div>
+            ` : `
+              <div style="font-size:1.1rem; font-weight:900; color:var(--turquoise); margin-bottom:8px;">${formatMetricVal(state.game2[state.metric], state.metric)}</div>
+              <button onclick="nextHLRound()" class="btn-play" style="width:100%;">Next Round ➔</button>
+            `}
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function formatMetricVal(val, metric) {
+      if (metric === 'weight' || metric === 'bgg_rating' || metric === 'user_rating') return parseFloat(val).toFixed(1);
+      return val;
+    }
+
+    function changeHLMetric(val) {
+      arcadeState.metric = val;
+      renderHigherLower(document.getElementById('arcade-game-container'));
+    }
+
+    function makeHLGuess(guessedHigher) {
+      const state = arcadeState;
+      const v1 = state.game1[state.metric];
+      const v2 = state.game2[state.metric];
+      const isHigher = v2 >= v1;
+
+      state.revealed = true;
+      if ((guessedHigher && isHigher) || (!guessedHigher && !isHigher)) {
+        state.score++;
+      } else {
+        alert(`Wrong! ${state.game2.title} is ${v2} vs ${v1}. final Streak: ${state.score}`);
+        state.score = 0;
+      }
+      renderHigherLower(document.getElementById('arcade-game-container'));
+    }
+
+    function nextHLRound() {
+      const state = arcadeState;
+      state.game1 = state.game2;
+      const pool = state.pool.filter(g => g.id !== state.game1.id);
+      state.game2 = pool[Math.floor(Math.random() * pool.length)];
+      state.revealed = false;
+      renderHigherLower(document.getElementById('arcade-game-container'));
     }
   </script>
 </body>
 </html>
+"""
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
